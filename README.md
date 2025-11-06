@@ -1,5 +1,5 @@
 
-Typing of Overloading: a Prototype
+Extended typing with Binding Boolean Expressions
 ================
 
 
