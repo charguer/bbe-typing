@@ -1,0 +1,11 @@
+
+(executable
+  (modes exe)
+  (name print_ast)
+  (modules print_ast)
+  (libraries
+    ocamlformat-lib
+    ocaml-compiler-libs.common
+  )
+)
+

@@ -1,0 +1,186 @@
+(*
+
+Pseudo-code:
+
+
+- a type is represented as a "node" in a graph,
+  each node can be:
+  + a rigid variable ([a] coming from a [(type a)] argument, where [a] cannot be unified/instantiated)
+  + a flexible variable (a type variable that should be instantiated later), meaning "type is not yet determined"
+  + a structured type (e.g. ['b list], or ['b -> 'c], where ['b] and ['c] are other nodes).
+  + an unresolved instance, described as set of possible types
+- the graph should never contain cycles (no support for rectypes)
+- a type is said to be "fully resolved" if it does not contain any flexible variable
+
+- typechecking has two phases, named up and down
+- the up phase assigns a type to every node (field trm_typ of type trm)
+- the up phase propagates information from the leaves to the root, with the exception of:
+  + explicit type annotations, which propagate downwards; these type annotations may
+    be used to resolved overloaded names, or to annotate function arguments,
+    however the returned type might differ from that of the optional type annotation.
+  + type of free variables, which are carried through using a typing environment
+- the down phase propagates information from the root to the leaves.
+
+- the typing environment associates each variable to:
+  + its type, if it is a conventional variable
+  + or, if it is an overloaded variable, to the table of its instances
+
+
+let typ_of (t : trm) : typ =
+  match t.trm_typ with
+  | None -> assert false
+  | Some ty -> ty
+
+
+--- not clear whether annot is needed
+
+
+let rec typecheck_up (env : env) (annot : typ option) (t : trm) : unit =
+  let aux ?(env:env=env) ?(annot:typ option=None) t1 =
+    typecheck_up env None t1 in
+  let typ_aux ?(env:env=env) ?(annot:typ option=None) t1 =
+    aux ~env ~annot t1; typ_of t1 in
+
+  let ty =
+
+    match t.trm_desc with
+
+    | Trm_cst c -> typ_of_cst ~typ_exp:annot c
+
+    | Trm_var x ->
+        begin match Env.lookup env x with
+        | None -> failwith "unbound variable"
+        | Some (Var_normal ty) -> ty
+        | Some (Var_overloaded tbl) ->
+            begin match Instances.resolve ~typ_exp:annot tbl with
+            | Some ty -> ty
+            | None -> fresh_unresolved_instance tbl
+            end
+        end
+
+    | Trm_let (x,t1,t2) ->
+        let ty1 = typ_aux t1 in
+	typecheck_down e t1 ty1;
+        if not (typ_fully_resolved ty1) (* ne devrait pas arriver *)
+          then failwith "cannot resolve type of x";
+        let env2 = Env.add env x ty1 in
+        typ_aux ~env:env2 ~annot t2
+
+    | Trm_annot (t1, ty1_descr) ->
+        let ty_annot = internalize_typ ty_descr in
+        let ty1 = typ_aux t1 in
+        let success = unify ty1 ty_annot in
+        if not succes
+          then failwith "t1 has type ... but was constrained to be of type .. ";
+        ty1
+
+    | Trm_fixs (b, tvars, targs, t1) ->
+        let annot_tvars, annot_args, annot_ret = decompose_funtyp_opt annot in
+        let targs = targs_complete_missing_types targs annot_args in
+        let ty_tvars = internalize_tvars tvars in
+        let typed_xs = internalize_targs targs in
+        let env2 = Env.add_tvars env typed_xs in
+        let ty1 = typ_aux ~env:env2 ~annot:annot_ret t1 in
+        typ_fun ty_tvars (List.map fst typed_xs) ty1
+
+    | Trm_apps ({ desc = Trm_var x ; _}, ts) when Env.is_overloaded env x ->
+    (* peut être mieux : typer t0 toujours, puis regarder s'il a un type Typ_overload_occ *)
+
+        let tbl = Env.get_overloaded env x in
+        let ty_ts = List.map typ_aux ts in
+        let ty_x =
+          begin match Instances.resolve ?typ_exp:annot ~typ_args:ty_ts tbl with
+          | Some ty_x -> ty_x
+          | None -> fresh_unresolved_instance tbl
+          end in
+        typecheck_up_fun ty_x ty_ts
+
+    | Trm_apps (t0, ts) ->
+        let ty_t0 = typ_aux t0 in
+        let ty_ts = List.map typ_aux ts in
+        typecheck_up_fun ty_t0 ty_ts
+
+   in
+
+   t.trm_typ <- ty
+
+
+and typecheck_up_fun ty_t0 ty_ts =
+  let ty_tvars, ty_args, ty_ret = decompose_funtyp ty_t0 in
+  let saved_ty_t0 = typ_copy ty_t0 in
+  let saved_ty_ts = List.map typ_copy ty_ts in
+  let saved_ty_args = List.map typ_copy ty_ts in
+  let success = list_map_for_all_2 unify ty_args ty_ts in
+  if not success
+    then failwith "function expected arguments of types saved_ty_args, got saved_ty_ts";
+  ty_ret
+    --- could save in the ast the instantiated ty_tvars, which corresponds to the type applications
+
+
+
+(* E |- t : T    --> typecheck e t ty *)
+
+let rec typecheck_down (ty_exp : typ) (t : trm) : unit = (* probablement mieux avec le typ en second *)
+  let aux = typecheck_down in
+  let ty = typ_of t in
+
+  let success = unify ty ty_exp in
+  if not success --probably this always succeed, but not sure
+    then failwith "term t has type typ but context expects typ_exp";
+
+  begin match t.trm_desc with
+
+  | Trm_cst c ->
+       ressemble au case des variables
+
+  | Trm_var x ->
+      begin match unresolved_instance_inv ty with
+      | None -> ()
+      | Some (flexible,tbl) -> (* Note: flexible == ty *)
+          begin match Instances.resolve ~typ_exp:ty_exp tbl with
+          | Some sch_x -> unify flexible (apply_to_fresh_flexibles sch_x)
+          | None -> failwith "missing information to resolve instance for overloaded name x"
+          end
+      end
+
+  | Trm_let (x,t1,t2) ->
+      aux (typ_of t1) t1;
+      aux ty_exp t2;
+
+  | Trm_annot (t1, ty1_descr) ->
+      aux ty_exp t1
+
+  | Trm_fixs (b, tvars, targs, t1) ->
+      let exp_tvars, exp_args, exp_ret = decompose_funtyp ty_exp in
+      --fails if expected type is not an arrow
+      aux exp_ret t1
+      ---what about the exp_tvars?
+
+  | Trm_apps (t0, ts) ->
+      let ty_x = typ_of tx in
+      let ty_ts = List.map typ_of ts in
+      begin match unresolved_instance_inv ty_x with
+         (* quand t0 est de la forme ({ desc = Trm_var x ; _} as tx) *)
+      | None -> ()
+      | Some (flexible,tbl) -> (* Note: flexible == ty *)
+          begin match Instances.resolve ~typ_args:ty_ts ~typ_exp:ty_exp tbl with
+          | Some sch_x -> unify flexible (apply_to_fresh_flexibles sch_x)
+          | None -> failwith "missing information to resolve instance for overloaded name x"
+          end
+      end;
+      typecheck_down_fun ty_x tx;
+      let ty_args, ty_ret = decompose_funtyp ty_x in
+      unify ty_ret ty_exp;
+      list_map_2 typecheck_down ty_args ts
+
+  end
+
+
+
+let typecheck e t =
+   let ty = typecheck_up e t in
+   typecheck_down e  t ty;
+   check that ty is fully resolved
+
+
+*)

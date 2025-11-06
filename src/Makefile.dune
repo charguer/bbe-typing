@@ -1,0 +1,13 @@
+
+
+.PHONY: all install uninstall clean
+
+all:
+	@ dune build @all
+
+typer.exe:
+	@ dune build typer.exe
+
+clean:
+	@ dune clean
+
