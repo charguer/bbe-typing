@@ -78,6 +78,18 @@ let print_low_level_trm =
 let print_low_level_reginst insts =
   Printf.sprintf "registered instances <%i>" (List.length insts.candidates_and_modes_candidates)
 
+(*wip : write a small printer of a program [typdef list] for debugging*)
+let print_low_level_topdef (td : topdef) : string =
+  let open Printf in
+    match td.topdef_desc with
+    | Topdef_val_def {let_def_body = t} -> sprintf "Let_bind (%s)" (print_low_level_trm t)
+    | Topdef_typ_def { typ_def_td = tds ; _ } -> sprintf "Topdef_typ_def (%s)" ("unsupported for the moment")
+    | Topdef_external { external_def_var = v ; _ } -> sprintf "Topdef_external (%s)" ("unsupported for the moment")
+
+let print_low_level_program (p : program) : string =
+  let s : string list = List.map print_low_level_topdef p in
+  String.concat "\n \n" s
+
 let env_add_tvar_rigid (x : tvar_rigid) (ty : typ) : unit =
   if_debug (fun () ->
     Printf.printf "%aenv_add_tvar_rigid %s : [%a]\n"
