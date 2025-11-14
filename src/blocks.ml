@@ -240,12 +240,11 @@ let add_triggers_into_typ (tr : trigger) (ty : typ) : unit =
 let trigger_call_dummy = ((fun _ _ -> VaridSet.empty), (fun _ _ -> ()))
 
 (** [unify_flexible t1flexible t2] performs the unification of the flexible variable
-  [t1flexible] with the type [t2], with a best effort to preserve a meaningful name.
-  Both [t1flexible] and [t2] are roots (results of [Repr.get_repr]).
+  [t_flexible] with the type [t2], with a best effort to preserve a meaningful name.
+  Both [t_flexible] and [t2] are roots (results of [Repr.get_repr]).
   Note that as [t_flexible] is part of the Union-Find, it can't be duplicated without
   breaking some invariants (typically the cycle search): this is why this function
   has to take [t_flexible] as an argument and not just [v_flexible1]. *)
-
 let unify_flexible (trigger_call : trigger_call) (t_flexible : typ) (t_other : typ) : unit =
   assert (is_flexible t_flexible);
   let (trigger_union, trigger_call_fct) =
@@ -310,7 +309,7 @@ let rec unify_exn_aux ?loc trigger_call env (t1 : typ) (t2 : typ) : unit =
 (* [unify_desc ty1 ty2] assumes that [ty1] and [ty2] are roots (results of [Repr.get_repr]). *)
 and unify_desc ?(loc = loc_none) trigger_call env (t1 : typ) (t2 : typ) : unit =
   let t1 = unfold_alias env t1 in
-  let t2 = unfold_alias env t2 in
+  let t2 = unfold_alias env t2 in (* replaces the find operation for Union-find algorithm *)
   match t1.typ_desc, t2.typ_desc with
     | Unified _, _
     | _, Unified _ -> assert false (* t1 and t2 must be roots, so they can't be [Unified]. *)
