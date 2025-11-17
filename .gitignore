@@ -1,3 +1,6 @@
 # Artifacts
 _build
 *.exe
+test/*
+*.txt
+src/flags.ml
