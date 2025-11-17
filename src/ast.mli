@@ -364,7 +364,7 @@ type let_def = {
 }
 
 (* The representation of [42] in a parsed AST is
-  [Trm_apps (Trm_var (SymbolNumericInt, ...), [Trm_cst (Cst_int 42)]]. *)
+  [Trm_apps (Trm_var (SymbolNumericInt, ...), [Trm_cst (Cst_int 42)]]. *) (*Yanni: Unnecessary now, a normal cst is enough.*)
 (* Records are compiled as stated in the article. *)
 type trm_desc =
   | Trm_var of varid

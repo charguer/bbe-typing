@@ -362,7 +362,7 @@ let rec tr_exp (e : expression) : trm =
         | Cst_string _ -> (SymbolString, AnnotLiteralString)
         | Cst_bool _ | Cst_unit _ ->
           assert false (* In OCaml, boolean and units are dealt as constructors and not constants. See Pexp_construct below. *) in
-      return ~annot (trm_desc_apps (trm_var_symbol symbol) [trm_cst cst])
+      return ~annot (trm_desc_apps (trm_var_symbol symbol) [trm_cst cst]) (*Here I would want to return a constant instead.*)
   | Pexp_let (rf, [vb], e2) ->
       let lets = tr_let rf e.pexp_attributes vb in
       let t2 = tr_exp e2 in

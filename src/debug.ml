@@ -75,6 +75,14 @@ let print_low_level_trm =
       space (print_low_level_typ t.trm_typ) in
   aux 0
 
+let print_low_level_bind (b : bind) =
+  let open Printf in
+  match b with
+  | Bind_anon -> " _"
+  | Bind_var (x, _) -> sprintf "Var %s" (print_var x)
+  | Bind_register_instance _ -> "unsupported Binder for the moment"
+
+
 let print_low_level_reginst insts =
   Printf.sprintf "registered instances <%i>" (List.length insts.candidates_and_modes_candidates)
 
@@ -82,7 +90,8 @@ let print_low_level_reginst insts =
 let print_low_level_topdef (td : topdef) : string =
   let open Printf in
     match td.topdef_desc with
-    | Topdef_val_def {let_def_body = t} -> sprintf "Let_bind (%s)" (print_low_level_trm t)
+    | Topdef_val_def {let_def_bind = _b; let_def_body = t} ->
+      sprintf "Let_bind (%s ; %s)" (print_low_level_bind _b) (print_low_level_trm t)
     | Topdef_typ_def { typ_def_td = tds ; _ } -> sprintf "Topdef_typ_def (%s)" ("unsupported for the moment")
     | Topdef_external { external_def_var = v ; _ } -> sprintf "Topdef_external (%s)" ("unsupported for the moment")
 
