@@ -20,6 +20,8 @@ type instance_value = trm0
 (** A [loc] denotes a location in the source code *)
 type loc = Location.t
 
+
+(*Yanni: Unnecessary*)
 (** An overloaded variable, e.g. [(+)]. *)
 type symbol =
 
@@ -48,10 +50,12 @@ type styp = Parsetree.core_type (* FIXME: rename to parsetyp *)
 
 (* LATER: Do we still need the modes now that we have triggers? *)
 
+
 (** Mode for instance arguments.
    The [mode] can be 'input' or 'output'.
    For an overloaded function, we have a mode to every argument.
    The resolution is guided by the type of the 'input' arguments only. *)
+(*Yanni: Unnecessary*)
 type mode =
   | Mode_in (* true: input parameter (default) *)
   | Mode_out (* false: output parameter (mainly used for iterators) *)
@@ -81,7 +85,7 @@ type tvar_rigid = tconstr
       (see [internal_type] below).
     - a 'rigid' variable (i.e. polymorphic type) is also represented as a constr. *)
 type typ_desc =
-  | Flexible of tvar * trigger
+  | Flexible of tvar * trigger (*Yanni: trigger probably unnecessary because of no overloading.*)
   | Unified of typ
   | Typ_constr of tconstr * typs
 
@@ -104,6 +108,7 @@ and typs = typ list
 
 (** A [sch] denotes a ML type scheme, that is, a type of the form [forall 'a 'b. t],
    with head-polymorphism (forall), and a type body without further quantifiers. *)
+(*Yanni: Probably unnecessary*)
 and sch = {
   sch_tvars : tvar_rigid list;
   sch_body : typ;
@@ -112,6 +117,7 @@ and sch = {
 (** A trigger denotes a list of varids associated with symbols
     whose resolution depends on the resolution of the Flexible type
     that stores this trigger. *)
+(*Yanni: Unnecessary*)
 and trigger = varid_set
 
 (* Invariant: the triggers on the leaves of varid_typ of a given varid always include this varid. *)
@@ -178,6 +184,7 @@ and instance_sig = {
 (** An assumption can take two forms as part of the arguments of an instance declaration:
   - [(op[@implicit (+)] : a -> a -> a)].  In this case, the [op] is irrelevant for the typing context (it will be seen in the instance value).
   - [(_[@implicit (+)] : a -> a -> a)]. *)
+(*Yanni: Unnecessary*)
 and assumption_desc = {
   assumption_symbol : symbol;
   assumption_typ : syntyp0;
@@ -211,6 +218,7 @@ and assumption_desc = {
     Syntactially, we use the convention that within instance declarations, type arguments
     come first, then implicit arguments, then normal arguments.
 *)
+(*Yanni: useful for overloading, probably unnecessary for us*)
 and instance = {
   (** Term to be extracted at the place of the instance use.
     It takes the instance's arguments as parameters. *)
@@ -222,6 +230,7 @@ and instance = {
 
 
 (** For each trigger, how important it should be examined early. *)
+(*Yanni: Unnecessary*)
 type trigger_event =
   | Trigger_Create (* When we create a new flexible type. *)
   | Trigger_App (* When an application of an overloaded varid is treated (only during the first pass). *)
@@ -247,6 +256,7 @@ type syntyp = {
 (** A [synsch] is similar to a [syntyp] for a type scheme, with
     a list of quantified variables. Variables in the syntactic
     list and in the [sch] object must appear in the same order. *)
+(*Yanni: probably unnecessary*)
 and synsch = {
   synsch_syntax : tvar_rigid list * styp;
   synsch_sch : sch; (* possibly dummy after parsing *)

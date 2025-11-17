@@ -121,13 +121,20 @@ let gen_filename kind inputfile =
   let dirname = Filename.dirname inputfile in
   Filename.concat dirname (Printf.sprintf "%s_%s.ml" basename kind)
 
+(*string -> string
+Used as a small hack to generate a parsed file without the ".ml" extension*)
+let gen_parsed inputfile =
+  let basename = Filename.chop_suffix (Filename.basename inputfile) ".ml" in
+  let dirname = Filename.dirname inputfile in
+  Filename.concat dirname (Printf.sprintf "%s_%s.txt" basename "parsed")
+
 let get_output_filename (inputfile : string) : string =
   match !output_filename with
   | Some f -> f
   | None -> gen_filename "typed" inputfile
 
 let get_parsed_filename (inputfile : string) : string =
-  gen_filename "parsed" inputfile
+  gen_parsed inputfile
 
 let get_parsed_and_converted_filename (inputfile : string) : string =
   gen_filename "translated" inputfile
@@ -193,6 +200,8 @@ let _ =
      in
   List.iter tr_structure_item ocaml_tast.str_items;
   *)
+
+  Clflags.locations := false;
 
   (* Print raw ast *)
   if !Flags.print_parsed && !Flags.output then (
