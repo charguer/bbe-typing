@@ -19,7 +19,7 @@ let chain
         ~continue_on_error
         ~style:printing_styles
         ast
-    with Typecheck.Typecheck_error msg ->
+    with Typecheck.Typecheck_error msg when not (!Flags.halt_on_error) ->
       prerr_endline (Printf.sprintf "🟥 Type error: %s" msg) ;
       exit 1 in
 
@@ -72,7 +72,7 @@ let full
     (String.concat ", " (List.map string_of_int (Ast_aux.all_seen_tuple_arity ()))) ;
 
   if !Flags.print_parsed then (
-    let res = Ast_print.to_string ~style:{
+    let res = Ast_print.to_string ~style:{ (*Modify for BBE typing information, useful for debugging*)
       printing_styles with
       style_resolution_full = ResolutionInstanceOrSymbol ;
       style_resolution_base = ResolutionInstanceOrSymbol ;
@@ -80,6 +80,10 @@ let full
       style_types = TypesVarsAndBinders ;
       style_print_symbols = true
     } ast in
+    if !Flags.verbose then
+      Printf.printf "Raw ast :\n%s\n"
+      (Debug.print_low_level_program ast);
+      Printf.printf "Readable* ast :\n%s\n" res;
     call_back_syntax res
   ) ;
 

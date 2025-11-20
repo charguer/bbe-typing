@@ -1016,6 +1016,14 @@ let to_string ~style (ast : Ast_fix.program) : string =
   ToBuffer.pretty 0.9 code_print_width out (ast_to_doc ~style ast) ;
   Buffer.contents out
 
+let env_to_string ~style (e : env) : string =
+  let print_val =
+  function
+    | Env_item_var sch -> sch_to_string sch
+    | Env_item_overload is -> (doc_to_string (overload_to_doc ~style is))
+  in
+  Env.print (symbol_to_string) (print_val) e.env_var
+
 
 (*#########################################################################*)
 (* ** Printing for debug *)

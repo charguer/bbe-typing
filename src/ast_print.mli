@@ -41,6 +41,8 @@ val to_file : style:style -> string -> program -> unit
 (** Print a program, explicitely marked the types or not. *)
 val to_string : style:style -> program -> string
 
+val env_to_string : style:style -> env -> string
+
 type doc = PPrint.document
 
 val print_indent : out_channel -> unit -> unit

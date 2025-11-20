@@ -398,12 +398,15 @@ and typecheck_let (trigger_call : trigger_call) ~loc (e : env) (b : let_def) : l
       return (Bind_register_instance (x, inst_sig)) e' t1 (instance_sch inst_sig)
 
 
-(** [typecheck_ml e t] typechecks [t] in [e] and returns the type of [t].
+(** [typecheck_ml e t] typechecks [t] in [e] and returns [t] with the correct type.
     If an expected type is provided, the type computed for [t] is unified
     with it at the very end of the process. There is no propagation
     downwards into the term of the expected type. *)
 
 and typecheck_ml (trigger_call : trigger_call) ?(expected_typ:typ option) (e : env) (t : trm) : trm =
+
+  if !Flags.verbose then Printf.printf "Entering typecheck_ml with :\n env = %s \n t = %s\n" (Ast_print.env_to_string ~style:Ast_print.style_debug e ) (trm_to_string t);
+
   let loc = t.trm_loc in
   let aux ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
     typecheck_ml trigger_call ?expected_typ env t in
@@ -423,6 +426,7 @@ and typecheck_ml (trigger_call : trigger_call) ?(expected_typ:typ option) (e : e
       trm_env = e;
       trm_annot = annot } in
 
+  let result =
   match t.trm_desc with
   | Trm_var x ->
       let varid = typecheck_variable trigger_call loc e x.varid_symbol in
@@ -509,7 +513,10 @@ and typecheck_ml (trigger_call : trigger_call) ?(expected_typ:typ option) (e : e
           let ti = aux ~env:e' ~expected_typ:tyr ti in
           (pi, ti)) pts in
       return tyr (Trm_match (t0, pts))
+    in
 
+    if !Flags.verbose then Printf.printf "Exiting typecheck_ml with %s\n\n" (trm_to_string result);
+    result
 
 (*******************************************)
 (*******************************************)

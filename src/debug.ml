@@ -90,8 +90,8 @@ let print_low_level_reginst insts =
 let print_low_level_topdef (td : topdef) : string =
   let open Printf in
     match td.topdef_desc with
-    | Topdef_val_def {let_def_bind = _b; let_def_body = t} ->
-      sprintf "Let_bind (%s ; %s)" (print_low_level_bind _b) (print_low_level_trm t)
+    | Topdef_val_def {let_def_bind = b; let_def_body = t} ->
+      sprintf "Let_bind (%s ; %s)" (print_low_level_bind b) (print_low_level_trm t)
     | Topdef_typ_def { typ_def_td = tds ; _ } -> sprintf "Topdef_typ_def (%s)" ("unsupported for the moment")
     | Topdef_external { external_def_var = v ; _ } -> sprintf "Topdef_external (%s)" ("unsupported for the moment")
 

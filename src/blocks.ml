@@ -360,6 +360,7 @@ let try_unifys trigger_call env (ts1 : typs) (ts2 : typs) : bool =
 
 let unify_or_error trigger_call ?(loc = loc_none) env (t1 : typ) (t2 : typ) (m : error) : unit =
   Debug.log "Forced unification of %s with %s." (typ_to_string t1) (typ_to_string t2) ;
+  if !Flags.verbose then Printf.printf "Forcing unification of %s with %s\n" (typ_to_string t1) (typ_to_string t2);
   if not (try_unify trigger_call env t1 t2)
   then raise (Error (m, loc))
 
