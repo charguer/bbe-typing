@@ -84,7 +84,7 @@ let check_same_domains_in_pattern trigger_call (e : env) ~loc (e1 : (Var.var, ty
 let typecheck_variable (trigger_call : trigger_call) loc (e : env) (sym : symbol) : varid =
   let env_item =
     match Env.read_option e.env_var sym with
-    | None -> Printf.printf "here"; raise (Error (Unbound_variable sym, loc))
+    | None -> raise (Error (Unbound_variable sym, loc))
     | Some it -> it in
   (* We compute the type of the variable, based on the item associated
     with [sym] in the environment.

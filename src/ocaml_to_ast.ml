@@ -342,6 +342,33 @@ let rec split_fun_args t =
   | _ -> ([], t)
 
 
+let atsign_inv (e : expression_desc) : ((arg_label * expression) list) option =
+  match e with
+  | Pexp_apply (exp, exp_list) ->
+    begin
+    match exp.pexp_desc with
+    | Pexp_ident {txt= Longident.Lident s} when s = "@" -> Some exp_list
+    | _ -> None
+    end
+  | _ -> None
+
+let infix_op_inv (e : expression_desc) : (expression * expression * expression) option =
+  match atsign_inv e with
+  | None -> None
+  | Some exp_list ->
+    begin
+      if List.length exp_list <> 2 then None else
+        let (_, arg1) = List.hd exp_list in
+        let (_, arg2) = List.nth exp_list 1 in (*... there must be a better way...*)
+
+        match arg2.pexp_desc with
+        | Pexp_apply (op, args) ->
+          if List.length args <> 1 then None else
+            let (_, arg2) = List.hd args in
+            Some (arg1, op, arg2)
+        | _ -> None
+    end
+
 let rec tr_exp (e : expression) : trm =
   let loc = e.pexp_loc in
   let return ?(annot=AnnotNone) (e':trm_desc) : trm =
@@ -388,6 +415,13 @@ let rec tr_exp (e : expression) : trm =
       return (Trm_if (t1, t2, trm_unit ()))
       (* LATER: trm_desc_fixs *)
   | Pexp_apply (e0, aes) ->
+      if !Flags.debug then
+        begin
+          match infix_op_inv e.pexp_desc with
+        | Some (e1, _e2, _e3) -> Printf.printf "Found an @ with expression: "; Printast.expression 0 Format.std_formatter e1
+        | None -> ()
+        end;
+
       let labels,es = List.split aes in
       if not (List.for_all (fun lbl -> lbl = Nolabel) labels)
         then unsupported ~loc "labeled arguments";
