@@ -355,12 +355,14 @@ let rec tr_exp (e : expression) : trm =
       return (trm_desc_var (var (tr_longident lid_loc.txt)))
   | Pexp_constant c ->
       let cst = tr_constant ~loc c in
-      let desc_cst =
+      let (symbol, annot) =
         match cst with
-        | Cst_int _ | Cst_float _ | Cst_string _ -> trm_desc_cst cst
+        | Cst_int _ -> (SymbolNumericInt, AnnotLiteralInt)
+        | Cst_float _ -> (SymbolNumericFloat, AnnotLiteralFloat)
+        | Cst_string _ -> (SymbolString, AnnotLiteralString)
         | Cst_bool _ | Cst_unit _ ->
           assert false (* In OCaml, boolean and units are dealt as constructors and not constants. See Pexp_construct below. *) in
-      return desc_cst (*Here I would want to return a constant instead.*)
+      return ~annot (trm_desc_apps (trm_var_symbol symbol) [trm_cst cst]) (*Here I would want to return a constant instead.*)
   | Pexp_let (rf, [vb], e2) ->
       let lets = tr_let rf e.pexp_attributes vb in
       let t2 = tr_exp e2 in
