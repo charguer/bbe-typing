@@ -342,20 +342,15 @@ let rec split_fun_args t =
   | _ -> ([], t)
 
 
-let atsign_inv (e : expression_desc) : ((arg_label * expression) list) option =
-  match e with
-  | Pexp_apply (exp, exp_list) ->
-    begin
-    match exp.pexp_desc with
-    | Pexp_ident {txt= Longident.Lident s} when s = "@" -> Some exp_list
-    | _ -> None
-    end
-  | _ -> None
+let atsign_inv (e : expression) : bool =
+  match e.pexp_desc with
+    | Pexp_ident {txt= Longident.Lident s} when s = "@" -> true
+    | _ -> false
 
-let infix_op_inv (e : expression_desc) : (expression * expression * expression) option =
-  match atsign_inv e with
-  | None -> None
-  | Some exp_list ->
+let infix_op_inv (e1 : expression) (exp_list : (arg_label * expression) list) : (expression * expression * expression) option =
+
+  if not (atsign_inv e1) then None
+  else
     begin
       if List.length exp_list <> 2 then None else
         let (_, arg1) = List.hd exp_list in
@@ -415,19 +410,23 @@ let rec tr_exp (e : expression) : trm =
       return (Trm_if (t1, t2, trm_unit ()))
       (* LATER: trm_desc_fixs *)
   | Pexp_apply (e0, aes) ->
-      if !Flags.debug then
-        begin
-          match infix_op_inv e.pexp_desc with
-        | Some (e1, _e2, _e3) -> Printf.printf "Found an @ with expression: "; Printast.expression 0 Format.std_formatter e1
-        | None -> ()
-        end;
-
+    begin
+    match infix_op_inv e0 aes with
+    | Some (e1, e2, e3) ->
+      Printf.printf "handling @:\n";
+      Printast.expression 0 Format.std_formatter e1;
+      Printast.expression 0 Format.std_formatter e2;
+      Printast.expression 0 Format.std_formatter e3;
+      failwith "TODO" (*handle infix operators then*)
+    | None ->
       let labels,es = List.split aes in
       if not (List.for_all (fun lbl -> lbl = Nolabel) labels)
         then unsupported ~loc "labeled arguments";
       let t0 = tr_exp e0 in
       let ts = List.map tr_exp es in
       return (trm_desc_apps t0 ts)
+    end
+
   | Pexp_sequence (e1, e2) ->
       let t1 = tr_exp e1 in
       let t2 = tr_exp e2 in
