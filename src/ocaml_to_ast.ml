@@ -413,11 +413,15 @@ let rec tr_exp (e : expression) : trm =
     begin
     match infix_op_inv e0 aes with
     | Some (e1, e2, e3) ->
-      Printf.printf "handling @:\n";
-      Printast.expression 0 Format.std_formatter e1;
-      Printast.expression 0 Format.std_formatter e2;
-      Printast.expression 0 Format.std_formatter e3;
-      failwith "TODO" (*handle infix operators then*)
+      if !Flags.verbose then
+        begin
+          Printf.printf "handling @:\n";
+          Printast.expression 0 Format.std_formatter e1;
+          Printast.expression 0 Format.std_formatter e2;
+          Printast.expression 0 Format.std_formatter e3;
+        end;
+        unsupported ~loc "custom infix operator";
+        (*handle infix operators then*)
     | None ->
       let labels,es = List.split aes in
       if not (List.for_all (fun lbl -> lbl = Nolabel) labels)
