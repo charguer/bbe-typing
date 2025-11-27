@@ -51,8 +51,8 @@ let pat_pred : bool = if 2 @_is even then true else false
 let x3 : int option = Some 14
 let pat_view : int = if x3 @_is div_4_inv ?a then a else -1
 
-let pat_and : bool = if 4 @_is (even and div_4) then true else false
-let pat_and_bind : (int * int) option = if x3 @_is (even_inv ?a and rest_div_4 ?b) then Some (a, b) else None
+let pat_and : bool = if 4 @_is (even & div_4) then true else false
+let pat_and_bind : (int * int) option = if x3 @_is (even_inv ?a & rest_div_4 ?b) then Some (a, b) else None
 let pat_or : bool = if 2 @_is (even or div_4) then true else false
 let pat_or_bind : int option = if x3 @_is (even_inv ?a or rest_div_4 ?a) then Some a else None
 
@@ -72,5 +72,13 @@ let y2 : int option = None
 let bbe_or_1 : int = if y1 @_is Some ?c || y2 @_is Some ?c then c else -1
 let bbe_or_2 : int = if y2 @_is Some ?c || y1 @_is Some ?c then c else -1
 
+let empty_switch (type a) : a = switch []
+let nonempty_switch : unit = switch [
+  case y1 @_is None @_then ()
+  case y2 @_is None @_then ()
+]
 
-(* let x = (4*2+1) @_then (false && not true) *)
+let nonempty_switch_bind : int = switch [
+  case y1 @_is Some ?x @_then x
+  case y2 @_is None @_then -1
+]

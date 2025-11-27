@@ -350,19 +350,16 @@ let atsign_inv (e : expression) : bool =
 let infix_op_inv (e1 : expression) (exp_list : (arg_label * expression) list) : (expression * expression * expression) option =
 
   if not (atsign_inv e1) then None
-  else
-    begin
-      if List.length exp_list <> 2 then None else
-        let (_, arg1) = List.hd exp_list in
-        let (_, arg2) = List.nth exp_list 1 in (*... there must be a better way...*)
-
-        match arg2.pexp_desc with
-        | Pexp_apply (op, args) ->
-          if List.length args <> 1 then None else
-            let (_, arg2) = List.hd args in
-            Some (arg1, op, arg2)
+  else begin
+    match exp_list with
+    | [(_, arg1); (_, arg2)] ->
+      begin match arg2.pexp_desc with
+        | Pexp_apply (op, [(_, arg21)]) ->
+            Some (arg1, op, arg21)
         | _ -> None
-    end
+      end
+    | _ -> None
+  end
 
 let rec tr_exp (e : expression) : trm =
   let loc = e.pexp_loc in
@@ -415,10 +412,17 @@ let rec tr_exp (e : expression) : trm =
     | Some (e1, e2, e3) ->
       if !Flags.verbose then
         begin
-          Printf.printf "handling @:\n";
+          let pr = Printast.expression 0 in
+          Format.printf "handling @ %a %a %a:\n" pr e1 pr e2 pr e3;
+          (*make task go.sh with "make typer; typer.exe test/..."
+
+          take as argument workspace folder + current path folder.
+          *)
+
+          (* Printf.printf "handling @:\n";
           Printast.expression 0 Format.std_formatter e1;
           Printast.expression 0 Format.std_formatter e2;
-          Printast.expression 0 Format.std_formatter e3;
+          Printast.expression 0 Format.std_formatter e3; *)
         end;
         unsupported ~loc "custom infix operator";
         (*handle infix operators then*)
