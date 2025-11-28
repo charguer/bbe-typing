@@ -367,6 +367,15 @@ let infix_op_inv ~loc (e1 : expression) (exp_list : (arg_label * expression) lis
     | _ -> None
   end
 
+let recognize_op ~loc (op : expression) (arg1 : trm) (arg2 : trm) : trm_desc =
+  match op.pexp_desc with
+  | Pexp_ident {txt= Longident.Lident s} ->
+    begin match s with
+    | "_is" -> trm_desc_bbeis arg1 arg2
+    | _ -> unsupported ~loc "infix operation not yet handled"
+    end
+  | _ -> unsupported ~loc "operator is not an ident"
+
 let rec tr_exp (e : expression) : trm =
   let loc = e.pexp_loc in
   let return ?(annot=AnnotNone) (e':trm_desc) : trm =
@@ -426,9 +435,8 @@ let rec tr_exp (e : expression) : trm =
           *)
         end;
       let t1 = tr_exp e1 in
-      let t2 = tr_exp e2 in
       let t3 = tr_exp e3 in
-        return (trm_desc_apps t1 [t2; t3])
+        return (recognize_op ~loc e2 t1 t3)
     | None ->
       let is_labeled lbl =
         match lbl with

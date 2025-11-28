@@ -73,6 +73,8 @@ val trm_desc_seq : trm -> trm -> trm_desc
 val trm_desc_apps : trm -> trms -> trm_desc
 val trm_desc_match : trm -> (pat * trm) list -> trm_desc
 
+val trm_desc_bbeis : trm -> trm_pat -> trm_desc
+
 (** ** For Terms *)
 
 (* Warning: there are two ways to implement constants in the programs. One is the “low-level”
