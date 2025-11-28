@@ -347,10 +347,16 @@ let atsign_inv (e : expression) : bool =
     | Pexp_ident {txt= Longident.Lident s} when s = "@" -> true
     | _ -> false
 
-let infix_op_inv (e1 : expression) (exp_list : (arg_label * expression) list) : (expression * expression * expression) option =
+let infix_op_inv ~loc (e1 : expression) (exp_list : (arg_label * expression) list) : (expression * expression * expression) option =
 
   if not (atsign_inv e1) then None
   else begin
+    if not (List.for_all (fun (lbl, _) -> lbl = Nolabel) exp_list)
+      then begin
+        match List.find_opt (fun (lbl, _) -> not (lbl = Nolabel)) exp_list with
+        | Some (Labelled s, _) | Some (Optional s, _) -> unsupported ~loc (Printf.sprintf "labeled arguments : %s" s);
+        | _ -> unsupported ~loc "infix_op_inv, unexpected behavior, branch should be impossible"
+      end;
     match exp_list with
     | [(_, arg1); (_, arg2)] ->
       begin match arg2.pexp_desc with
@@ -408,9 +414,9 @@ let rec tr_exp (e : expression) : trm =
       (* LATER: trm_desc_fixs *)
   | Pexp_apply (e0, aes) ->
     begin
-    match infix_op_inv e0 aes with
+    match infix_op_inv ~loc e0 aes with
     | Some (e1, e2, e3) ->
-      if !Flags.verbose then
+      if !Flags.verbose && !Flags.debug then
         begin
           let pr = Printast.expression 0 in
           Format.printf "handling @ %a %a %a:\n" pr e1 pr e2 pr e3;
@@ -418,18 +424,19 @@ let rec tr_exp (e : expression) : trm =
 
           take as argument workspace folder + current path folder.
           *)
-
-          (* Printf.printf "handling @:\n";
-          Printast.expression 0 Format.std_formatter e1;
-          Printast.expression 0 Format.std_formatter e2;
-          Printast.expression 0 Format.std_formatter e3; *)
         end;
-        unsupported ~loc "custom infix operator";
-        (*handle infix operators then*)
+      let t1 = tr_exp e1 in
+      let t2 = tr_exp e2 in
+      let t3 = tr_exp e3 in
+        return (trm_desc_apps t1 [t2; t3])
     | None ->
+      let is_labeled lbl =
+        match lbl with
+        | Labelled _ -> true
+        | _ -> false
+      in
       let labels,es = List.split aes in
-      if not (List.for_all (fun lbl -> lbl = Nolabel) labels)
-        then unsupported ~loc "labeled arguments";
+      if (List.exists is_labeled labels) then unsupported ~loc "labeled argument";
       let t0 = tr_exp e0 in
       let ts = List.map tr_exp es in
       return (trm_desc_apps t0 ts)

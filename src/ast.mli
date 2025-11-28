@@ -376,9 +376,11 @@ type trm_desc =
   | Trm_annot of trm * syntyp             (* (t : ty) *)
   | Trm_forall of tvar_rigid * trm        (* fun (type a) -> t *)
   | Trm_match of trm * (pat * trm) list   (* match t with p1 -> t1 | ... | pn -> tn *)
-  (*| Trm_overload_new of symbol_modes            (* __overload ~input:[true; false] ~output:true *) (* FIXME: Optional: Probably not useful anymore. *) *)
-  (* LATER?
-  | Trm_item_overload_alias of var -- for later: captures the snapshot of the isntances of a symbol under a different symbol name. *)
+  (*BBE constructions*)
+  | Trm_bbeis of trm * trm_pat
+  (*Pattern constructions*)
+  | Trm_patvar of varid
+  | Trm_patwild
 
 and trm = {
   trm_desc : trm_desc;
@@ -389,6 +391,9 @@ and trm = {
 }
 
 and trms = trm list
+
+and bbe = trm
+and trm_pat = trm (*temporary solution, hoping to remove the "pat" type and change "pattern" to pat later on.*)
 
 (* Definition of a type. *)
 type tconstr_def =

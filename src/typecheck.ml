@@ -405,7 +405,7 @@ and typecheck_let (trigger_call : trigger_call) ~loc (e : env) (b : let_def) : l
 
 and typecheck_ml (trigger_call : trigger_call) ?(expected_typ:typ option) (e : env) (t : trm) : trm =
 
-  if !Flags.verbose then Printf.printf "Entering typecheck_ml with :\n env = %s \n t = %s\n" (Ast_print.env_to_string ~style:Ast_print.style_debug e ) (trm_to_string t);
+  if !Flags.verbose && !Flags.debug then Printf.printf "Entering typecheck_ml with :\n env = %s \n t = %s\n" (Ast_print.env_to_string ~style:Ast_print.style_debug e ) (trm_to_string t);
 
   let loc = t.trm_loc in
   let aux ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
@@ -513,9 +513,13 @@ and typecheck_ml (trigger_call : trigger_call) ?(expected_typ:typ option) (e : e
           let ti = aux ~env:e' ~expected_typ:tyr ti in
           (pi, ti)) pts in
       return tyr (Trm_match (t0, pts))
+
+    | Trm_bbeis _ -> raise (Error (Unsupported_term, loc))
+    | Trm_patvar _ -> raise (Error (Unsupported_term, loc))
+    | Trm_patwild  -> raise (Error (Unsupported_term, loc))
     in
 
-    if !Flags.verbose then Printf.printf "Exiting typecheck_ml with %s\n\n" (trm_to_string result);
+    if !Flags.verbose && !Flags.debug then Printf.printf "Exiting typecheck_ml with %s\n\n" (trm_to_string result);
     result
 
 (*******************************************)

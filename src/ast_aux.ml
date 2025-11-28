@@ -462,6 +462,16 @@ let trm_desc_apps (t0 : trm) (ts : trms) : trm_desc =
 let trm_desc_match (t : trm) (pts : (pat * trm) list) : trm_desc =
   Trm_match (t, pts)
 
+(* ** Smart constructors for bbe trm descriptors*)
+let trm_desc_bbeis (t : trm) (p : trm_pat) : trm_desc =
+  Trm_bbeis (t, p)
+
+(* ** Smart constructors for pattern trm descriptors*)
+let trm_desc_patvar_varid varid : trm_desc =
+  Trm_patvar varid
+
+let trm_desc_patwild () : trm_desc =
+  Trm_patwild
 
 (*#########################################################################*)
 (* ** Smart constructors for terms *)
@@ -578,6 +588,18 @@ let trm_desc_constr ?loc ?typ (c : constr) (ts : trms) : trm_desc =
 
 let trm_constr ?loc ?typ ?annot (c : constr) (ts : trms) : trm =
   mktrm ?loc ?typ ?annot (trm_desc_constr ?loc ?typ c ts)
+
+
+(* ** Smart constructors for bbes *)
+let trm_bbeis ?loc ?typ ?annot (t : trm) (p : trm_pat) : trm =
+  mktrm ?loc ?typ ?annot (trm_desc_bbeis t p)
+
+(* ** Smart constructors for trm_patterns *)
+let trm_patvar_varid ?loc ?typ ?annot varid : trm =
+  mktrm ?loc ?typ ?annot (trm_desc_patvar_varid varid)
+
+let trm_patwild ?loc ?typ ?annot () : trm =
+  mktrm ?loc ?typ ?annot (trm_desc_patwild ())
 
 
 (*#########################################################################*)
@@ -922,7 +944,9 @@ let typ_of (t : trm) : typ = (* TODO: should we put get_repr here ? or in a wrap
 
 let trm_iter (f : trm -> unit) (t : trm) : unit =
   match t.trm_desc with
+  | Trm_patvar _
   | Trm_var _
+  | Trm_patwild
   | Trm_cst _ -> ()
   | Trm_funs (_, t) -> f t
   | Trm_if (t1, t2, t3) -> List.iter f [t1; t2; t3]
@@ -931,13 +955,16 @@ let trm_iter (f : trm -> unit) (t : trm) : unit =
   | Trm_annot (t, _) -> f t
   | Trm_forall (_, t) -> f t
   | Trm_match (t, pts) -> List.iter f (t :: List.map snd pts)
+  | Trm_bbeis (t, p) -> List.iter f [t; p]
 
 let trm_map (f : trm -> trm) (t : trm) : trm =
   let loc = t.trm_loc in
   let typ = t.trm_typ in
   let annot = t.trm_annot in
   match t.trm_desc with
+  | Trm_patvar _
   | Trm_var _
+  | Trm_patwild
   | Trm_cst _ -> t
   | Trm_funs (vs, t1) ->
     let t2 = f t1 in
@@ -973,6 +1000,11 @@ let trm_map (f : trm -> trm) (t : trm) : trm =
     let pts' = List.map (fun (p, t) -> (p, f t)) pts in
     if t2 == t1 && List.for_all2 (fun (_p', t') (_p, t) -> t' == t) pts' pts then t
     else trm_match ~loc ~typ ~annot t2 pts'
+  | Trm_bbeis (t1, p1) ->
+    let t1' = f t1 in
+    let p1' = f p1 in
+    if t1 == t1' && p1 == p1' then t
+    else trm_bbeis ~loc ~typ ~annot t1' p1'
 
 (** * Iterators on patterns *)
 

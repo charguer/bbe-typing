@@ -501,6 +501,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
     begin match t.trm_desc with
 
     | Trm_cst c -> cst_to_doc c
+
     | Trm_var varid -> varid_to_doc ~style varid
 
     | Trm_funs (xs_raw, t1) ->
@@ -696,6 +697,23 @@ and trm_to_doc_raw ~style (t : trm) : doc =
                 ^^ aux t) pts)
          ^^ hardline
          ^^ string "end"
+
+    | Trm_bbeis (t1, p2) ->
+        let d1 = aux t1 in
+        let d2 = aux p2 in
+        parens (
+             d1
+          ^^ blank 1
+          ^^ string "is"
+          ^^ blank 1
+          ^^ d2
+        )
+
+    | Trm_patvar varid ->
+         string "?"
+      ^^ varid_to_doc ~style varid
+
+    | Trm_patwild -> string "_"
 
     end
 

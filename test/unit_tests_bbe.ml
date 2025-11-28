@@ -1,4 +1,14 @@
 
+let[@instance: int] id_int = fun (x : int) : int -> x
+let[@instance: float] id_float = fun (x : float) : float -> x
+let[@instance: unit] id_unit = fun (x : unit) : unit -> x
+let[@instance: string] id_string = fun (x : string) : string -> x
+let[@instance: bool] id_bool = fun (b : bool) : bool -> b
+
+let cst_bool = true
+let cst_unit = ()
+let cst_int = 1
+
 let cst_float = (2. : float)
 let cst_float_unannot : float = 2.0
 
@@ -12,6 +22,7 @@ let str_unannot = ""
 
 let bbe_is : bool = if true @_is __ then true else false
 let bbe_is_bind : bool = if true @_is ?x then x else false
+
 
 let x1 : int option = Some 1
 let x2 : int option = Some 2
