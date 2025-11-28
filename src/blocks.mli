@@ -44,36 +44,25 @@ val get_record_types : ?loc:loc -> env -> typ -> string -> (field * typ) list
 (*#########################################################################*)
 (* ** Unification of two types *)
 
-(** The functions below may trigger new varids to be examined: when we learn an information
-  about a flexible variable, we call such a function on all of its triggers. *)
-type trigger_call = (trigger_event -> varid -> unit) option
-
-(** Given two trigger sets, create a third trigger set.  This set will most of the time be
-  the union of both sets, unless it becomes too large. *)
-val merge_trigger : trigger -> trigger -> trigger
-
-(** Add the provided triggers into all the leaves of the provided type. *)
-val add_triggers_into_typ : trigger -> typ -> unit
-
 (** [unify_or_error env t1 t2 m] attempts to unify the two types. Upon success,
     the changes made are kept. Upon failure, the changes made are undone,
     and the error [m] is raised. *)
-val unify_or_error : trigger_call -> ?loc:loc -> env -> typ -> typ -> Errors.error -> unit
+val unify_or_error : ?loc:loc -> env -> typ -> typ -> Errors.error -> unit
 
 (** [try_unify env t1 t2] attempts to unify the two types. Upon success, it returns [true].
     Upon failures, all modifications are rolled back, and the function returns [false]. *)
-val try_unify : trigger_call -> env -> typ -> typ -> bool
+val try_unify : env -> typ -> typ -> bool
 
 (** [unifys_or_error env t1s t2s m] attempts to unify the two list of types.
     Upon success, the changes made are kept. Upon failure, the changes made
     are undone, and the error [m] is raised. *)
-val unifys_or_error : trigger_call -> ?loc:loc -> env -> typs -> typs -> Errors.error (* LATER: A function to build the error instead of an error, to avoid computing it every time. *) -> unit
+val unifys_or_error : ?loc:loc -> env -> typs -> typs -> Errors.error (* LATER: A function to build the error instead of an error, to avoid computing it every time. *) -> unit
 
 (** [try_unifys env t1s t2s] attempts to perform the unification of two types in
     two lists, pairwise. Upon success of all unifications, it returns [true].
     Upon failures, modifications are rolled back, and the function returns [false].
     The two lists must have the same size. *)
-val try_unifys : trigger_call -> env -> typs -> typs -> bool
+val try_unifys : env -> typs -> typs -> bool
 
 (** [is_instance_unifiable env t1 t2] returns a boolean indicating whether the two types are
     unifiable, but does not leave any modification visible. This function includes a check
@@ -86,7 +75,7 @@ val is_instance_unifiable : env -> typ -> typ -> bool
 
 (** Given an instance and a type compatible with this instance, unify the type
   with the instance and return the list of varid corresponding to its assumptions. *)
-val unify_with_instance : trigger_call -> loc:loc -> env -> typ -> depth:int -> context:symbol -> instance -> assumptions
+val unify_with_instance : loc:loc -> env -> typ -> depth:int -> context:symbol -> instance -> assumptions
 
 
 (*#########################################################################*)
@@ -99,7 +88,7 @@ val get_typ_for_arg : varsyntyp -> typ
 (** [get_typ_for_arg_with_expected_type env v] returns the type of a function argument
     [v], which may carry a syntactic annotation, and whose type expected by the
     context is [ret_ty].  The annotation, if provided, must unify with [ret_ty]. *)
-val get_typ_for_arg_with_expected_type : trigger_call -> env -> varsyntyp -> typ -> typ
+val get_typ_for_arg_with_expected_type : env -> varsyntyp -> typ -> typ
 
 
 (*#########################################################################*)
@@ -140,7 +129,7 @@ val env_add_type_declaration : env -> Parsetree.type_declaration -> env * tconst
 val sch_opt_of_styp : env -> styp -> sch option
 
 (** Typechecking of a type annotation. *)
-val typecheck_annot : trigger_call -> env -> typ -> syntyp -> string -> unit
+val typecheck_annot : env -> typ -> syntyp -> string -> unit
 
 (* Internalise a syntactic type. *)
 val syntyp_internalize : env -> syntyp -> syntyp

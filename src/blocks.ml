@@ -201,8 +201,6 @@ let replace_tconstr_with (map_tconstr : typ TConstrMap.t) (ty : typ) : typ =
 (*#########################################################################*)
 (* ** Unification of two types *)
 
-type trigger_call = (trigger_event -> varid -> unit) option
-
 (** [result] denotes the result of a unification operation between two types *)
 type result =
   | Success
@@ -213,64 +211,17 @@ let is_unresolved x =
   | VarUnresolved _ -> true
   | _ -> false
 
-(* This function will be called a lot, so we tried to only filter-out the triggers
- when absolutely necessary. *)
-let merge_trigger tr1 tr2 =
-  let tr1 = VaridSet.filter is_unresolved tr1 in
-  let tr2 = VaridSet.filter is_unresolved tr2 in
-  if VaridSet.cardinal tr1 + VaridSet.cardinal tr2 <= !Flags.max_cardinal_trigger then (
-    VaridSet.union tr1 tr2
-  ) else (
-    if VaridSet.cardinal tr1 > VaridSet.cardinal tr2 then tr1 else tr2
-  )
-
-(* Append the provided triggers into all leaves of the type [ty]. *)
-let add_triggers_into_typ (tr : trigger) (ty : typ) : unit =
-  let rec aux ty =
-    let ty = Repr.get_repr ty in
-    match ty.typ_desc with
-    | Unified _ -> assert false
-    | Flexible (v, tr2) -> make_modif_desc ty (Flexible (v, merge_trigger tr tr2))
-    | Typ_constr (_c, tys) -> List.iter aux tys in
-  if !Flags.max_cardinal_trigger > 0 (* no traversal needed if triggers are not used *)
-    then aux ty
-
-(* As the function [unify_flexible] is in the critical loop, we preallocate these functions,
- to avoid any allocations. *)
-let trigger_call_dummy = ((fun _ _ -> VaridSet.empty), (fun _ _ -> ()))
-
-(** [unify_flexible t1flexible t2] performs the unification of the flexible variable
+(** [unify_flexible t_flexible t2] performs the unification of the flexible variable
   [t_flexible] with the type [t2], with a best effort to preserve a meaningful name.
   Both [t_flexible] and [t2] are roots (results of [Repr.get_repr]).
   Note that as [t_flexible] is part of the Union-Find, it can't be duplicated without
   breaking some invariants (typically the cycle search): this is why this function
   has to take [t_flexible] as an argument and not just [v_flexible1]. *)
-let unify_flexible (trigger_call : trigger_call) (t_flexible : typ) (t_other : typ) : unit =
+let unify_flexible (t_flexible : typ) (t_other : typ) : unit =
   assert (is_flexible t_flexible);
-  let (trigger_union, trigger_call_fct) =
-    match trigger_call with
-    | None -> trigger_call_dummy
-    | Some f -> (merge_trigger, f) in
-  let (v_flexible1, trigger1) =
-    match t_flexible.typ_desc with
-    | Flexible (v_flexible1, trigger1) -> (v_flexible1, trigger1)
-    | _ -> assert false in
-  let priority = if is_flexible t_other then Trigger_Weak else Trigger_Strong in
-  let trigger =
-    match t_other.typ_desc  with
-      | Flexible (v_flexible2, trigger2) ->
-        let trigger12 = trigger_union trigger1 trigger2 in
-        make_modif_desc t_other (Flexible (merge_tvar v_flexible1 v_flexible2, trigger12)) ;
-        trigger12
-      | _ ->
-        let trigger1 = VaridSet.filter is_unresolved trigger1 in
-        add_triggers_into_typ trigger1 t_other ;
-        trigger1 in
   if !Flags.check_cycles_at_every_unification then
     check_flexible_not_occuring_typ t_flexible t_other; (* Check acyclicity of the flexible graph. *)
-  make_modif_desc t_flexible (Unified t_other) ;
-  if trigger_call <> None then
-    VaridSet.iter (trigger_call_fct priority) trigger
+  make_modif_desc t_flexible (Unified t_other);
 
 (** Given a type, this function will unfold any occurences of type aliases until getting
   a type (whose top-level construct) is not an alias.
@@ -282,7 +233,7 @@ let rec unfold_alias env t =
     begin match Env.read_option env.env_tconstr id with
       | None -> assert false
       | Some tc ->
-        match tc.tconstr_def with
+        begin match tc.tconstr_def with
         | Tconstr_special_nary | Tconstr_abstract | Tconstr_def_sum _ | Tconstr_record _ -> t
         | Tconstr_def_alias t1 ->
             assert (List.length tc.tconstr_tvars = List.length ts) ;
@@ -295,26 +246,29 @@ let rec unfold_alias env t =
             let r = unfold_alias env t2 in
             (* Debug.log "Debug: unrolling %s as %s." (typ_to_string t) (typ_to_string r) ; *)
             Repr.get_repr r
+      end
     end
   | _ -> t
 
 (* ... auxiliary function for unification *)
 
-let rec unify_exn_aux ?loc trigger_call env (t1 : typ) (t2 : typ) : unit =
+(*Error: the file does not compile, said to have a syntax error here. Debug next week.*)
+
+let rec unify_exn_aux ?loc env (t1 : typ) (t2 : typ) : unit =
   Counters.(compute_count_and_time counter_unify time_unify (fun () ->
     let tr1 = Repr.get_repr t1 in
     let tr2 = Repr.get_repr t2 in
-    if tr1 != tr2 then unify_desc ?loc trigger_call env tr1 tr2))
+    if tr1 != tr2 then unify_desc ?loc env tr1 tr2))
 
 (* [unify_desc ty1 ty2] assumes that [ty1] and [ty2] are roots (results of [Repr.get_repr]). *)
-and unify_desc ?(loc = loc_none) trigger_call env (t1 : typ) (t2 : typ) : unit =
+and unify_desc ?(loc = loc_none) env (t1 : typ) (t2 : typ) : unit =
   let t1 = unfold_alias env t1 in
   let t2 = unfold_alias env t2 in (* replaces the find operation for Union-find algorithm *)
   match t1.typ_desc, t2.typ_desc with
     | Unified _, _
     | _, Unified _ -> assert false (* t1 and t2 must be roots, so they can't be [Unified]. *)
-    | Flexible _, _ -> unify_flexible trigger_call t1 t2
-    | _, Flexible _ -> unify_flexible trigger_call t2 t1
+    | Flexible _, _ -> unify_flexible t1 t2
+    | _, Flexible _ -> unify_flexible t2 t1
     | Typ_constr (id1, ts1), Typ_constr (id2, ts2) ->
         if id1 <> id2 then
           (* At this stage, id1 and id2 can't be aliases: the function unfold_alias has already
@@ -322,12 +276,12 @@ and unify_desc ?(loc = loc_none) trigger_call env (t1 : typ) (t2 : typ) : unit =
           raise (Error (Error_constr_mismatch (id1, id2), loc)) ;
         if List.length ts1 <> List.length ts2 then
           raise (Error (Error_number_of_arguments_mismatch (t1, t2), loc)) ;
-        List.iter2 (unify_exn_aux ~loc trigger_call env) ts1 ts2
+        List.iter2 (unify_exn_aux ~loc env) ts1 ts2
 
 (** [unify_exn env t1 t2] unifies [t1] and [t2], and raises an exception if the process fails. *)
 
-let unify_exn ?loc trigger_call env (ty1 : typ) (ty2 : typ) : unit =
-  unify_exn_aux ?loc trigger_call env ty1 ty2;
+let unify_exn ?loc env (ty1 : typ) (ty2 : typ) : unit =
+  unify_exn_aux ?loc env ty1 ty2;
   if !Flags.check_cycles_at_every_unification then begin
     Repr.check_no_cycle ty1;
     Repr.check_no_cycle ty2;
@@ -336,38 +290,38 @@ let unify_exn ?loc trigger_call env (ty1 : typ) (ty2 : typ) : unit =
 
 (* ... auxiliary function for unification *)
 
-let unify_res trigger_call env (t1 : typ) (t2 : typ) : result =
-  try unify_exn trigger_call env t1 t2; Success
+let unify_res env (t1 : typ) (t2 : typ) : result =
+  try unify_exn env t1 t2; Success
   with Error e -> Failure e
 
-let try_unify trigger_call env (t1 : typ) (t2 : typ) : bool =
+let try_unify env (t1 : typ) (t2 : typ) : bool =
   with_rollback_on_error (fun () ->
-    match unify_res trigger_call env t1 t2 with
+    match unify_res env t1 t2 with
     | Success -> true
     | Failure _ -> false)
 
-let try_unifys trigger_call env (ts1 : typs) (ts2 : typs) : bool =
+let try_unifys env (ts1 : typs) (ts2 : typs) : bool =
   assert (List.length ts1 = List.length ts2);
   with_rollback_on_error (fun () ->
     let rec unif ts1 ts2 =
       match ts1, ts2 with
       | [], [] -> true
       | t1 :: q1, t2 :: q2 ->
-              unify_res trigger_call env t1 t2 = Success
+              unify_res env t1 t2 = Success
            && unif q1 q2
       | _ -> false in
     unif ts1 ts2)
 
-let unify_or_error trigger_call ?(loc = loc_none) env (t1 : typ) (t2 : typ) (m : error) : unit =
+let unify_or_error ?(loc = loc_none) env (t1 : typ) (t2 : typ) (m : error) : unit =
   Debug.log "Forced unification of %s with %s." (typ_to_string t1) (typ_to_string t2) ;
   if !Flags.verbose then Printf.printf "Forcing unification of %s with %s\n" (typ_to_string t1) (typ_to_string t2);
-  if not (try_unify trigger_call env t1 t2)
+  if not (try_unify env t1 t2)
   then raise (Error (m, loc))
 
-let unifys_or_error trigger_call ?(loc = loc_none) env (ts1 : typs) (ts2 : typs) (m : error) : unit =
+let unifys_or_error ?(loc = loc_none) env (ts1 : typs) (ts2 : typs) (m : error) : unit =
   List.iter2 (fun t1 t2 ->
     Debug.log "Forced unification of %s with %s." (typ_to_string t1) (typ_to_string t2)) ts1 ts2 ;
-  if not (try_unifys trigger_call env ts1 ts2)
+  if not (try_unifys env ts1 ts2)
   then raise (Error (m, loc))
 
 let is_instance_unifiable env (ty1 : typ) (ty2 : typ) : bool =
@@ -383,16 +337,12 @@ let is_instance_unifiable env (ty1 : typ) (ty2 : typ) : bool =
 (*#########################################################################*)
 (* ** Instance resolution *)
 
-let unify_with_instance trigger_call ~loc (env : env) (ty1 : typ) ~depth ~context (inst : instance) : varid list =
-  let trigger_call_fct =
-    match trigger_call with
-    | None -> assert false
-    | Some f -> f in
+let unify_with_instance ~loc (env : env) (ty1 : typ) ~depth ~context (inst : instance) : varid list =
   let inst_sig = inst.instance_sig in
   let ty_map = make_map_rigid_flexible inst_sig.instance_tvars in
   let ty2 = replace_rigids_with ty_map inst_sig.instance_typ in
   begin
-    try unify_exn trigger_call env ty1 ty2
+    try unify_exn env ty1 ty2
     with Error _ -> assert false
   end;
   let instantiate_assumption (asmpt : assumption_desc) : varid =
@@ -405,8 +355,6 @@ let unify_with_instance trigger_call ~loc (env : env) (ty1 : typ) ~depth ~contex
       | Some (Env_item_overload register_instances) -> register_instances in
     let varid =
       create_varid ~loc ~env symbol ~typ:ty ~depth ~resolution:(VarUnresolved instances) ~context in
-    add_triggers_into_typ (VaridSet.singleton varid) ty ;
-    trigger_call_fct Trigger_Create varid ;
     varid in
   List.map instantiate_assumption inst_sig.instance_assumptions
 
@@ -418,11 +366,11 @@ let get_typ_for_arg (v : varsyntyp) : typ =
   let (_x, aty) = v in
   aty.syntyp_typ
 
-let get_typ_for_arg_with_expected_type trigger_call env (v : varsyntyp) (ret_ty : typ) : typ =
+let get_typ_for_arg_with_expected_type env (v : varsyntyp) (ret_ty : typ) : typ =
   let ty = get_typ_for_arg v in
   let (x, aty) = v in
   let loc = aty.syntyp_syntax.Parsetree.ptyp_loc in
-  unify_or_error trigger_call ~loc env ret_ty ty (Conflict_with_context (trm_var x, ty, ret_ty));
+  unify_or_error ~loc env ret_ty ty (Conflict_with_context (trm_var x, ty, ret_ty));
   ty
 
 
@@ -534,9 +482,9 @@ let get_annot_sch ?(loc=loc_none) (e : env) (aty : syntyp) : sch option =
   | Some sch -> Some sch
 
 (* FIXME: deprecated? *)
-let typecheck_annot trigger_call env (ty : typ) (aty : syntyp) (msg_head : string) : unit =
+let typecheck_annot env (ty : typ) (aty : syntyp) (msg_head : string) : unit =
   let ty2 = aty.syntyp_typ in
-  unify_or_error trigger_call env ty2 ty (Bad_annotation (msg_head, ty2, ty))
+  unify_or_error env ty2 ty (Bad_annotation (msg_head, ty2, ty))
 
 
 (*#########################################################################*)
@@ -553,9 +501,7 @@ let check_arity env (x : symbol) (sch : sch) (insts : candidates_and_modes) : un
       let env =
         List.fold_left (fun e x -> env_add_tvar e x (mktyp (Typ_constr (x, []))))
           env sch.sch_tvars in
-      (* Normally, this shouldn't trigger anything except some flexible type variables
-        that could merge: we don't use any trigger event here. *) (* FIXME: Is that right? *)
-      unify_or_error None env sch.sch_body
+      unify_or_error env sch.sch_body
         (typ_arrow_flexible flexibles (typ_nameless ())) (Bad_arity (x, arity_exp))
 
 

@@ -48,8 +48,6 @@ type styp = Parsetree.core_type (* FIXME: rename to parsetyp *)
 
 (** * Types *)
 
-(* LATER: Do we still need the modes now that we have triggers? *)
-
 
 (** Mode for instance arguments.
    The [mode] can be 'input' or 'output'.
@@ -75,8 +73,7 @@ type mark = int
 type tvar_rigid = tconstr
 
 (** A [typ_desc] describes the possible structure of a type. A type may be:
-    - a 'flexible' variable, that is a variable that can unify with anything else.  It is
-      associated with a trigger (that is, the set of varid that depend on it).
+    - a 'flexible' variable, that is a variable that can unify with anything else.
     - a 'unified' variable, which was a flexible variable but has since then been
       unified with another type variable (Unified is like a link in the Union-Find data structure:
       the [typ] pointed by Unified contains mutable fields).
@@ -85,7 +82,7 @@ type tvar_rigid = tconstr
       (see [internal_type] below).
     - a 'rigid' variable (i.e. polymorphic type) is also represented as a constr. *)
 type typ_desc =
-  | Flexible of tvar * trigger (*Yanni: trigger probably unnecessary because of no overloading.*)
+  | Flexible of tvar
   | Unified of typ
   | Typ_constr of tconstr * typs
 
@@ -113,14 +110,6 @@ and sch = {
   sch_tvars : tvar_rigid list;
   sch_body : typ;
 }
-
-(** A trigger denotes a list of varids associated with symbols
-    whose resolution depends on the resolution of the Flexible type
-    that stores this trigger. *)
-(*Yanni: Unnecessary*)
-and trigger = varid_set
-
-(* Invariant: the triggers on the leaves of varid_typ of a given varid always include this varid. *)
 
 (** A varid records information on how a variable is resolved,
     in particular in the case it is an overloaded symbol. *)
@@ -227,15 +216,6 @@ and instance = {
   instance_loc : loc; (* Where the instance was declared. *)
   instance_symbol : symbol
 }
-
-
-(** For each trigger, how important it should be examined early. *)
-(*Yanni: Unnecessary*)
-type trigger_event =
-  | Trigger_Create (* When we create a new flexible type. *)
-  | Trigger_App (* When an application of an overloaded varid is treated (only during the first pass). *)
-  | Trigger_Strong (* When the associated flexible was replaced to a constr. *)
-  | Trigger_Weak (* When the associated flexible was unified with another flexible (this could distinguish a 'a -> 'a instance). *)
 
 
 (* ** Syntactic types *)

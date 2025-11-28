@@ -15,7 +15,7 @@ exception IncompleteResolution
 
 val typecheck_program : ?exact_error_messages:bool -> ?continue_on_error:bool -> style:Ast_print.style -> program -> program
 
-val typecheck_ml : Blocks.trigger_call -> ?expected_typ:typ -> env -> trm -> trm
+val typecheck_ml : ?expected_typ:typ -> env -> trm -> trm
 
 val ordered_resolution : ?max_traversals:int -> trm -> bool * int
 

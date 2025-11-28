@@ -228,7 +228,7 @@ val typ_iter : (typ -> unit) -> typ -> unit
 val typ_map : (typ -> typ) -> typ -> typ
 val typ_exists : (typ -> bool) -> typ -> bool
 
-(** Compare two types, ignoring the [typ_mark] and the triggers. *)
+(** Compare two types, ignoring the [typ_mark] *)
 val typ_compare : typ -> typ -> int
 
 (** * Inversion functions for types *)

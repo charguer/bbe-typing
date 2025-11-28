@@ -66,7 +66,7 @@ let typ_constant = function
   | Cst_unit _ -> the_typ_unit
 
 (* Checking that two environments as computed by typecheck_pat below are the same. *)
-let check_same_domains_in_pattern trigger_call (e : env) ~loc (e1 : (Var.var, typ) Env.t) (e2 : (Var.var, typ) Env.t) : unit =
+let check_same_domains_in_pattern  (e : env) ~loc (e1 : (Var.var, typ) Env.t) (e2 : (Var.var, typ) Env.t) : unit =
   let (e1, e2) =
     if Env.size e1 > Env.size e2 then
       (* This will return an error, but we would like to first find a variable in the domain
@@ -77,11 +77,11 @@ let check_same_domains_in_pattern trigger_call (e : env) ~loc (e1 : (Var.var, ty
     match Env.read_option e2 x with
     | None -> raise (Error (Variable_most_occur_on_both_sides_of_this_pattern x, loc))
     | Some ty2 ->
-      unify_or_error trigger_call ~loc e ty1 ty2
+      unify_or_error  ~loc e ty1 ty2
         (Conflict_with_context (trm_var ~loc ~typ:ty1 x, ty1, ty2))
   ) ()
 
-let typecheck_variable (trigger_call : trigger_call) loc (e : env) (sym : symbol) : varid =
+let typecheck_variable  loc (e : env) (sym : symbol) : varid =
   let env_item =
     match Env.read_option e.env_var sym with
     | None -> raise (Error (Unbound_variable sym, loc))
@@ -102,20 +102,18 @@ let typecheck_variable (trigger_call : trigger_call) loc (e : env) (sym : symbol
       let typ = typ_nameless () in
       (typ, VarUnresolved instances) in
   let varid = create_varid ~loc ~env:e sym ~typ ~resolution in
-  add_triggers_into_typ (VaridSet.singleton varid) typ ;
-  Option.iter (fun f -> f Trigger_Create varid) trigger_call ;
   varid
 
 
 (* For each pattern, we returned the typed pattern and the environment it introduces. *)
-let rec typecheck_pat (trigger_call : trigger_call) ?(expected_typ:typ option) (e : env) (p : pat) : pat * (Var.var, typ) Env.t =
+let rec typecheck_pat  ?(expected_typ:typ option) (e : env) (p : pat) : pat * (Var.var, typ) Env.t =
   let loc = p.pat_loc in
   let aux ?(env : env = e) ?(expected_typ:typ option) (p : pat) : pat * (Var.var, typ) Env.t =
-    typecheck_pat trigger_call ?expected_typ env p in
+    typecheck_pat  ?expected_typ env p in
   let return (typ : typ) (p_d : pat_desc) ex : pat * (Var.var, typ) Env.t =
     (* Unify typ with expected type if provided *)
     Option.iter (fun typ' ->
-      unify_or_error trigger_call ~loc e typ typ'
+      unify_or_error  ~loc e typ typ'
         (Conflict_with_context_pattern (p, typ, typ'))) expected_typ;
     ({ pat_desc = p_d;
       pat_loc = loc;
@@ -168,10 +166,10 @@ let rec typecheck_pat (trigger_call : trigger_call) ?(expected_typ:typ option) (
       List.fold_left (fun e1 (_p, e2) ->
         Env.fold e2 Env.add e1) (Env.empty ()) pes in
     let ps = List.map fst pes in
-    let x = typecheck_variable trigger_call loc e (SymbolName (Var.constr_to_var c)) in
+    let x = typecheck_variable  loc e (SymbolName (Var.constr_to_var c)) in
     let tyr = typ_nameless () in
     let ty = typ_arrow_flexible (List.map (fun p -> p.pat_typ) ps) tyr in
-    unify_or_error trigger_call ~loc e ty x.varid_typ
+    unify_or_error ~loc e ty x.varid_typ
       (Conflict_with_context (trm_var_varid ~loc ~typ:x.varid_typ x, ty, x.varid_typ)) ;
     return tyr (Pat_construct (c, ps)) e'
 
@@ -183,8 +181,8 @@ let rec typecheck_pat (trigger_call : trigger_call) ?(expected_typ:typ option) (
   | Pat_or (p1, p2) ->
     let (p1, e1) = aux p1 in
     let (p2, e2) = aux p2 in
-    check_same_domains_in_pattern trigger_call e ~loc e1 e2 ;
-    unify_or_error trigger_call ~loc e p1.pat_typ p2.pat_typ
+    check_same_domains_in_pattern  e ~loc e1 e2 ;
+    unify_or_error  ~loc e p1.pat_typ p2.pat_typ
       (Conflict_with_context_pattern (p2, p1.pat_typ, p2.pat_typ)) ;
     return p1.pat_typ (Pat_or (p1, p2)) e1
 
@@ -213,7 +211,7 @@ let rec typecheck_pat (trigger_call : trigger_call) ?(expected_typ:typ option) (
     The [t] corresponds to the body, e.g. [(fun (type a) (x:a) -> x)].
 
     The synschopt must be internalized before the call. *)
-let rec typecheck_ml_let_sch (trigger_call : trigger_call) ~loc ?(fully_resolved=false) rf (e : env) ((x, synschopt) : varsynschopt) (t : trm) : trm * sch =
+let rec typecheck_ml_let_sch  ~loc ?(fully_resolved=false) rf (e : env) ((x, synschopt) : varsynschopt) (t : trm) : trm * sch =
   (* First, we extract the "forall" quantifiers at the head of [t]. *)
   let (tvars_rhs, t1) = trm_foralls_inv t in
   (* Add the universally quantified types into the environment. *)
@@ -313,7 +311,7 @@ let rec typecheck_ml_let_sch (trigger_call : trigger_call) ~loc ?(fully_resolved
       env_add_var e2 x (Env_item_var sch)
     ) else e2 in
   (* Now we are ready to typecheck the body of the type scheme in that environment *)
-  let t1' = typecheck_ml trigger_call e3 ~expected_typ:sch.sch_body t1 in
+  let t1' = typecheck_ml  e3 ~expected_typ:sch.sch_body t1 in
   let external_typ =
     let m =
       List.fold_left (fun m tv ->
@@ -331,14 +329,14 @@ let rec typecheck_ml_let_sch (trigger_call : trigger_call) ~loc ?(fully_resolved
 (** [typecheck_let] typechecks a let-binding, both in a local [let _ = _ in _] and in a
   top-level declaration.
   It returns the new environment, as well as an updated let-binding and its associated type scheme. *)
-and typecheck_let (trigger_call : trigger_call) ~loc (e : env) (b : let_def) : let_def * env * sch =
+and typecheck_let  ~loc (e : env) (b : let_def) : let_def * env * sch =
   let rf = b.let_def_rec in
   let t1 = b.let_def_body in
   let bind = b.let_def_bind in
   let return bind e t1 sch = ({ b with let_def_bind = bind ; let_def_body = t1 }, e, sch) in
   match bind with
   | Bind_anon ->
-      let t1 = typecheck_ml trigger_call ~expected_typ:the_typ_unit e t1 in
+      let t1 = typecheck_ml  ~expected_typ:the_typ_unit e t1 in
       return bind e t1 (sch_of_nonpolymorphic_typ the_typ_unit)
 
   | Bind_var (x, synschopt) ->
@@ -347,7 +345,7 @@ and typecheck_let (trigger_call : trigger_call) ~loc (e : env) (b : let_def) : l
          Note that the [let[@instance]] form is a sequence of such a let-binding, with a
         [let[@register]. *)
       let synschopt = Option.map (synsch_internalize ~loc e) synschopt in
-      let (t1, sch) = typecheck_ml_let_sch trigger_call ~loc rf e (x, synschopt) t1 in
+      let (t1, sch) = typecheck_ml_let_sch  ~loc rf e (x, synschopt) t1 in
       (* If no annotation was provided, we add one in order to be able to display the inferred
         type scheme. *)
       let synsch =
@@ -386,7 +384,7 @@ and typecheck_let (trigger_call : trigger_call) ~loc (e : env) (b : let_def) : l
           asmpt.assumption_typ.syntyp_typ) instance_assumptions) inst_sig.instance_typ in
       Debug.log "DEBUG: %s" (Ast_print.typ_to_string ty_overall) ;
       (* Typechecking [t1]. *)
-      let t1 = typecheck_ml trigger_call ~expected_typ:ty_overall e1 t1 in
+      let t1 = typecheck_ml  ~expected_typ:ty_overall e1 t1 in
       let inst = {
         instance_value = t1 ;
         instance_sig = inst_sig ;
@@ -403,23 +401,23 @@ and typecheck_let (trigger_call : trigger_call) ~loc (e : env) (b : let_def) : l
     with it at the very end of the process. There is no propagation
     downwards into the term of the expected type. *)
 
-and typecheck_ml (trigger_call : trigger_call) ?(expected_typ:typ option) (e : env) (t : trm) : trm =
+and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
 
   if !Flags.verbose && !Flags.debug then Printf.printf "Entering typecheck_ml with :\n env = %s \n t = %s\n" (Ast_print.env_to_string ~style:Ast_print.style_debug e ) (trm_to_string t);
 
   let loc = t.trm_loc in
   let aux ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
-    typecheck_ml trigger_call ?expected_typ env t in
+    typecheck_ml  ?expected_typ env t in
   let return ?(annot = t.trm_annot) (typ : typ) (u : trm_desc) : trm =
     (* Unify typ with expected type if provided *)
     Option.iter (fun typ' ->
-      unify_or_error trigger_call ~loc e typ typ'
+      unify_or_error ~loc e typ typ'
         (Conflict_with_context (t, typ, typ'))) expected_typ;
     (* We also unify with the previously stored type in place, for the rare cases in which the parser
       shares types between terms. *)
     (* FIXME TODO: This fails when an instance take parameters as arguments: maybe the parser isn't
       generating the types the right way? *)
-    unify_or_error trigger_call ~loc e t.trm_typ typ (Conflict_with_context (t, t.trm_typ, typ)) ;
+    unify_or_error  ~loc e t.trm_typ typ (Conflict_with_context (t, t.trm_typ, typ)) ;
     { trm_desc = u;
       trm_loc = loc;
       trm_typ = typ;
@@ -429,7 +427,7 @@ and typecheck_ml (trigger_call : trigger_call) ?(expected_typ:typ option) (e : e
   let result =
   match t.trm_desc with
   | Trm_var x ->
-      let varid = typecheck_variable trigger_call loc e x.varid_symbol in
+      let varid = typecheck_variable  loc e x.varid_symbol in
       let ty = varid.varid_typ in
       return ty (Trm_var varid)
 
@@ -458,7 +456,7 @@ and typecheck_ml (trigger_call : trigger_call) ?(expected_typ:typ option) (e : e
             raise (Error (Different_variables_number (List.length ty_args, List.length args), loc)) ;
           List.iter2 (fun ty1 (_x, ty_arg) ->
             let ty2 = ty_arg.syntyp_typ in
-            unify_or_error trigger_call ~loc e ty1 ty2 (Unable_to_unify (ty1, ty2))) ty_args args ;
+            unify_or_error  ~loc e ty1 ty2 (Unable_to_unify (ty1, ty2))) ty_args args ;
           ty_res in
       let t1 = aux ~env:e2 ~expected_typ:ty_res t1 in
       let typ = typ_arrow (List.map (fun (arg, sty) -> sty.syntyp_typ) args) ty_res in
@@ -469,27 +467,20 @@ and typecheck_ml (trigger_call : trigger_call) ?(expected_typ:typ option) (e : e
       let t1 = aux ~expected_typ:the_typ_bool t1 in
       let t2 = aux t2 in
       let t3 = aux t3 in
-      unify_or_error trigger_call ~loc e (typeof t2) (typeof t3) (Branches_mismatch_if (typeof t2, typeof t3));
+      unify_or_error ~loc e (typeof t2) (typeof t3) (Branches_mismatch_if (typeof t2, typeof t3));
       return (typeof t2) (Trm_if (t1,t2,t3))
 
   | Trm_let (b, t2) ->
-      let (b, e, _sch) = typecheck_let trigger_call ~loc e b in
+      let (b, e, _sch) = typecheck_let  ~loc e b in
       let t2 = aux ~env:e t2 in
       return (typeof t2) (Trm_let (b, t2))
 
   | Trm_apps (t0, ts) ->
       let t0 = aux t0 in
       let ts = List.map aux ts in
-      begin
-        (* If [t0] is an overloaded varid, we register it again. *)
-        match t0.trm_desc with
-        | Trm_var ({ varid_resolution = VarUnresolved _ ; _ } as x) ->
-          Option.iter (fun f -> f Trigger_App x) trigger_call
-        | _ -> ()
-      end ;
       let ty_ret = typ_nameless () in
       let ty_fun = typ_arrow (List.map typeof ts) ty_ret in
-      unify_or_error trigger_call ~loc e (typeof t0) ty_fun (Application_mistyped (typeof t0, ty_fun));
+      unify_or_error  ~loc e (typeof t0) ty_fun (Application_mistyped (typeof t0, ty_fun));
       return ty_ret (Trm_apps (t0, ts))
 
   | Trm_annot (t1, sty) ->
@@ -506,7 +497,7 @@ and typecheck_ml (trigger_call : trigger_call) ?(expected_typ:typ option) (e : e
       let tyr = typ_nameless () in
       let pts =
         List.map (fun (pi, ti) ->
-          let (pi, ei) = typecheck_pat trigger_call ~expected_typ:(typeof t0) e pi in
+          let (pi, ei) = typecheck_pat  ~expected_typ:(typeof t0) e pi in
           let e' =
             Env.fold ei (fun e' x ty ->
               env_add_var e' x (Env_item_var (sch_of_nonpolymorphic_typ ty))) e in
@@ -522,6 +513,10 @@ and typecheck_ml (trigger_call : trigger_call) ?(expected_typ:typ option) (e : e
     if !Flags.verbose && !Flags.debug then Printf.printf "Exiting typecheck_ml with %s\n\n" (trm_to_string result);
     result
 
+(*Time to write a new typing judgement. For BBEs and for patterns.
+Function signature :
+- typecheck_bbe :  (e : env) (t : trm) : trm  *)
+
 (*******************************************)
 (*******************************************)
 (** * Ordered resolution *)
@@ -536,10 +531,8 @@ type 'a result =
   | Fail
 
 (* Given an unresolved varid, consider all its possible instances and filter the ones that are
-  still compatible with the varid's type.
-  The [trigger_call] argument is the trigger_call to be used for unifying with the unique candidate
-  of a resolution, as well capturing the newly created varids of assumptions. *)
-let try_resolve (trigger_call : trigger_call) varid : unit =
+  still compatible with the varid's type. *)
+let try_resolve varid : unit =
   Counters.(compute_count_and_time counter_resolution_attempt time_resolution_attempt (fun () ->
   let insts =
     match varid.varid_resolution with
@@ -549,7 +542,6 @@ let try_resolve (trigger_call : trigger_call) varid : unit =
   let is_instantiable (i : instance) : bool =
     incr Counters.counter_candidate_instantiable ;
     let sch = instance_sch i.instance_sig in
-    (* For the [is_instance_unifiable] tests, [trigger_call] is [None]. *)
     is_instance_unifiable varid.varid_env (apply_to_fresh_flexibles sch) ty in
   let remaining_correct_instances =
     (* We stop at the second instantiable instance, as this implies that this symbol
@@ -578,7 +570,7 @@ let try_resolve (trigger_call : trigger_call) varid : unit =
     if varid.varid_depth = !Flags.max_varid_depth then
       raise (Error (Maximum_varid_depth_reached, varid.varid_loc)) ;
     let assumptions =
-      unify_with_instance trigger_call ~loc:varid.varid_loc varid.varid_env ty
+      unify_with_instance  ~loc:varid.varid_loc varid.varid_env ty
         ~depth:(1 + varid.varid_depth) ~context:varid.varid_symbol i in
     Debug.log "Deduce that %s resolves to the instance declared at %s : %s."
       (Ast_print.symbol_to_string varid.varid_symbol)
@@ -599,7 +591,7 @@ let ordered_resolve_in (t:trm) : int * int =
   let rec process varid : unit =
     let was_resolved = varid_is_resolved varid in
     (* With this kind of syntax-guided resolution, we ignore triggers. *)
-    if not was_resolved then try_resolve None varid;
+    if not was_resolved then try_resolve varid;
     List.iter process (varid_assumptions varid); (* more of the trm_map *)
     if varid_is_resolved varid then begin
       if not was_resolved
@@ -634,13 +626,13 @@ let ordered_resolution ?(max_traversals = max_int) (t:trm) : bool * int =
   done;
   (!success, !nb_traversals)
 
-let try_resolve_with_result (trigger_call : trigger_call) varid : bool =
+let try_resolve_with_result  varid : bool =
   match varid.varid_resolution with
   | VarUnknown | VarRegular -> assert false
   | VarResolved _ -> true
   | VarUnresolved _ ->
     Debug.print_current_top_level_resolving varid ;
-    try_resolve trigger_call varid;
+    try_resolve  varid;
     match varid.varid_resolution with
     | VarUnknown | VarRegular -> assert false
     | VarResolved (_instance, assumptions) ->
@@ -721,7 +713,7 @@ module StackUniqueSet (E : sig
       | false -> s := ESet.remove e !s
   end)
 
-let iterative_resolution (all_varids : varid list) : unit =
+(* let iterative_resolution (all_varids : varid list) : unit =
   Debug.log "Starting iterative resolution." ;
   let is_resolved x =
     match x.varid_resolution with
@@ -754,17 +746,6 @@ let iterative_resolution (all_varids : varid list) : unit =
   List.iter (fun x -> Stack.push x current) all_varids ;
   let success = ref false in
   let stuck = ref false in
-  let trigger_call =
-    Some (fun priority x ->
-      match priority with
-      | Trigger_Strong -> StronglyTriggered.add x
-      | Trigger_App -> assert false
-      | Trigger_Weak -> WeaklyTriggered.add x
-      | Trigger_Create ->
-        if not (is_resolved x) then (
-          StronglyTriggered.add x ;
-          Stack.push x current
-        )) in
   let finally () =
     StronglyTriggered.clear () ;
     WeaklyTriggered.clear () in
@@ -774,7 +755,7 @@ let iterative_resolution (all_varids : varid list) : unit =
       let progress = ref false in
       let attempt_resolution failure_case x =
         Debug.log "Attempting resolution of %s." (print_varid x) ;
-        if try_resolve_with_result trigger_call x then (
+        if try_resolve_with_result  x then (
           progress := true
         ) else failure_case () in
       while not (Stack.is_empty current) do
@@ -812,7 +793,7 @@ let iterative_resolution (all_varids : varid list) : unit =
     finally () ;
     raise e
   )
-
+ *)
 
 (* Return two error messages: one meant for the term annotation (in [@type_error "msg"],
   and the other meant for the user. *)
@@ -915,18 +896,14 @@ let typecheck_topdef ?exact_error_messages ~style (env : env) (td : topdef) : to
            We request for a top-level definition that its type be fully resolved. *)
         let ((d, env', sch), varids) =
           let varids = ref [] in
-          let trigger_call =
-            Some (fun event x ->
-              if event = Trigger_Create then
-                varids := x :: !varids) in
           let r =
-            Counters.(compute_and_time time_ml_constraints (fun () -> typecheck_let trigger_call ~loc:td.topdef_loc env d))
+            Counters.(compute_and_time time_ml_constraints (fun () -> typecheck_let  ~loc:td.topdef_loc env d))
             in
-          (r, !varids) in
+          (r, !varids) in(*
         if !Flags.counters_only_for_resolutions_in_last_topdef
           then Counters.reset_stats_except_time_ml_constraints ();
         Counters.(compute_and_time time_symbol_resolution (fun () ->
-          iterative_resolution varids));
+          iterative_resolution varids)); *)
         Debug.log "🟩 Conclude that this definition has the type scheme %s." (sch_to_string sch) ;
         let sym =
           match d.let_def_bind with

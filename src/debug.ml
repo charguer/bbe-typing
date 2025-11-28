@@ -17,11 +17,8 @@ let print_low_level_typ =
   let open Printf in
   let rec aux t =
     match t.typ_desc with
-    | Flexible (x, trigger) ->
-      let tr =
-        if VaridSet.is_empty trigger then ""
-        else sprintf " (with %i triggers)" (VaridSet.cardinal trigger) in
-      sprintf "Flexible %s%s" (print_tvar x) tr
+    | Flexible x ->
+      sprintf "Flexible %s" (print_tvar x)
     | Unified t -> Printf.sprintf "Unified (%s)" (aux t)
     | Typ_constr (id, ts) ->
       sprintf "Typ_constr (%s, %s)"

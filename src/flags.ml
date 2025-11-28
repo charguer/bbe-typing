@@ -2,7 +2,7 @@
 (** Global flags to change the behavior of the program.
   They are only modified in Typer. **)
 
-let debug = ref false
+let debug = ref true
 let verbose = ref true
 
 let quiet = ref false
@@ -61,15 +61,6 @@ let style_debug = ref DebugNone
   expect the string to be the exact error message or we are fine if there is any
   error. *)
 let exact_error_messages = ref true
-
-(* At each loop iteration, how many triggers are examined. *)
-let number_of_trigger_passes = ref 10
-
-(* Whether the triggered varid should be cleared after a loop iteration. *)
-let clear_triggered_after_loop = ref false
-
-(* Maximum number of trigger associated to a varid. *)
-let max_cardinal_trigger = ref 16
 
 (* Maximum dependency depth of varids. *)
 let max_varid_depth = ref 20

@@ -254,7 +254,7 @@ let mktyp (td : typ_desc) : typ =
      typ_mark = no_mark; }
 
 let typ_tvar (var : tvar) : typ =
-  mktyp (Flexible (var, VaridSet.empty))
+  mktyp (Flexible var)
 
 let typ_nameless () : typ =
   typ_tvar (no_name_tvar ())
@@ -890,7 +890,7 @@ let rec replace_rigid_with v tv (ty : typ) : typ =
 
 let rec typ_compare ty1 ty2 =
   match ty1.typ_desc, ty2.typ_desc with
-  | Flexible (x, _), Flexible (y, _) -> compare x y
+  | Flexible x, Flexible y -> compare x y
   | Unified ty1, Unified ty2 -> typ_compare ty1 ty2
   | Typ_constr (c1, tys1), Typ_constr (c2, tys2) ->
     begin match compare c1 c2 with
@@ -1175,7 +1175,7 @@ exception Contains_flexible of tvar
 
 let rec contains_flexible_exn (ty : typ) : unit =
   match ty.typ_desc with
-  | Flexible (ty_flex_name, _trigger) -> raise (Contains_flexible ty_flex_name)
+  | Flexible ty_flex_name -> raise (Contains_flexible ty_flex_name)
   | _ -> typ_iter contains_flexible_exn ty
 
 
