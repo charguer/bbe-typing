@@ -74,6 +74,7 @@ val trm_desc_apps : trm -> trms -> trm_desc
 val trm_desc_match : trm -> (pat * trm) list -> trm_desc
 
 val trm_desc_bbeis : trm -> trm_pat -> trm_desc
+val trm_desc_patvar : ?typ:typ0 -> ?resolution:varid_resolution -> var -> trm_desc
 val trm_desc_patvar_varid : varid -> trm_desc
 val trm_desc_patwild : unit -> trm_desc
 

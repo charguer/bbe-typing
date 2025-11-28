@@ -344,7 +344,7 @@ let rec split_fun_args t =
 
 let atsign_inv (e : expression) : bool =
   match e.pexp_desc with
-    | Pexp_ident {txt= Longident.Lident s} when s = "@" -> true
+    | Pexp_ident {txt= Longident.Lident "@"} -> true
     | _ -> false
 
 let infix_op_inv ~loc (e1 : expression) (exp_list : (arg_label * expression) list) : (expression * expression * expression) option =
@@ -371,6 +371,12 @@ let recognize_infix_op ~loc (op : expression) (arg1 : trm) (arg2 : trm) : trm_de
     | _ -> unsupported ~loc "infix operation not yet handled"
     end
   | _ -> unsupported ~loc "operator is not an ident"
+
+
+let pvar_inv (e : expression) : bool =
+  match e.pexp_desc with
+    | Pexp_ident {txt= Longident.Lident "??"} -> true
+    | _ -> false
 
 (* let recognize_ident (lid_loc : Longident.t) : trm_desc =
   match tr
@@ -424,7 +430,7 @@ let rec tr_exp (e : expression) : trm =
 
   | Pexp_apply (e0, aes) when atsign_inv e0 ->
     begin match infix_op_inv ~loc e0 aes with
-    | Some (e1, e2, e3) -> (*refactor this later, probably no need for two functions, just write one inversor, that would directly return a trm_desc option if it worked.*)
+    | Some (e1, e2, e3) ->
       if !Flags.verbose && !Flags.debug then
         begin
           let pr = Printast.expression 0 in
@@ -439,6 +445,14 @@ let rec tr_exp (e : expression) : trm =
         return (recognize_infix_op ~loc e2 t1 t3)
     | _ -> unsupported ~loc "@-sign with no custom operator"
     end
+
+  | Pexp_apply (e0, aes) when pvar_inv e0 ->
+    begin match aes with
+    | [(_, {pexp_desc = Pexp_ident lid_loc})] ->
+      return (trm_desc_patvar (var (tr_longident lid_loc.txt)))
+    | _ -> unsupported ~loc "pattern variable but wrong argument"
+    end
+
   | Pexp_apply (e0, aes) ->
     let is_labeled lbl =
       match lbl with
