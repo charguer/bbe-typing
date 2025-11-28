@@ -470,6 +470,9 @@ let trm_desc_bbeis (t : trm) (p : trm_pat) : trm_desc =
 let trm_desc_patvar_varid varid : trm_desc =
   Trm_patvar varid
 
+let trm_desc_patvar ?typ ?resolution (x : var) : trm_desc =
+  trm_desc_patvar_varid (create_varid ?typ ?resolution (SymbolName x))
+
 let trm_desc_patwild () : trm_desc =
   Trm_patwild
 
@@ -595,6 +598,10 @@ let trm_bbeis ?loc ?typ ?annot (t : trm) (p : trm_pat) : trm =
   mktrm ?loc ?typ ?annot (trm_desc_bbeis t p)
 
 (* ** Smart constructors for trm_patterns *)
+
+let trm_patvar ?loc ?typ ?annot ?resolution (x : var) : trm =
+  mktrm ?loc ?typ ?annot (trm_desc_patvar ?typ ?resolution x)
+
 let trm_patvar_varid ?loc ?typ ?annot varid : trm =
   mktrm ?loc ?typ ?annot (trm_desc_patvar_varid varid)
 

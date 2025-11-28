@@ -348,34 +348,33 @@ let atsign_inv (e : expression) : bool =
     | _ -> false
 
 let infix_op_inv ~loc (e1 : expression) (exp_list : (arg_label * expression) list) : (expression * expression * expression) option =
+  if not (List.for_all (fun (lbl, _) -> lbl = Nolabel) exp_list)
+    then begin
+      match List.find_opt (fun (lbl, _) -> not (lbl = Nolabel)) exp_list with
+      | Some (Labelled s, _) | Some (Optional s, _) -> unsupported ~loc (Printf.sprintf "labeled arguments : %s" s);
+      | _ -> unsupported ~loc "infix_op_inv, unexpected behavior, branch should be impossible"
+    end;
+  match exp_list with
+  | [(_, arg1); (_, arg2)] ->
+    begin match arg2.pexp_desc with
+      | Pexp_apply (op, [(_, arg21)]) ->
+          Some (arg1, op, arg21)
+      | _ -> None
+    end
+  | _ -> None
 
-  if not (atsign_inv e1) then None
-  else begin
-    if not (List.for_all (fun (lbl, _) -> lbl = Nolabel) exp_list)
-      then begin
-        match List.find_opt (fun (lbl, _) -> not (lbl = Nolabel)) exp_list with
-        | Some (Labelled s, _) | Some (Optional s, _) -> unsupported ~loc (Printf.sprintf "labeled arguments : %s" s);
-        | _ -> unsupported ~loc "infix_op_inv, unexpected behavior, branch should be impossible"
-      end;
-    match exp_list with
-    | [(_, arg1); (_, arg2)] ->
-      begin match arg2.pexp_desc with
-        | Pexp_apply (op, [(_, arg21)]) ->
-            Some (arg1, op, arg21)
-        | _ -> None
-      end
-    | _ -> None
-  end
-
-let recognize_op ~loc (op : expression) (arg1 : trm) (arg2 : trm) : trm_desc =
+let recognize_infix_op ~loc (op : expression) (arg1 : trm) (arg2 : trm) : trm_desc =
   match op.pexp_desc with
-  | Pexp_ident {txt= Longident.Lident s} ->
+  | Pexp_ident {txt = Longident.Lident s} ->
     begin match s with
     | "_is" -> trm_desc_bbeis arg1 arg2
     | _ -> unsupported ~loc "infix operation not yet handled"
     end
   | _ -> unsupported ~loc "operator is not an ident"
 
+(* let recognize_ident (lid_loc : Longident.t) : trm_desc =
+  match tr
+ *)
 let rec tr_exp (e : expression) : trm =
   let loc = e.pexp_loc in
   let return ?(annot=AnnotNone) (e':trm_desc) : trm =
@@ -386,6 +385,7 @@ let rec tr_exp (e : expression) : trm =
       trm_annot = annot } in
   match e.pexp_desc with
   | Pexp_ident lid_loc ->
+    (*Goal : look at the identifier, and write different variables -> either the ident is optional, and give a pattern var, or it is a specific ident (here __ -> Trm_patwild) *)
       return (trm_desc_var (var (tr_longident lid_loc.txt)))
   | Pexp_constant c ->
       let cst = tr_constant ~loc c in
@@ -421,10 +421,10 @@ let rec tr_exp (e : expression) : trm =
       let t2 = tr_exp e2 in
       return (Trm_if (t1, t2, trm_unit ()))
       (* LATER: trm_desc_fixs *)
-  | Pexp_apply (e0, aes) ->
-    begin
-    match infix_op_inv ~loc e0 aes with
-    | Some (e1, e2, e3) ->
+
+  | Pexp_apply (e0, aes) when atsign_inv e0 ->
+    begin match infix_op_inv ~loc e0 aes with
+    | Some (e1, e2, e3) -> (*refactor this later, probably no need for two functions, just write one inversor, that would directly return a trm_desc option if it worked.*)
       if !Flags.verbose && !Flags.debug then
         begin
           let pr = Printast.expression 0 in
@@ -436,19 +436,20 @@ let rec tr_exp (e : expression) : trm =
         end;
       let t1 = tr_exp e1 in
       let t3 = tr_exp e3 in
-        return (recognize_op ~loc e2 t1 t3)
-    | None ->
-      let is_labeled lbl =
-        match lbl with
-        | Labelled _ -> true
-        | _ -> false
-      in
-      let labels,es = List.split aes in
-      if (List.exists is_labeled labels) then unsupported ~loc "labeled argument";
-      let t0 = tr_exp e0 in
-      let ts = List.map tr_exp es in
-      return (trm_desc_apps t0 ts)
+        return (recognize_infix_op ~loc e2 t1 t3)
+    | _ -> unsupported ~loc "@-sign with no custom operator"
     end
+  | Pexp_apply (e0, aes) ->
+    let is_labeled lbl =
+      match lbl with
+      | Labelled _ -> true
+      | _ -> false
+    in
+    let labels,es = List.split aes in
+    if (List.exists is_labeled labels) then unsupported ~loc "labeled argument";
+    let t0 = tr_exp e0 in
+    let ts = List.map tr_exp es in
+    return (trm_desc_apps t0 ts)
 
   | Pexp_sequence (e1, e2) ->
       let t1 = tr_exp e1 in
