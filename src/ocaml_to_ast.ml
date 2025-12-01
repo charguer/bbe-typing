@@ -393,8 +393,8 @@ let rec tr_exp (e : expression) : trm =
   | Pexp_ident lid_loc ->
     (*Goal : look at the identifier, and write different variables -> either the ident is optional, and give a pattern var, or it is a specific ident (here __ -> Trm_patwild) *)
     if lid_loc.txt = Longident.Lident "__" then
-      return (trm_desc_var (var (tr_longident lid_loc.txt)))
-    else return (trm_desc_patwild ())
+       return (trm_desc_patwild ())
+    else return (trm_desc_var (var (tr_longident lid_loc.txt)))
   | Pexp_constant c ->
       let cst = tr_constant ~loc c in
       let (symbol, annot) =

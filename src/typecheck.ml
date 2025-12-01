@@ -403,11 +403,13 @@ and typecheck_let  ~loc (e : env) (b : let_def) : let_def * env * sch =
 
 and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
 
-  if !Flags.verbose && !Flags.debug then Printf.printf "Entering typecheck_ml with :\n env = %s \n t = %s\n" (Ast_print.env_to_string ~style:Ast_print.style_debug e ) (trm_to_string t);
+  if !Flags.verbose && !Flags.debug then Printf.printf "Entering typecheck_ml with :\n t = %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e ) *) (trm_to_string t);
 
   let loc = t.trm_loc in
   let aux ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
     typecheck_ml  ?expected_typ env t in
+  let aux_bbe ?(env : env = e) (b : bbe) : bbe * env =
+    typecheck_bbe env b in
   let return ?(annot = t.trm_annot) (typ : typ) (u : trm_desc) : trm =
     (* Unify typ with expected type if provided *)
     Option.iter (fun typ' ->
@@ -464,8 +466,8 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       return typ (Trm_funs (args, t1))
 
   | Trm_if (t1, t2, t3) ->
-      let t1 = aux ~expected_typ:the_typ_bool t1 in
-      let t2 = aux t2 in
+      let (t1, env_cond) = aux_bbe t1 in (* Instead, use the "typecheck_bbe function." *)
+      let t2 = aux ~env:env_cond t2 in
       let t3 = aux t3 in
       unify_or_error ~loc e (typeof t2) (typeof t3) (Branches_mismatch_if (typeof t2, typeof t3));
       return (typeof t2) (Trm_if (t1,t2,t3))
@@ -490,7 +492,7 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
 
   | Trm_forall (_a, _t) ->
     (* This constructor should only appear at let-definitions. *)
-    raise (Error (Unsupported_term, loc))
+    raise (Error (Unsupported_term "Trm_forall", loc))
 
   | Trm_match (t0, pts) ->
       let t0 = aux t0 in
@@ -505,13 +507,71 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
           (pi, ti)) pts in
       return tyr (Trm_match (t0, pts))
 
-    | Trm_bbeis _ -> raise (Error (Unsupported_term, loc))
-    | Trm_patvar _ -> raise (Error (Unsupported_term, loc))
-    | Trm_patwild  -> raise (Error (Unsupported_term, loc))
+    | Trm_bbeis _ -> raise (Error (Unsupported_term "Trm_bbeis", loc))
+    | Trm_patvar _ -> raise (Error (Unsupported_term "Trm_patvar", loc))
+    | Trm_patwild  -> raise (Error (Unsupported_term "Trm_patwild", loc))
     in
 
     if !Flags.verbose && !Flags.debug then Printf.printf "Exiting typecheck_ml with %s\n\n" (trm_to_string result);
     result
+
+and typecheck_bbe (e : env) (b : bbe) : bbe * env =
+  if !Flags.verbose && !Flags.debug then Printf.printf "Entering typecheck_bbe with :\n t = %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e) *) (trm_to_string b);
+
+  let loc = b.trm_loc in
+  let aux_ml ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
+    typecheck_ml ?expected_typ env t in
+  let _aux_bbe ?(env : env = e) (t : trm) : bbe * env =
+    typecheck_bbe env t in
+  let aux_pat ?(env : env = e) (typ : typ) (p : trm_pat) : trm_pat * env =
+    typecheck_pattern env typ p in
+  let return ?(annot = b.trm_annot) (typ : typ) (u : trm_desc) : trm =
+    (* We also unify with the previously stored type in place, for the rare cases in which the parser
+      shares types between terms. *)
+    (* FIXME TODO: This fails when an instance take parameters as arguments: maybe the parser isn't
+      generating the types the right way? *)
+    unify_or_error  ~loc e b.trm_typ typ (Conflict_with_context (b, b.trm_typ, typ)) ;
+    { trm_desc = u;
+      trm_loc = loc;
+      trm_typ = typ;
+      trm_env = e;
+      trm_annot = annot } in
+
+  match b.trm_desc with
+    | Trm_bbeis (t, p) ->
+      let t = aux_ml t in
+      let (p, env_pat) = aux_pat (t.trm_typ) p in (*Very probably handle a concatenation function between the environments. For the moment, just concatenate them, but in the near future check for shadowing *)
+      unify_or_error ~loc e (typeof t) (typeof p) (Mismatch_type_is (typeof t, typeof p));
+      (return (the_typ_bool) (Trm_bbeis (t, p)), env_pat)
+    | _ -> (aux_ml ~expected_typ:the_typ_bool b, e)
+
+and typecheck_pattern (e : env) (typ : typ) (p : trm_pat) : trm_pat * env =
+  let loc = p.trm_loc in
+  let _aux_ml ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
+    typecheck_ml ?expected_typ env t in
+  let _aux_bbe ?(env : env = e) (t : trm) : bbe * env =
+    typecheck_bbe env t in
+  let _aux_pat ?(env : env = e) (typ : typ) (p : trm_pat) : trm_pat * env =
+    typecheck_pattern env typ p in
+  let return ?(annot = p.trm_annot) (typ : typ) (u : trm_desc) : trm =
+    (* We also unify with the previously stored type in place, for the rare cases in which the parser
+      shares types between terms. *)
+    (* FIXME TODO: This fails when an instance take parameters as arguments: maybe the parser isn't
+      generating the types the right way? *)
+    unify_or_error  ~loc e p.trm_typ typ (Conflict_with_context (p, p.trm_typ, typ)) ;
+    { trm_desc = u;
+      trm_loc = loc;
+      trm_typ = typ;
+      trm_env = e;
+      trm_annot = annot } in
+
+  if !Flags.verbose then Printf.printf "Entering typecheck_pattern with :\n expected_type = %s \n t = %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e) *) (Ast_print.typ_to_string typ) (trm_to_string p);
+
+  match p.trm_desc with
+  | Trm_patwild -> (return typ (p.trm_desc), e)
+  | Trm_annot _ -> raise (Error (Unsupported_term "Trm_annot", loc))
+
+  | _ -> failwith "TODO"
 
 (*Time to write a new typing judgement. For BBEs and for patterns.
 Function signature :
@@ -837,6 +897,7 @@ let check_error ?(exact_error_messages = true) ~style fallback_result td f =
       let (serror, serror_full) = get_error_messages ~style ~loc error in
       match err with
       | None ->
+          Printf.printf "error raised : %s\n" (Errors_aux.string_of_error_short error);
           raise (Typecheck_error serror_full)
       | Some msg ->
         if exact_error_messages && msg <> serror then begin

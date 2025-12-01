@@ -222,6 +222,7 @@ let unify_flexible (t_flexible : typ) (t_other : typ) : unit =
   if !Flags.check_cycles_at_every_unification then
     check_flexible_not_occuring_typ t_flexible t_other; (* Check acyclicity of the flexible graph. *)
   make_modif_desc t_flexible (Unified t_other);
+  ;; (*Temporary fix, I had a syntax error because it thought this function's declaration was not finished for some reason.*)
 
 (** Given a type, this function will unfold any occurences of type aliases until getting
   a type (whose top-level construct) is not an alias.
@@ -250,10 +251,13 @@ let rec unfold_alias env t =
     end
   | _ -> t
 
+
 (* ... auxiliary function for unification *)
 
 (*Error: the file does not compile, said to have a syntax error here. Debug next week.*)
 
+(* Question: what is this function for? This is a factorized code to test two types.
+If both roots of their respective unions are not the same, then force a unification.*)
 let rec unify_exn_aux ?loc env (t1 : typ) (t2 : typ) : unit =
   Counters.(compute_count_and_time counter_unify time_unify (fun () ->
     let tr1 = Repr.get_repr t1 in
@@ -326,7 +330,7 @@ let unifys_or_error ?(loc = loc_none) env (ts1 : typs) (ts2 : typs) (m : error) 
 
 let is_instance_unifiable env (ty1 : typ) (ty2 : typ) : bool =
   with_rollback (fun () ->
-    match unify_res None env ty1 ty2 with
+    match unify_res env ty1 ty2 with
     | Success ->
         if not !Flags.disable_check_cycle_on_resolution_attempts
           then Repr.check_no_cycle ty1;

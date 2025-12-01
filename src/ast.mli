@@ -366,6 +366,8 @@ and trm = {
   trm_desc : trm_desc;
   trm_loc : loc;
   trm_typ : typ; (* a fresh flexible after parsing *)
+  (* Should we add a trm_binds attribute? Like : if it was a bbe, then it would bind ...
+    And then for patterns, the type would be the input, and "binds" would be the output... *)
   trm_env : env0; (* a dummy environment after parsing *)
   trm_annot : annot (* to help printing back of encoded terms *)
 }

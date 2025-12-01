@@ -45,6 +45,9 @@ let string_of_error ~style (e : error) : string =
   | Branches_mismatch_if (ty1, ty2) ->
     sprintf "The then branch has type %s but the else branch has type %s."
       (typ_to_string ty1) (typ_to_string ty2)
+  | Mismatch_type_is (ty1, ty2) ->
+    sprintf "The expression has type %s but the pattern takes type %s."
+      (typ_to_string ty1) (typ_to_string ty2)
   | Branches_mismatch_match (x, ty1, ty2) ->
     sprintf "Two branches of the pattern-matching disagree on %s: in one case it is typed as %s, in the other as %s."
       x (typ_to_string ty1) (typ_to_string ty2)
@@ -111,7 +114,7 @@ let string_of_error ~style (e : error) : string =
   | Overload_of_a_regular_variable x ->
     sprintf "The regular variable %s is being shadowed by an overloaded symbol." (symbol_to_string x)
   | Maximum_varid_depth_reached -> "maximum length of a dependency chain of varid has been exceeded"
-  | Unsupported_term -> sprintf "This term is not supported."
+  | Unsupported_term s -> sprintf "The term %s is not supported." s
 
 let string_of_error_short (e : error) : string =
   match e with
@@ -131,6 +134,7 @@ let string_of_error_short (e : error) : string =
   | Boolean_condition _ty -> "non-boolean condition"
   | Branches_mismatch_if (_ty1, _ty2) -> "branch mismatch in if"
   | Branches_mismatch_match (x, _ty1, _ty2) -> sprintf "branch mismatch in match on %s" x
+  | Mismatch_type_is (ty1, ty2) -> "type mismatch in is"
   | Sequence _ty -> "non-unit in sequence"
   | Application_mistyped (_ty1, _ty2) -> "mistyped application"
   | Unable_to_unify (_ty1, _ty2) -> "unable to unify"
@@ -169,5 +173,5 @@ let string_of_error_short (e : error) : string =
   | Overload_of_a_regular_variable x ->
     sprintf "Overload of a non-overloaded variable %s" (symbol_to_string x)
   | Maximum_varid_depth_reached -> "maximum varid depth exceeded"
-  | Unsupported_term -> "unsupported term"
+  | Unsupported_term _s -> "unsupported term"
 

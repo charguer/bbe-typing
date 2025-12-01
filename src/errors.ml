@@ -18,6 +18,7 @@ type error =
   | Boolean_condition of typ
   | Branches_mismatch_if of typ * typ
   | Branches_mismatch_match of string * typ * typ
+  | Mismatch_type_is of typ * typ
   | Sequence of typ
   | Application_mistyped of typ * typ
   | Unable_to_unify of typ * typ
@@ -46,7 +47,7 @@ type error =
   | Variable_most_occur_on_both_sides_of_this_pattern of var
   | Overload_of_a_regular_variable of symbol
   | Maximum_varid_depth_reached
-  | Unsupported_term
+  | Unsupported_term of string
 
 exception Error of (error * loc)
 

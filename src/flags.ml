@@ -2,7 +2,7 @@
 (** Global flags to change the behavior of the program.
   They are only modified in Typer. **)
 
-let debug = ref true
+let debug = ref false
 let verbose = ref true
 
 let quiet = ref false
@@ -10,7 +10,7 @@ let quiet = ref false
 let continue_on_error = ref false
 
 (* If enabled, halts the typing on error and forces OCaml's verbose runtime trace *)
-let halt_on_error = ref false
+let halt_on_error = ref true
 
 let force_complete_resolution = ref false
 

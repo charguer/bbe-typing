@@ -39,7 +39,7 @@ let resolution_symbols, style_resolution = [
 let spec =
   Arg.align (List.map (fun (c, a, d) -> (c, a, "\t" ^ d)) [
     ("-continue-on-error", Arg.Set Flags.continue_on_error, "Skip a top-level item if it does not typecheck.") ;
-    ("-clear-triggered", Arg.Set Flags.clear_triggered_after_loop, "After each resolution loop, clear the varid triggered during the iteration.") ;
+    (*("-clear-triggered", Arg.Set Flags.clear_triggered_after_loop, "After each resolution loop, clear the varid triggered during the iteration.") ; *)
     ("-debug", Arg.Set Flags.debug, "Print debugging information.") ;
     ("-print-counters", Arg.Set Flags.print_counters, "Print counters, for debugging.") ;
     ("-counters-only-for-resolutions-in-last-topdef", Arg.Set Flags.counters_only_for_resolutions_in_last_topdef, " Hack for gathering more specific statistics, for debugging.") ;
@@ -63,8 +63,8 @@ let spec =
       Flags.style_resolution_full := r ;
       Flags.style_resolution_base := r ;
       Flags.style_resolution_args := r), "Equivalent to calling all -res-full, -res-base, and -res-args with this argument.") ;
-    ("-trigger-max", Arg.Set_int Flags.max_cardinal_trigger, "Maximum cardinal of triggers associated to each varid.") ;
-    ("-trigger-passes", Arg.Set_int Flags.number_of_trigger_passes, "Number of triggered varids considered at each loop iteration.")
+    (*("-trigger-max", Arg.Set_int Flags.max_cardinal_trigger, "Maximum cardinal of triggers associated to each varid.") ;
+    ("-trigger-passes", Arg.Set_int Flags.number_of_trigger_passes, "Number of triggered varids considered at each loop iteration.")*)
   ])
 
 
