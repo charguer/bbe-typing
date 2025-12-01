@@ -407,7 +407,7 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
 
   let loc = t.trm_loc in
   let aux ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
-    typecheck_ml  ?expected_typ env t in
+    typecheck_ml ?expected_typ env t in
   let aux_bbe ?(env : env = e) (b : bbe) : bbe * env =
     typecheck_bbe env b in
   let return ?(annot = t.trm_annot) (typ : typ) (u : trm_desc) : trm =
@@ -466,9 +466,10 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       return typ (Trm_funs (args, t1))
 
   | Trm_if (t1, t2, t3) ->
-      let (t1, env_cond) = aux_bbe t1 in (* Instead, use the "typecheck_bbe function." *)
+      let (t1, env_cond) = aux_bbe t1 in
       let t2 = aux ~env:env_cond t2 in
       let t3 = aux t3 in
+      if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s \n %s : %s\n" (trm_to_string t1)(Ast_print.typ_to_string t1.trm_typ) (trm_to_string t2) (Ast_print.typ_to_string t2.trm_typ) (trm_to_string t3) (Ast_print.typ_to_string t3.trm_typ);
       unify_or_error ~loc e (typeof t2) (typeof t3) (Branches_mismatch_if (typeof t2, typeof t3));
       return (typeof t2) (Trm_if (t1,t2,t3))
 
@@ -482,6 +483,11 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       let ts = List.map aux ts in
       let ty_ret = typ_nameless () in
       let ty_fun = typ_arrow (List.map typeof ts) ty_ret in
+      if !Flags.verbose then
+        begin
+        Printf.printf "Application :\n %s : %s\n Arguments : \n" (trm_to_string t0) (Ast_print.typ_to_string t0.trm_typ);
+        List.iter (fun arg -> Printf.printf "%s : %s\n" (trm_to_string arg) (Ast_print.typ_to_string arg.trm_typ)) ts;
+      end;
       unify_or_error  ~loc e (typeof t0) ty_fun (Application_mistyped (typeof t0, ty_fun));
       return ty_ret (Trm_apps (t0, ts))
 
@@ -540,6 +546,7 @@ and typecheck_bbe (e : env) (b : bbe) : bbe * env =
   match b.trm_desc with
     | Trm_bbeis (t, p) ->
       let t = aux_ml t in
+      if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s\n" (trm_to_string t)(Ast_print.typ_to_string t.trm_typ) (trm_to_string p) (Ast_print.typ_to_string p.trm_typ);
       let (p, env_pat) = aux_pat (t.trm_typ) p in (*Very probably handle a concatenation function between the environments. For the moment, just concatenate them, but in the near future check for shadowing *)
       unify_or_error ~loc e (typeof t) (typeof p) (Mismatch_type_is (typeof t, typeof p));
       (return (the_typ_bool) (Trm_bbeis (t, p)), env_pat)
