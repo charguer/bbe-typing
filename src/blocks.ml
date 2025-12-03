@@ -45,7 +45,7 @@ let varid_is_resolved (varid:varid) : bool =
 
 exception Contains_unresolved of varid
 
-let rec all_varid_in_varid_are_resolved_exn (x : varid) : unit =
+let (* rec *) all_varid_in_varid_are_resolved_exn (x : varid) : unit =
   match x.varid_resolution with
   | VarRegular -> ()
   (* | VarResolved (_, xs) -> List.iter all_varid_in_varid_are_resolved_exn xs
@@ -108,10 +108,11 @@ let check_fully_typed ~in_depth ~test_acylic (t : trm) (s : symbol) : unit =
         (String.concat "\n - " (List.map (Ast_print.instance_to_string ~style:style_debug) candidates))
     | _ -> ()
     end ; *)
-    raise (Error (Missing_information
+    (* raise (Error (Missing_information
       (Printf.sprintf "for resolving symbol %s within %s"
         (symbol_to_string_message x.varid_symbol) (symbol_to_string_message s),
-      x.varid_typ), x.varid_loc))
+      x.varid_typ), x.varid_loc)) *)
+    raise (Error (Unsupported_term "Unresolved inside \"check_fully_typed\". Temporary error message. modify [Blocks.check_full_typed] to remove this", x.varid_loc))
   (* TODO: handle a specific message for cycle detection at the very end? *)
 
 
@@ -207,10 +208,10 @@ type result =
   | Success
   | Failure of (error * loc)
 
-let is_unresolved x =
+(* let is_unresolved x =
   match x.varid_resolution with
   | VarUnresolved _ -> true
-  | _ -> false
+  | _ -> false *)
 
 (** [unify_flexible t_flexible t2] performs the unification of the flexible variable
   [t_flexible] with the type [t2], with a best effort to preserve a meaningful name.
@@ -342,7 +343,7 @@ let is_instance_unifiable env (ty1 : typ) (ty2 : typ) : bool =
 (*#########################################################################*)
 (* ** Instance resolution *)
 
-let unify_with_instance ~loc (env : env) (ty1 : typ) ~depth ~context (inst : instance) : varid list =
+(* let unify_with_instance ~loc (env : env) (ty1 : typ) ~depth ~context (inst : instance) : varid list =
   let inst_sig = inst.instance_sig in
   let ty_map = make_map_rigid_flexible inst_sig.instance_tvars in
   let ty2 = replace_rigids_with ty_map inst_sig.instance_typ in
@@ -353,16 +354,16 @@ let unify_with_instance ~loc (env : env) (ty1 : typ) ~depth ~context (inst : ins
   let instantiate_assumption (asmpt : assumption_desc) : varid =
     let { assumption_symbol = symbol ; assumption_typ = sty } = asmpt in
     let ty = replace_rigids_with ty_map sty.syntyp_typ in
-    let instances =
+    (* let instances =
       match Env.read_option env.env_var symbol with
       | None -> raise (Error (Unbound_variable_in_assumption symbol, loc))
       | Some (Env_item_var _) -> raise (Error (Not_an_overloaded_symbol symbol, loc))
-      | Some (Env_item_overload register_instances) -> register_instances in
+      | Some (Env_item_overload register_instances) -> register_instances in *)
     let varid =
       create_varid ~loc ~env symbol ~typ:ty ~depth ~resolution:(VarUnresolved instances) ~context in
     varid in
   List.map instantiate_assumption inst_sig.instance_assumptions
-
+ *)
 
 (*#########################################################################*)
 (* ** Typechecking of function arguments *)
@@ -555,7 +556,7 @@ let fresh_tvar_rigid ?(also = TConstrMap.empty) (e : env) : tvar_rigid =
       not (TConstrMap.mem (tconstr n) also)
       && not (Env.mem e.env_tconstr (tconstr n))))
 
-let env_add_instance ?(loc=loc_none) (e : env) (x : symbol) (inst : instance) : env =
+(* let env_add_instance ?(loc=loc_none) (e : env) (x : symbol) (inst : instance) : env =
   let sch = instance_sch inst.instance_sig in
   let insts = env_find_overload ~loc e x in
   check_arity e x sch insts;
@@ -563,12 +564,13 @@ let env_add_instance ?(loc=loc_none) (e : env) (x : symbol) (inst : instance) : 
     Env_item_overload { insts with candidates_and_modes_candidates =
       inst :: insts.candidates_and_modes_candidates } in
   env_add_symbol e x it
+ *)
 
-let env_add_empty_instance ?(loc = loc_none) (e : env) (x : symbol) (modes : symbol_modes) : env =
+(* let env_add_empty_instance ?(loc = loc_none) (e : env) (x : symbol) (modes : symbol_modes) : env =
   let it = Env_item_overload { candidates_and_modes_candidates = [] ; candidates_and_modes_modes = modes } in
   env_add_symbol e x it
-
-(** Extract each type parameter (e.g. [type ('a, 'b) t]) of a type declaration.
+ *)
+(* Extract each type parameter (e.g. [type ('a, 'b) t]) of a type declaration.
   We ignore variance and injectivity here. *)
 let get_vars_params td =
   let params = List.map fst td.Parsetree.ptype_params in
@@ -598,7 +600,7 @@ let type_constructor e overall_type (c : Parsetree.constructor_declaration) : co
   (name, ty)
 
 (* Adding an implicitely overloaded variable. *)
-let add_implicit_overloaded_instance ?(loc = loc_none) ?modes e var_names x ty =
+(* let add_implicit_overloaded_instance ?(loc = loc_none) ?modes e var_names x ty =
   (* The expected modes for this variable: they are implicitely all [in]. *)
   let modes =
     match modes with
@@ -630,8 +632,9 @@ let add_implicit_overloaded_instance ?(loc = loc_none) ?modes e var_names x ty =
     instance_symbol = x
   } in
   env_add_instance ~loc e x inst
-
-let env_add_type_declaration (e : env) (td : Parsetree.type_declaration) : env * tconstr_desc =
+ *)
+(** [env_add_type_declaration e td]: processes the OCaml type declarations and adds them to the environment  *)
+(* let env_add_type_declaration (e : env) (td : Parsetree.type_declaration) : env * tconstr_desc =
   let loc = td.Parsetree.ptype_loc in
   let id = tconstr td.ptype_name.txt in
   let (var_names, vars) = get_vars_params td in
@@ -690,7 +693,7 @@ let env_add_type_declaration (e : env) (td : Parsetree.type_declaration) : env *
     | Tconstr_def_alias _ -> e
     | Tconstr_special_nary -> assert false (* These can't be defined by the user for now. *) in
   (e, tdesc)
-
+ *)
 
 
 (*#########################################################################*)
@@ -758,6 +761,6 @@ let sch_of_let_body (e : env) (t : trm) : sch =
 (* TODO: Move? It feels in the wrong section. *)
 let env_add_recursive_var (e : env) (v : var) (t : trm) : env =
   let sch = sch_of_let_body e t in
-  env_add_var e v (Env_item_var sch)
+  env_add_var e v sch
 
 

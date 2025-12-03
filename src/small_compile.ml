@@ -108,7 +108,7 @@ let name_of_instance already_taken n =
   fresh already_taken n
 
 (* Term corresponding to an overloaded symbol declaration. *)
-let overload_new ?loc ignore_var (modes : symbol_modes) =
+(* let overload_new ?loc ignore_var (modes : symbol_modes) =
     (* The symbol won't be used, as each occurence will be replaced by the corresponding instance.
       We thus just replace it with a dummy term: this makes sure that any shadowed definition is
       indeed shadowed. *)
@@ -124,6 +124,7 @@ let overload_new ?loc ignore_var (modes : symbol_modes) =
           tr_mode output
         ] in
     trm_apps ?loc ~typ:the_typ_unit (trm_var ?loc ignore_var) [arg]
+ *)
 
 (* An term equivalent to its argument, but eta-expansing all its arguments (typically to
   avoid errors on constructors). *)
@@ -206,7 +207,7 @@ let instantiate p =
   (* We could compile each instance into [inst.instance_value], and it would mostly work
     (assuming no side effect on the definition of instances…).
     But as we actually defined above a term for each instance, we can reuse them instead. *)
-  let get_instance_term ~loc typ inst =
+  (* let get_instance_term ~loc typ inst =
     let id =
       (inst.instance_loc,
        { inst.instance_sig with instance_typ = Repr.get_repr inst.instance_sig.instance_typ },
@@ -216,7 +217,8 @@ let instantiate p =
     | None ->
       (* This typically happens for built-in instances, whose values directly binds to OCaml's built-ins. *)
       inst.instance_value in
-  (* Adding definitions from the built-in environnment. *)
+   *)
+   (* Adding definitions from the built-in environnment. *)
   (* let built_in =
     Env.fold (env_builtin_tuples ()).env_var (fun p x i ->
       (* This [x] is supposed to refer to a definition in the standard library. *)
@@ -243,7 +245,7 @@ let instantiate p =
   (* Replacing the resolved instances within the terms by their actual value. *)
   let rec replace_in_term t =
     let loc = t.trm_loc in
-    let rec instantiate_varid ~loc ?typ varid =
+    let (* rec *) instantiate_varid ~loc ?typ varid =
       let typ =
         match typ with
         | None -> varid.varid_typ
@@ -292,8 +294,9 @@ let instantiate p =
       | Topdef_typ_def { typ_def_typs = tcds ; typ_def_td = tds ; _ } ->
         td :: List.concat (List.map2 (fun tc_desc td ->
           let loc = td.Parsetree.ptype_loc in
-          let id = Var.tconstr td.ptype_name.txt in
-          match tc_desc.tconstr_def with
+          (* let id = Var.tconstr td.ptype_name.txt in
+           *)
+           match tc_desc.tconstr_def with
           | Tconstr_special_nary | Tconstr_abstract | Tconstr_def_alias _ -> []
           | Tconstr_def_sum cts ->
             (* Add declaration for each constructor. *)
@@ -304,8 +307,8 @@ let instantiate p =
               let (vty, t) = create_overload_declaration ~loc (SymbolName x) inst (trm_var x) in
               let t = term_declaration names t ty in
               mval Asttypes.Nonrecursive (Bind_var vty) t) cts
-          | Tconstr_record ftys ->
-            let ty_overall =
+          | Tconstr_record ftys -> failwith "Tconstr_record is unsupported during instantiation";
+            (* let ty_overall =
               match tc_desc.tconstr_typ with
               | Some ty -> ty
               | None -> typ_constr id (List.map typ_rigid tc_desc.tconstr_tvars) in
@@ -360,7 +363,7 @@ let instantiate p =
                         (trm_var ~typ:ty_overall x)
                         f (trm_var ~typ:ty_f y))) in
                 mval Asttypes.Nonrecursive (Bind_var vty) t) ftys in
-            record_make :: projections @ mutations @ with_proj) tcds tds)
+            record_make :: projections @ mutations @ with_proj *)) tcds tds)
       | _ -> [td]) p in
   (* Adding functions used in the generation. *)
   let ignore =

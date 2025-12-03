@@ -368,7 +368,7 @@ and typecheck_let  ~loc (e : env) (b : let_def) : let_def * env * sch =
       let e2 = env_add_var e x sch in
       return (Bind_var (x, Some synsch)) e2 t1 sch
 
-  | Bind_register_instance (x, inst_sig) ->
+(*   | Bind_register_instance (x, inst_sig) ->
 
       (* Declaration of an instance, e.g.
          [let[@instance (+)] matrix_add (type a) (op : a -> a -> a) = ...], which is compiled into:
@@ -403,7 +403,8 @@ and typecheck_let  ~loc (e : env) (b : let_def) : let_def * env * sch =
       } in
       (* Preparing the environment after the registering of the instance. *)
       let e' = env_add_instance ~loc e x inst in
-      return (Bind_register_instance (x, inst_sig)) e' t1 (instance_sch inst_sig)
+      return (Bind_register_instance (x, inst_sig)) e' t1 (instance_sch inst_sig) *)
+    | _ -> failwith "Unexpected register/instance in a let binding."
 
 
 (** [typecheck_ml e t] typechecks [t] in [e] and returns [t] with the correct type.
@@ -1013,7 +1014,7 @@ let typecheck_topdef ?exact_error_messages ~style (env : env) (td : topdef) : to
 
 
     (* Process a type definition *)
-    | Topdef_typ_def tdt ->
+(*     | Topdef_typ_def tdt ->
         let tds = tdt.typ_def_td in
         (* First, we add dummy definition for all the types. *)
         let env =
@@ -1030,9 +1031,9 @@ let typecheck_topdef ?exact_error_messages ~style (env : env) (td : topdef) : to
               raise_typecheck_error loc msg) (env, []) tds in
         let tdt = { tdt with typ_def_typs = List.rev tcs } in
         Debug.log "🟩 Done." ;
-        ({ td with topdef_desc = Topdef_typ_def tdt }, env)
+        ({ td with topdef_desc = Topdef_typ_def tdt }, env) *)
 
-    (* | _ -> raise (Error (Unsupported_term, td.topdef_loc)) *)
+    | _ -> raise (Error (Unsupported_term "Topdef_typ_def", td.topdef_loc))
   )
 
 let typecheck_program ?exact_error_messages ?(continue_on_error = false) ~style (tds: topdefs) : topdefs =

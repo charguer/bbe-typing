@@ -75,8 +75,8 @@ val is_instance_unifiable : env -> typ -> typ -> bool
 
 (** Given an instance and a type compatible with this instance, unify the type
   with the instance and return the list of varid corresponding to its assumptions. *)
-val unify_with_instance : loc:loc -> env -> typ -> depth:int -> context:symbol -> instance -> assumptions
-
+(* val unify_with_instance : loc:loc -> env -> typ -> depth:int -> context:symbol -> instance -> assumptions
+ *)
 
 (*#########################################################################*)
 (* ** Typechecking of function arguments *)
@@ -95,8 +95,8 @@ val get_typ_for_arg_with_expected_type : env -> varsyntyp -> typ -> typ
 (* ** Extension of environments *)
 
 (** Add an overload variable [x] into the environment, with no declared instances. *)
-val env_add_empty_instance : ?loc:loc -> env -> symbol -> symbol_modes -> env
-
+(* val env_add_empty_instance : ?loc:loc -> env -> symbol -> symbol_modes -> env
+ *)
 (** Add a local type variable as a tconstr (this is triggerred by [(type a)] parameters
   (that is, [Trm_forall]) from a function. *)
 val env_add_tconstr_var : env -> tconstr -> typ -> env
@@ -105,8 +105,8 @@ val env_add_tconstr_vars : env -> tconstr list -> typs -> env
 
 (** Add an instance of [x] into the environment.
   If the symbol [x] is a regular variable in the current environment, an error will be thrown. *)
-val env_add_instance : ?loc:loc -> env -> symbol -> instance -> env
-
+(* val env_add_instance : ?loc:loc -> env -> symbol -> instance -> env
+ *)
 (** [env_add_recursive_var e v t] extends the environment [e] with a binding
     from [v] to the type scheme associated with the type of [t]. *)
 val env_add_recursive_var : env -> var -> trm -> env
@@ -119,8 +119,8 @@ val add_dummy_type : env -> Parsetree.type_declaration -> env
   the environment.
   If the type declaration is recursive, then it will assume that it is already within
   the environment (at least as a dummy placeholder). *)
-val env_add_type_declaration : env -> Parsetree.type_declaration -> env * tconstr_desc
-
+(* val env_add_type_declaration : env -> Parsetree.type_declaration -> env * tconstr_desc
+ *)
 
 (*#########################################################################*)
 (* ** Typechecking of user-provided type annotations *)

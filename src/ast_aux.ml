@@ -572,13 +572,15 @@ let trm_record_with ?loc ?typ t1 f t2 =
   assert (i >= 2) ;
   mktrm ?loc ?typ ~annot:(AnnotTuple i)
     (trm_desc_apps (trm_var_symbol ?loc (SymbolTuple i)) ts)
+*)
 
+(* This is hack fix. Deprecated version. To be handled soon. *)
 let trm_tuple_flex ?loc ?typ ?annot (ts : trms) : trm =
   match ts with
   | [] -> trm_unit ?loc ?typ ?annot ()
   | [t] -> t
-  | _ -> trm_tuple ?loc ?typ ?annot ts
- *)
+  | _ -> trm_unit ?loc ?typ ?annot () (* Here should instead use trm_tuple *)
+
 
 (** [trm_desc_constr] Note: previously translated several arguments to a singleton of a tuple for some reason. Still unsure about why. *)
 let trm_desc_constr ?loc ?typ (c : constr) (ts : trms) : trm_desc =

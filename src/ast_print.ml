@@ -333,7 +333,7 @@ and sch_to_doc (sch : sch) : doc =
   ) ^^ typ_to_doc sch.sch_body
 
 and varid_to_doc ~style ?(is_arg = false) varid : doc =
-  let is_resolved =
+(*   let is_resolved =
     match varid.varid_resolution with
     | VarRegular | VarResolved _ -> true
     | VarUnknown | VarUnresolved _ -> false in
@@ -403,7 +403,8 @@ and varid_to_doc ~style ?(is_arg = false) varid : doc =
       ^^ string ":"
       ^^ blank 1
       ^^ typ_to_doc varid.varid_typ)
-  else d
+  else d *)
+  parens (string "\"Temporary printing: modify [Ast_print.varid_to_doc] to remove this.\"")
 
 
 and trm_to_doc ~style t =
@@ -421,7 +422,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
     | _ -> None in
 
   match style.style_print_symbols, t.trm_annot, match_trm_apps with
-
+(*
   | false, AnnotLiteralUnit,
     Some (Trm_var { varid_symbol = SymbolTuple 0 ; _ },
           [{ trm_desc = Trm_cst (Cst_unit ()); _ }]) ->
@@ -495,7 +496,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
   | false, AnnotTuple i,
     Some (Trm_var { varid_symbol = SymbolTuple j ; _ }, ts) when i = j ->
       parens (separate (comma ^^ blank 1) (List.map aux ts))
-
+ *)
   | _, _, _ ->
 
     begin match t.trm_desc with
@@ -1035,12 +1036,12 @@ let to_string ~style (ast : Ast_fix.program) : string =
   Buffer.contents out
 
 let env_to_string ~style (e : env) : string =
-  let print_val =
+  (* let print_val =
   function
     | Env_item_var sch -> sch_to_string sch
     | Env_item_overload is -> (doc_to_string (overload_to_doc ~style is))
-  in
-  Env.print (symbol_to_string) (print_val) e.env_var
+  in *)
+  Env.print (var_to_string) (sch_to_string) e.env_var
 
 
 (*#########################################################################*)

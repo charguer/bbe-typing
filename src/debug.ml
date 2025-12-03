@@ -35,7 +35,7 @@ let print_low_level_trm =
   let open Printf in
   let rec pr_desc i =
     let aux = aux (i + 2) in function
-    | Trm_var varid -> sprintf "Var %s" (symbol_to_string varid.varid_symbol)
+    | Trm_var varid -> sprintf "Var %s" (var_to_string varid.varid_var)
     | Trm_cst c ->
       let c =
         match c with
@@ -65,7 +65,7 @@ let print_low_level_trm =
         (aux t)
         (String.concat " ; " (List.map (fun (_p, t) -> "_ -> " ^ aux t) pts))
     | Trm_bbeis (t, p) -> sprintf "Is (%s, %s)" (aux t) (aux p)
-    | Trm_patvar varid -> sprintf "PVar %s" (symbol_to_string varid.varid_symbol)
+    | Trm_patvar varid -> sprintf "PVar %s" (var_to_string varid.varid_var)
     | Trm_patwild -> sprintf "Wildcard"
   and aux i t =
     let space = String.make i ' ' in
@@ -149,29 +149,31 @@ let print_env_debug env =
       (Env.fold env.env_tconstr (fun l t td ->
         Printf.sprintf "%s: Type(%d)" (print_tconstr t) (List.length td.tconstr_tvars) :: l) [])))
     (String.concat " ; " (List.rev
-      (Env.fold env.env_var (fun l x ->
+      (Env.fold env.env_var (* (fun l x ->
         let x = symbol_to_string x in function
         | Env_item_var sch -> Printf.sprintf "%s: %s" x (sch_to_string sch) :: l
-        | Env_item_overload _ -> (x ^ ": <overloaded>") :: l) [])))
+        | Env_item_overload _ -> (x ^ ": <overloaded>") :: l) *)
+        (fun l x s -> let x = var_to_string x in Printf.sprintf "%s: %s" x (sch_to_string s) :: l)
+        [])))
 
 let print_current_top_level_resolving varid =
   if_debug (fun () ->
     Printf.printf "Resolving varid: %s(%s) : %s.\n"
-      (symbol_to_string varid.varid_symbol)
+      (var_to_string varid.varid_var)
       (Var.print_varid_unique_int varid.varid_unique_int)
       (typ_to_string varid.varid_typ))
 
 let print_current_top_level_resolved varid assumptions =
   if_debug (fun () ->
     Printf.printf "Resolved varid: %s(%s) : %s.\n"
-      (symbol_to_string varid.varid_symbol)
+      (var_to_string varid.varid_var)
       (Var.print_varid_unique_int varid.varid_unique_int)
       (typ_to_string varid.varid_typ) ;
     if assumptions <> [] then (
       Printf.printf "New varids created as its assumptions:\n" ;
       List.iter (fun vi ->
         Printf.printf "- %s(%s) : %s.\n"
-        (symbol_to_string vi.varid_symbol)
+        (var_to_string vi.varid_var)
         (Var.print_varid_unique_int vi.varid_unique_int)
         (typ_to_string vi.varid_typ)) assumptions
     ))

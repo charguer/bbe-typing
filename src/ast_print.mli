@@ -55,6 +55,7 @@ val overload_to_doc : style:style -> candidates_and_modes -> doc
 val sch_to_doc : sch -> doc
 val sch_to_string : sch -> string
 val varid_to_string : style:style -> varid -> string
+val var_to_string : var -> string
 
 val print_tvar_rigid : tvar_rigid -> string
 

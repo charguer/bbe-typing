@@ -63,7 +63,8 @@ val trm_desc_float : float -> trm_desc
 val trm_desc_string : string -> trm_desc
 val trm_desc_unit : unit -> trm_desc
 val trm_desc_var : ?typ:typ0 -> ?resolution:varid_resolution -> var -> trm_desc
-val trm_desc_var_symbol : ?typ:typ0 -> ?resolution:varid_resolution -> symbol -> trm_desc
+(* val trm_desc_var_symbol : ?typ:typ0 -> ?resolution:varid_resolution -> symbol -> trm_desc
+ *)
 val trm_desc_funs : varsyntyps -> trm -> trm_desc
 val trm_desc_constr : ?loc:loc -> ?typ:typ -> constr -> trms -> trm_desc
 val trm_desc_if : trm -> trm -> trm -> trm_desc
@@ -91,9 +92,11 @@ val trm_string : ?loc:loc -> ?typ:typ -> ?annot:annot -> string -> trm
 val trm_unit : ?loc:loc -> ?typ:typ -> ?annot:annot -> unit -> trm
 
 val trm_var : ?loc:loc -> ?typ:typ -> ?annot:annot -> ?resolution:varid_resolution -> var -> trm
-val trm_var_symbol : ?loc:loc -> ?typ:typ -> ?annot:annot -> ?resolution:varid_resolution -> symbol -> trm
+(* val trm_var_symbol : ?loc:loc -> ?typ:typ -> ?annot:annot -> ?resolution:varid_resolution -> symbol -> trm
+ *)
 val trm_var_varid : ?loc:loc -> ?typ:typ -> ?annot:annot -> varid -> trm
-val trm_tuple : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm list -> trm (* Doesn't work if the list is empty: use [trm_tuple_flex] in such cases. *)
+(* val trm_tuple : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm list -> trm (* Doesn't work if the list is empty: use [trm_tuple_flex] in such cases. *)
+ *)
 val trm_funs : ?loc:loc -> ?typ:typ -> ?annot:annot -> varsyntyps -> trm -> trm (* Doesn't work if the list is empty: use [trm_funs_if_non_empty] in such cases. *)
 val trm_constr : ?loc:loc -> ?typ:typ -> ?annot:annot -> constr -> trms -> trm
 val trm_if : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> trm -> trm -> trm
@@ -106,11 +109,11 @@ val trm_forall : ?loc:loc -> ?typ:typ -> ?annot:annot -> tvar_rigid -> trm -> tr
 val trm_foralls : ?loc:loc -> ?typ:typ -> tvar_rigid list -> trm -> trm (* Works even if the list is empty. *)
 val trm_match : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> (pat * trm) list -> trm
 
-val trm_record_get : ?loc:loc -> ?typ:typ -> trm -> field -> trm
+(* val trm_record_get : ?loc:loc -> ?typ:typ -> trm -> field -> trm
 val trm_record_set : ?loc:loc -> ?typ:typ -> trm -> field -> trm -> trm
 val trm_record_make : ?loc:loc -> ?typ:typ -> (field * trm) list -> trm
 val trm_record_with : ?loc:loc -> ?typ:typ -> trm -> field -> trm -> trm
-
+ *)
 val trm_bbeis : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> trm_pat -> trm
 
 val trm_patvar : ?loc:loc -> ?typ:typ -> ?annot:annot -> ?resolution:varid_resolution -> var -> trm

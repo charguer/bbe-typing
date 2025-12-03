@@ -503,7 +503,7 @@ let rec tr_exp (e : expression) : trm =
       add_tuple_arity i ;
       return ~annot:(AnnotTuple i) (trm_tuple_flex (List.map tr_exp ts)).trm_desc *)
 
-  | Pexp_record (fs, None) ->
+(*   | Pexp_record (fs, None) ->
       let fs = List.map (fun (f, t) -> (tr_longident f.txt, t)) fs in
       check_uniq ~loc (List.map fst fs) ;
       let fs = List.map (fun (f, t) -> (field f, tr_exp t)) fs in
@@ -530,7 +530,8 @@ let rec tr_exp (e : expression) : trm =
         (trm_var_symbol (SymbolSetField f))
         [tr_exp t1; tr_exp t2])
 
-  | Pexp_match (e, cs) ->
+ *)
+   | Pexp_match (e, cs) ->
       return (trm_desc_match (tr_exp e) (List.map tr_case cs))
 
   (* TODO *)

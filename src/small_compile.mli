@@ -18,8 +18,8 @@ val remove_unnecessary_type_annotations : program -> program
   The ones that won't be inlined will be because of a shadowing that might cause the program
   not to work as intended.
   Also rewrites simple computations like [float_of_int 1] to [1.0]. *)
-val inline_simple : program -> program
-
+(* val inline_simple : program -> program
+ *)
 (* Force the explicit marking of the type of the object being matched on a pattern-matching,
   to avoid issues with overloaded constructors.
   By default, it uses heuristics to sometimes avoid adding a type where it doesn't add any
