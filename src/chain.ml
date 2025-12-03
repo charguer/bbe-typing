@@ -83,7 +83,7 @@ let full
     if !Flags.verbose then
       Printf.printf "Raw ast :\n%s\n"
       (Debug.print_low_level_program ast);
-      Printf.printf "Readable* ast :\n%s\n" res;
+      Printf.printf "Readable ast :\n%s\n" res;
     call_back_syntax res
   ) ;
 

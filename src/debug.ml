@@ -113,13 +113,13 @@ let env_add_tconstr (x : tconstr) (ty : typ) : unit =
       (print_tconstr x)
       print_typ ty)
 
-let env_add_item ~style (x : var) (it : env_item) (is_overloaded : bool) : unit =
+let env_add_item ~style (x : var) (s : sch) (is_overloaded : bool) : unit =
   if_debug (fun () ->
     Printf.printf "%aenv_add %s%s : [%a]\n"
       print_indent ()
       (print_var x)
       (if is_overloaded then " overloaded" else "")
-      (print_item ~style) it)
+      (print_item ~style) s)
 
 let typecheck_up_start ~style (annot : typ option) (t : trm) : unit =
   if_debug (fun () ->

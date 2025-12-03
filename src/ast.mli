@@ -307,7 +307,7 @@ and pat_desc =
   | Pat_any                         (* _ *)
   | Pat_var of var                  (* x *)
   | Pat_alias of pat * var          (* _ as x *)
-  | Pat_constant of cst             (* 42. Note that it then means the base 42 value, not one with an implicit class. *)
+  | Pat_constant of cst             (* 42. Note that it then means the base 42 value, not one with an implicit class. *) (*TODO: rename to Pat_cst*)
   | Pat_tuple of pats               (* (_, _) *)
   | Pat_construct of constr * pats  (* Some _ *)
   | Pat_constraint of pat * syntyp  (* (_ : sty) *)
@@ -368,6 +368,7 @@ and trm = {
   trm_typ : typ; (* a fresh flexible after parsing *)
   (* Should we add a trm_binds attribute? Like : if it was a bbe, then it would bind ...
     And then for patterns, the type would be the input, and "binds" would be the output... *)
+  trm_binds : env0 option; (* Note that this could probably replace trm_env... I don't think trm_env is so usefull actually... *)
   trm_env : env0; (* a dummy environment after parsing *)
   trm_annot : annot (* to help printing back of encoded terms *)
 }
@@ -465,15 +466,15 @@ and program = topdefs
     - a non-overloaded name may be shadowed by another non-overloaded name,
     - an overloaded symbol may be shadowed by another overloaded symbol (but they are
       then considered different). *)
-type env_item =
+(* type env_item =
   | Env_item_var of sch (* regular variable (not overloaded)  *)
   | Env_item_overload of candidates_and_modes (* overloaded *)
-
+ *)
 (** An [env_var] is a typing environment for resolving program variables
   typically defined by a let-binding): it associates an [env_item] to every
   variable name. Technically, the keys are symbols, due to our encodings
   (see definition of type [symbol]). *)
-type env_var = (symbol, env_item) Env.t (* LATER: rename to env_symbol? *)
+type env_var = (var, sch) Env.t (* LATER: rename to env_symbol? *)
 
 (** An [env_tconstr] is a typing environment for type constructors (e.g. [list]):
    it associates a type constructor descriptor ([tconstr_desc])

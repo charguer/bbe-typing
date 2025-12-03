@@ -76,7 +76,7 @@ val print_styp : styp -> string
 
 val trm_to_stdout : style:style -> trm -> unit
 val print_trm : style:style -> out_channel -> trm -> unit
-val print_item : style:style -> out_channel -> env_item -> unit
+val print_item : style:style -> out_channel -> sch -> unit
 val mode_to_string : mode -> string
 val modes_to_string : mode list -> string
 val modes_io_to_string : mode list * mode -> string

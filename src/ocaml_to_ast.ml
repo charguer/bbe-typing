@@ -387,6 +387,7 @@ let rec tr_exp (e : expression) : trm =
     { trm_desc = e';
       trm_loc = e.pexp_loc;
       trm_typ = typ_nameless ();
+      trm_binds = None;
       trm_env = env_empty;
       trm_annot = annot } in
   match e.pexp_desc with
@@ -397,14 +398,14 @@ let rec tr_exp (e : expression) : trm =
     else return (trm_desc_var (var (tr_longident lid_loc.txt)))
   | Pexp_constant c ->
       let cst = tr_constant ~loc c in
-      let (symbol, annot) =
+      (* let (symbol, annot) =
         match cst with
         | Cst_int _ -> (SymbolNumericInt, AnnotLiteralInt)
         | Cst_float _ -> (SymbolNumericFloat, AnnotLiteralFloat)
         | Cst_string _ -> (SymbolString, AnnotLiteralString)
         | Cst_bool _ | Cst_unit _ ->
-          assert false (* In OCaml, boolean and units are dealt as constructors and not constants. See Pexp_construct below. *) in
-      return ~annot (trm_desc_apps (trm_var_symbol symbol) [trm_cst cst]) (*Here I would want to return a constant instead.*)
+          assert false (* In OCaml, boolean and units are dealt as constructors and not constants. See Pexp_construct below. *) in *)
+      return (trm_desc_cst cst)
   | Pexp_let (rf, [vb], e2) ->
       let lets = tr_let rf e.pexp_attributes vb in
       let t2 = tr_exp e2 in
@@ -483,12 +484,10 @@ let rec tr_exp (e : expression) : trm =
       return (Trm_forall (tconstr ty.txt, t1))
   | Pexp_construct ({txt = Lident "()"; _}, _) ->
       let cst = Cst_unit () in
-      let (symbol, annot) = (SymbolTuple 0, AnnotLiteralUnit) in
-      return ~annot (trm_desc_apps (trm_var_symbol symbol) [trm_cst cst])
+      return (trm_desc_cst cst)
   | Pexp_construct ({txt = Lident b; _}, _) when b = "true" || b = "false" ->
       let cst = Cst_bool (b = "true") in
-      let (symbol, annot) = (SymbolBool, AnnotLiteralBool) in
-      return ~annot (trm_desc_apps (trm_var_symbol symbol) [trm_cst cst])
+      return (trm_desc_cst cst)
 
   | Pexp_construct (c, None) ->
       return (trm_desc_constr (constr (tr_longident c.txt)) [])
@@ -555,12 +554,10 @@ let rec tr_exp (e : expression) : trm =
 
 (* The let bindings can be normal declarations or instance declarations.
   In the case of a normal declarations, the returned list is a singleton.
-  In the case of a [let[@instance (+)] foo = ...], it is compiled into two
-  separate let definitions of the form [let foo = ...] and [let[@register (+)] _ = foo].
   In the case where the let pattern-matches, it is compiled on the fly to a match-expression. *)
 and tr_let (rf : rec_flag) (attrs : attributes) (vb : value_binding) : let_def list =
   let loc = vb.pvb_loc in
-  let symbols = filter_attributes_binding (attrs @ vb.pvb_attributes) in
+  let _symbols = filter_attributes_binding (attrs @ vb.pvb_attributes) in (*TODO : handling @pattern*)
   let (tvars, t) = extract_leading_type_parameters vb.pvb_expr in
   let (args, body) = split_fun_args t in
   let (implicits, non_implicits) =
@@ -588,7 +585,7 @@ and tr_let (rf : rec_flag) (attrs : attributes) (vb : value_binding) : let_def l
     trm_funs_if_non_empty ~loc (List.map (fun (x, _sym, ty) -> (x, ty)) implicits) fun_body in
   (* The variable [full_def] also includes the for-alls quantifiers. *)
   let full_def = trm_foralls ~loc tvars full_body in
-  if symbols = [] then (
+  if _symbols = [] then ( (* TODO: remove symbols, and handle the attributes themselves. Without needing to filter anything basically. *)
     if implicits <> [] then
       unsupported ~loc "[@implicit] can only be used within an instance declaration." ;
     let bind =
@@ -635,9 +632,9 @@ and tr_let (rf : rec_flag) (attrs : attributes) (vb : value_binding) : let_def l
         let_def_bind = Bind_var (x', None)
       } in
       main_bind :: List.map later_bind xs
-  ) else (
+  ) else ( assert false;
     (* This let-binding is an instance declaration. *)
-    let instance_typ = fun_body.trm_typ in
+    (* let instance_typ = fun_body.trm_typ in
     let instance_sig = {
       instance_tvars = tvars ;
       instance_typ ;
@@ -683,7 +680,7 @@ and tr_let (rf : rec_flag) (attrs : attributes) (vb : value_binding) : let_def l
         let_def_body = full_body ;
         let_def_bind = Bind_register_instance (symbol, instance_sig)
       }) symbols
-    | _ -> unsupported ~loc "Only variable and wildcard pattern are accepted here."
+    | _ -> unsupported ~loc "Only variable and wildcard pattern are accepted here." *)
   )
 
 and tr_case c =

@@ -11,7 +11,7 @@ val log : ('a, unit, string, unit) format4 -> 'a
 
 val env_add_tvar_rigid : tvar_rigid -> typ -> unit
 val env_add_tconstr : tconstr -> typ -> unit
-val env_add_item : style:Ast_print.style -> var -> env_item -> bool -> unit
+val env_add_item : style:Ast_print.style -> var -> sch -> bool -> unit
 val typecheck_up_start : style:Ast_print.style -> typ option -> trm -> unit
 val typecheck_end : style:Ast_print.style -> trm -> unit
 val typecheck_down_start : style:Ast_print.style -> typ -> trm -> unit

@@ -58,12 +58,28 @@ let synsch_internalize ~loc (e:env) (synsch:synsch) : synsch =
 let typeof (t : trm) : typ =
   t.trm_typ
 
+let bindsof ~loc (t : trm) : env =
+  match t.trm_binds with
+  | Some bs -> bs
+  | None -> raise (Error (Expected_bindings, loc))
+
+(** * Custom functions, to be put elsewhere later *)
+let merge_distinct (e1 : env) (e2 : env) : env =
+(* use Env.mem with the variables. *)
+(* Plan :
+1. Remove env_item, just an sch is enough, no need for overloading anyway.
+2. Remove symbols inside env, simply replace with a variable name (type "var")
+3. Removing all of this will break a lot of code, find all of these, document them, and modify accordingly*)
+  failwith "TODO"
+
 let typ_constant = function
   | Cst_bool _ -> the_typ_bool
   | Cst_int _ -> the_typ_int
   | Cst_float _ -> the_typ_float
   | Cst_string _ -> the_typ_string
   | Cst_unit _ -> the_typ_unit
+
+
 
 (* Checking that two environments as computed by typecheck_pat below are the same. *)
 let check_same_domains_in_pattern  (e : env) ~loc (e1 : (Var.var, typ) Env.t) (e2 : (Var.var, typ) Env.t) : unit =
@@ -408,7 +424,7 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
   let loc = t.trm_loc in
   let aux ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
     typecheck_ml ?expected_typ env t in
-  let aux_bbe ?(env : env = e) (b : bbe) : bbe * env =
+  let aux_bbe ?(env : env = e) (b : bbe) : bbe =
     typecheck_bbe env b in
   let return ?(annot = t.trm_annot) (typ : typ) (u : trm_desc) : trm =
     (* Unify typ with expected type if provided *)
@@ -424,6 +440,7 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       trm_loc = loc;
       trm_typ = typ;
       trm_env = e;
+      trm_binds = None;
       trm_annot = annot } in
 
   let result =
@@ -465,18 +482,24 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       (* here we avoid the creation of a flexible that is immediately unified *)
       return typ (Trm_funs (args, t1))
 
-  | Trm_if (t1, t2, t3) ->
-      let (t1, env_cond) = aux_bbe t1 in
-      let t2 = aux ~env:env_cond t2 in
-      let t3 = aux t3 in
-      if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s \n %s : %s\n" (trm_to_string t1)(Ast_print.typ_to_string t1.trm_typ) (trm_to_string t2) (Ast_print.typ_to_string t2.trm_typ) (trm_to_string t3) (Ast_print.typ_to_string t3.trm_typ);
-      unify_or_error ~loc e (typeof t2) (typeof t3) (Branches_mismatch_if (typeof t2, typeof t3));
-      return (typeof t2) (Trm_if (t1,t2,t3))
+  | Trm_if (b, t1, t2) ->
+      let b = aux_bbe b in
+      (* TODO: the intersection between the two environments *)
+      let t1 = aux (* ~env:(bindsof ~loc b) *) t1 in
+      let t2 = aux t2 in
+      if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s \n %s : %s\n" (trm_to_string b)(Ast_print.typ_to_string b.trm_typ) (trm_to_string t1) (Ast_print.typ_to_string t1.trm_typ) (trm_to_string t2) (Ast_print.typ_to_string t2.trm_typ);
+      unify_or_error ~loc e (typeof t1) (typeof t2) (Branches_mismatch_if (typeof t1, typeof t2));
+      return (typeof t2) (Trm_if (b,t1,t2))
 
   | Trm_let (b, t2) ->
       let (b, e, _sch) = typecheck_let  ~loc e b in
       let t2 = aux ~env:e t2 in
       return (typeof t2) (Trm_let (b, t2))
+
+  (*Trm_apps (t0, ts) when t0 is tuple constructor ...
+    type ts (list map);
+    return (typ_prod (List.map typeof ts) (Trm_apps (t0, ts))
+    *)
 
   | Trm_apps (t0, ts) ->
       let t0 = aux t0 in
@@ -521,17 +544,17 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
     if !Flags.verbose && !Flags.debug then Printf.printf "Exiting typecheck_ml with %s\n\n" (trm_to_string result);
     result
 
-and typecheck_bbe (e : env) (b : bbe) : bbe * env =
+and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a "bindsof" function *)
   if !Flags.verbose && !Flags.debug then Printf.printf "Entering typecheck_bbe with :\n t = %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e) *) (trm_to_string b);
 
   let loc = b.trm_loc in
   let aux_ml ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
     typecheck_ml ?expected_typ env t in
-  let _aux_bbe ?(env : env = e) (t : trm) : bbe * env =
+  let _aux_bbe ?(env : env = e) (t : trm) : bbe =
     typecheck_bbe env t in
-  let aux_pat ?(env : env = e) (typ : typ) (p : trm_pat) : trm_pat * env =
+  let aux_pat ?(env : env = e) (typ : typ) (p : trm_pat) : trm_pat =
     typecheck_pattern env typ p in
-  let return ?(annot = b.trm_annot) (typ : typ) (u : trm_desc) : trm =
+  let return ?(annot = b.trm_annot) (typ : typ) (u : trm_desc) (binds : env) : trm =
     (* We also unify with the previously stored type in place, for the rare cases in which the parser
       shares types between terms. *)
     (* FIXME TODO: This fails when an instance take parameters as arguments: maybe the parser isn't
@@ -541,44 +564,46 @@ and typecheck_bbe (e : env) (b : bbe) : bbe * env =
       trm_loc = loc;
       trm_typ = typ;
       trm_env = e;
+      trm_binds = Some binds;
       trm_annot = annot } in
 
   match b.trm_desc with
     | Trm_bbeis (t, p) ->
       let t = aux_ml t in
       if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s\n" (trm_to_string t)(Ast_print.typ_to_string t.trm_typ) (trm_to_string p) (Ast_print.typ_to_string p.trm_typ);
-      let (p, env_pat) = aux_pat (t.trm_typ) p in (*Very probably handle a concatenation function between the environments. For the moment, just concatenate them, but in the near future check for shadowing *)
+      let p = aux_pat (t.trm_typ) p in (*Very probably handle a concatenation function between the environments. For the moment, just concatenate them, but in the near future check for shadowing *)
       unify_or_error ~loc e (typeof t) (typeof p) (Mismatch_type_is (typeof t, typeof p));
-      (return (the_typ_bool) (Trm_bbeis (t, p)), env_pat)
-    | _ -> (aux_ml ~expected_typ:the_typ_bool b, e)
+      return (the_typ_bool) (Trm_bbeis (t, p)) (bindsof ~loc p)
+    | _ -> aux_ml ~expected_typ:the_typ_bool b
 
-and typecheck_pattern (e : env) (typ : typ) (p : trm_pat) : trm_pat * env =
+and typecheck_pattern (e : env) (typ : typ) (p : trm_pat) : trm_pat =
   let loc = p.trm_loc in
   let _aux_ml ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
     typecheck_ml ?expected_typ env t in
-  let _aux_bbe ?(env : env = e) (t : trm) : bbe * env =
+  let _aux_bbe ?(env : env = e) (t : trm) : bbe =
     typecheck_bbe env t in
-  let _aux_pat ?(env : env = e) (typ : typ) (p : trm_pat) : trm_pat * env =
+  let _aux_pat ?(env : env = e) (typ : typ) (p : trm_pat) : trm_pat =
     typecheck_pattern env typ p in
-  let return ?(annot = p.trm_annot) (typ : typ) (u : trm_desc) : trm =
+  let return ?(annot = p.trm_annot) (typ : typ) (u : trm_desc) (binds : env) : trm =
     (* We also unify with the previously stored type in place, for the rare cases in which the parser
       shares types between terms. *)
     (* FIXME TODO: This fails when an instance take parameters as arguments: maybe the parser isn't
       generating the types the right way? *)
-    unify_or_error  ~loc e p.trm_typ typ (Conflict_with_context (p, p.trm_typ, typ)) ;
+    unify_or_error  ~loc e p.trm_typ typ (Conflict_with_context (p, p.trm_typ, typ));
     { trm_desc = u;
       trm_loc = loc;
       trm_typ = typ;
       trm_env = e;
+      trm_binds = Some binds;
       trm_annot = annot } in
 
   if !Flags.verbose then Printf.printf "Entering typecheck_pattern with :\n expected_type = %s \n t = %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e) *) (Ast_print.typ_to_string typ) (trm_to_string p);
 
   match p.trm_desc with
-  | Trm_patwild -> (return typ (p.trm_desc), e)
-  | Trm_annot _ -> raise (Error (Unsupported_term "Trm_annot", loc))
-
-  | _ -> failwith "TODO"
+  | Trm_patwild -> return typ Trm_patwild env_empty
+  | Trm_annot _ -> raise (Error (Unsupported_term "Trm_annot", loc)) (* Should add as condition that the annotated type is to be the same as the input type of the pattern. In the same way for aliases, we have to unify the variable's type with the input type of the pattern. *)
+  | Trm_patvar x -> raise (Error (Unsupported_term "Trm_patvar", loc))
+  | _ -> raise (Error (Unsupported_term "\"Pattern not yet handled\"", loc))
 
 (*Time to write a new typing judgement. For BBEs and for patterns.
 Function signature :

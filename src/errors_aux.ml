@@ -114,6 +114,7 @@ let string_of_error ~style (e : error) : string =
   | Overload_of_a_regular_variable x ->
     sprintf "The regular variable %s is being shadowed by an overloaded symbol." (symbol_to_string x)
   | Maximum_varid_depth_reached -> "maximum length of a dependency chain of varid has been exceeded"
+  | Expected_bindings -> sprintf "expected bindingss"
   | Unsupported_term s -> sprintf "The term %s is not supported." s
 
 let string_of_error_short (e : error) : string =
@@ -173,5 +174,6 @@ let string_of_error_short (e : error) : string =
   | Overload_of_a_regular_variable x ->
     sprintf "Overload of a non-overloaded variable %s" (symbol_to_string x)
   | Maximum_varid_depth_reached -> "maximum varid depth exceeded"
+  | Expected_bindings -> "expected bindings"
   | Unsupported_term _s -> "unsupported term"
 

@@ -1052,11 +1052,8 @@ let trm_to_stdout ~style (t : trm) : unit =
 let print_trm ~style ppf (t : trm) : unit =
   doc_to_out ppf (trm_to_doc ~style t)
 
-let print_item ~style ppf (it : env_item) : unit =
-  match it with
-  | Env_item_var sch -> doc_to_out ppf (sch_to_doc sch)
-  | Env_item_overload is ->
-    doc_to_out ppf (overload_to_doc ~style is)
+let print_item ~style ppf (s : sch) : unit =
+  doc_to_out ppf (sch_to_doc s)
 
 let insts_to_string ~style (insts : candidates_and_modes) : string =
   doc_to_string (overload_to_doc ~style insts)

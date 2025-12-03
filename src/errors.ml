@@ -47,6 +47,7 @@ type error =
   | Variable_most_occur_on_both_sides_of_this_pattern of var
   | Overload_of_a_regular_variable of symbol
   | Maximum_varid_depth_reached
+  | Expected_bindings
   | Unsupported_term of string
 
 exception Error of (error * loc)

@@ -3,14 +3,14 @@
   They are only modified in Typer. **)
 
 let debug = ref false
-let verbose = ref true
+let verbose = ref false
 
 let quiet = ref false
 
 let continue_on_error = ref false
 
 (* If enabled, halts the typing on error and forces OCaml's verbose runtime trace *)
-let halt_on_error = ref true
+let halt_on_error = ref false
 
 let force_complete_resolution = ref false
 
@@ -33,7 +33,7 @@ let disable_check_cycle_on_resolution_attempts = ref false
 (* If disabled, do not write any output. *)
 let output = ref true
 
-let print_parsed = ref false
+let print_parsed = ref true
 
 (* Replace overloaded variables by the corresponding instance. *)
 let instantiate = ref true

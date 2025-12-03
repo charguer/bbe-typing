@@ -39,15 +39,15 @@ val styp_any : styp
 
 (** * Typing Environment *)
 
-val mk_overloaded_symbol : var -> symbol
-
-val overload_var : candidates_and_modes -> env_item
-
+(* val mk_overloaded_symbol : var -> symbol
+ *)
+(* val overload_var : candidates_and_modes -> env_item
+ *)
 val env_add_tconstr : env -> tconstr -> tconstr_desc -> env
 val env_add_tvar : env -> tvar_rigid -> typ -> env
-val env_add_var : env -> var -> env_item -> env
-val env_add_symbol : env -> symbol -> env_item -> env
-
+val env_add_var : env -> var -> sch -> env
+(* val env_add_symbol : env -> symbol -> env_item -> env
+ *)
 (** * Terms *)
 
 val varsyntyp_loc : varsyntyp -> loc
@@ -205,7 +205,7 @@ val env_empty : env
 val env_builtin : env
 val env_builtin_with_tuples : int list -> env (* Also add all the tuple constructors for these arities. *)
 val env_builtin_tuples : unit -> env (* Calls [env_builtin_with_tuples] with the currently seen built-ints. *)
-val env_item_var_nonpolymorphic : typ -> env_item
+val env_item_var_nonpolymorphic : typ -> sch
 
 (** * Tuples *)
 

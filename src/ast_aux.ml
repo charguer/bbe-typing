@@ -112,12 +112,12 @@ Typ_constr of tconstr * typs
 *)
 
 
-let mk_overloaded_symbol (x : var) : symbol =
+(* let mk_overloaded_symbol (x : var) : symbol =
   SymbolName x
-
-let overload_var (is : candidates_and_modes) : env_item =
+ *)
+(* let overload_var (is : candidates_and_modes) : env_item =
   Env_item_overload is
-
+ *)
 let env_add_tconstr (e : env) (x : tconstr) (tcd : tconstr_desc) : env =
   { e with env_tconstr = Env.add e.env_tconstr x tcd }
 
@@ -132,14 +132,14 @@ let env_add_tvar (e : env) (x : tvar_rigid) (ty : typ) : env =
     tconstr_def = Tconstr_abstract
   }
 
-let env_add_symbol (e : env) (x : symbol) (it : env_item) : env =
+(* let env_add_symbol (e : env) (x : symbol) (it : env_item) : env =
   { e with env_var = Env.add e.env_var x it }
+ *)
+let env_add_var (e : env) (x : var) (s : sch) : env =
+  { e with env_var = Env.add e.env_var x s }
 
-let env_add_var (e : env) (x : var) (it : env_item) : env =
-  env_add_symbol e (SymbolName x) it
-
-let env_add_var_pair (e : env) ((x,it) : var * env_item) : env =
-  env_add_var e x it
+let env_add_var_pair (e : env) ((x,s) : var * sch) : env =
+  env_add_var e x s
 
 
 (*#########################################################################*)
@@ -402,6 +402,7 @@ let mktrm ?(loc:loc = loc_none) ?(typ:typ = typ_nameless ()) ?(annot = AnnotNone
   trm_loc = loc;
   trm_typ = typ;
   trm_env = env_dummy;
+  trm_binds = None;
   trm_annot = annot
 }
 
@@ -731,8 +732,7 @@ let env_builtin_tuples () = env_builtin_with_tuples (all_seen_tuple_arity ())
 
 (* ** Smart constructors *)
 
-let env_item_var_nonpolymorphic (ty : typ) : env_item =
-  Env_item_var (sch_of_nonpolymorphic_typ ty)
+let env_item_var_nonpolymorphic (ty : typ) : sch = sch_of_nonpolymorphic_typ ty
 
 
 (*#########################################################################*)
