@@ -197,14 +197,14 @@ val instance_sig_from_sch : sch -> instance_sig
 
 (** ** For Varid *)
 
-val create_varid : ?loc:loc -> ?env:env -> ?typ:typ -> ?resolution:varid_resolution -> ?depth:int -> ?context:symbol -> symbol -> varid
+val create_varid : ?loc:loc -> ?env:env -> ?typ:typ -> ?resolution:varid_resolution -> ?depth:int -> ?context:symbol -> var -> varid
 
 (** * Environment Initialisation *)
 
 val env_empty : env
 val env_builtin : env
-val env_builtin_with_tuples : int list -> env (* Also add all the tuple constructors for these arities. *)
-val env_builtin_tuples : unit -> env (* Calls [env_builtin_with_tuples] with the currently seen built-ints. *)
+(* val env_builtin_with_tuples : int list -> env (* Also add all the tuple constructors for these arities. *)
+val env_builtin_tuples : unit -> env (* Calls [env_builtin_with_tuples] with the currently seen built-ints. *) *)
 val env_item_var_nonpolymorphic : typ -> sch
 
 (** * Tuples *)

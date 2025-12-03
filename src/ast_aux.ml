@@ -351,10 +351,10 @@ let instance_sig_from_sch sch = {
 (*#########################################################################*)
 (* ** Smart constructors for varids *)
 
-let create_varid ?(loc = loc_none) ?(env = env_dummy) ?(typ:typ option) ?(resolution = VarUnknown) ?(depth = 0) ?context symbol : varid =
+let create_varid ?(loc = loc_none) ?(env = env_dummy) ?(typ:typ option) ?(resolution = VarUnknown) ?(depth = 0) ?context v : varid =
   incr Counters.counter_varid ; {
     varid_unique_int = new_varid_unique_int () ;
-    varid_symbol = symbol ;
+    varid_var = v ;
     varid_loc = loc ;
     varid_resolution = resolution;
     varid_depth = depth;
@@ -427,11 +427,11 @@ let trm_desc_unit () : trm_desc =
 let trm_desc_var_varid varid : trm_desc =
   Trm_var varid
 
-let trm_desc_var_symbol ?typ ?resolution (x : symbol) : trm_desc =
+(* let trm_desc_var_symbol ?typ ?resolution (x : symbol) : trm_desc =
   trm_desc_var_varid (create_varid ?typ ?resolution x)
-
+ *)
 let trm_desc_var ?typ ?resolution (x : var) : trm_desc =
-  trm_desc_var_symbol ?typ ?resolution (SymbolName x)
+  trm_desc_var_varid (create_varid ?typ ?resolution x)
 
 let trm_desc_funs (xs : varsyntyps) (t : trm) : trm_desc =
   assert (xs <> []) ;
@@ -472,7 +472,7 @@ let trm_desc_patvar_varid varid : trm_desc =
   Trm_patvar varid
 
 let trm_desc_patvar ?typ ?resolution (x : var) : trm_desc =
-  trm_desc_patvar_varid (create_varid ?typ ?resolution (SymbolName x))
+  trm_desc_patvar_varid (create_varid ?typ ?resolution x)
 
 let trm_desc_patwild () : trm_desc =
   Trm_patwild
@@ -504,9 +504,9 @@ let trm_unit ?loc ?typ ?annot () : trm =
 let trm_var ?loc ?typ ?annot ?resolution (x : var) : trm =
   mktrm ?loc ?typ ?annot (trm_desc_var ?typ ?resolution x)
 
-let trm_var_symbol ?loc ?typ ?annot ?resolution (x : symbol) : trm =
+(* let trm_var_symbol ?loc ?typ ?annot ?resolution (x : symbol) : trm =
   mktrm ?loc ?typ ?annot (trm_desc_var_symbol ?typ ?resolution x)
-
+ *)
 let trm_var_varid ?loc ?typ ?annot varid : trm =
   mktrm ?loc ?typ ?annot (trm_desc_var_varid varid)
 
@@ -548,7 +548,7 @@ let trm_foralls ?loc ?typ (tys : tvar_rigid list) (t : trm) : trm =
   if tys = [] then t
   else List.fold_left (fun t ty -> trm_forall ?loc ?typ ty t) t (List.rev tys)
 
-let trm_record_get ?loc ?typ t f =
+(* let trm_record_get ?loc ?typ t f =
   mktrm ?loc ?typ ~annot:AnnotRecordGet
     (trm_desc_apps (trm_var_symbol ?loc (SymbolGetField f)) [t])
 
@@ -563,9 +563,10 @@ let trm_record_make ?loc ?typ fts =
 
 let trm_record_with ?loc ?typ t1 f t2 =
   mktrm ?loc ?typ ~annot:AnnotRecordWith
-    (trm_desc_apps (trm_var_symbol ?loc (SymbolRecordWith f)) [t1; t2])
+    (trm_desc_apps (trm_var_symbol ?loc (SymbolRecordWith f)) [t1; t2]) *)
 
-let trm_tuple ?loc ?typ ?annot (ts : trms) : trm =
+(* TODO: check later if trying to handle tuples. Deprecated *)
+(* let trm_tuple ?loc ?typ ?annot (ts : trms) : trm =
   let i = List.length ts in
   add_tuple_arity i ;
   assert (i >= 2) ;
@@ -577,18 +578,20 @@ let trm_tuple_flex ?loc ?typ ?annot (ts : trms) : trm =
   | [] -> trm_unit ?loc ?typ ?annot ()
   | [t] -> t
   | _ -> trm_tuple ?loc ?typ ?annot ts
+ *)
 
+(** [trm_desc_constr] Note: previously translated several arguments to a singleton of a tuple for some reason. Still unsure about why. *)
 let trm_desc_constr ?loc ?typ (c : constr) (ts : trms) : trm_desc =
   let c = constr_to_var c in
   match ts with
   | [] -> trm_desc_var ?typ c
-  | [t] ->
+(*   | [t] ->
     let typ_fun = Option.map (fun typ -> typ_arrow [t.trm_typ] typ) typ in
-    trm_desc_apps (mktrm ?loc (trm_desc_var ?typ:typ_fun c)) [t]
+    trm_desc_apps (mktrm ?loc (trm_desc_var ?typ:typ_fun c)) [t] *)
   | _ ->
     let typ_fun =
       Option.map (fun typ -> typ_arrow [typ_tuple (List.map (fun t -> t.trm_typ) ts)] typ) typ in
-    trm_desc_apps (mktrm ?loc (trm_desc_var ?typ:typ_fun c)) [trm_tuple_flex ?loc ts]
+    trm_desc_apps (mktrm ?loc (trm_desc_var ?typ:typ_fun c)) ts
 
 let trm_constr ?loc ?typ ?annot (c : constr) (ts : trms) : trm =
   mktrm ?loc ?typ ?annot (trm_desc_constr ?loc ?typ c ts)
@@ -649,7 +652,8 @@ let pat_ors ?loc ?typ (ps : pats) =
 (*#########################################################################*)
 (* ** Environment initialisation *)
 
-let mk_base_constr name ?(symbol = SymbolName (Var.var name)) inputs tvars typ =
+(* Question: what does this function do? It creates an "env_item". Here in particular, we define an overloaded item for constructors. Is it really necessary? Can't I just use specific constructs? Or is it because we want to be able to unify with any type? *)
+(* let mk_base_constr name ?(symbol = SymbolName (Var.var name)) inputs tvars typ =
   let x = var name in
   Env_item_overload {
       candidates_and_modes_candidates = [{
@@ -664,7 +668,7 @@ let mk_base_constr name ?(symbol = SymbolName (Var.var name)) inputs tvars typ =
       }] ;
       candidates_and_modes_modes = Some (inputs, Mode_in)
   }
-
+ *)
 let env_builtin =
   let mk_special = {
     tconstr_tvars = [] ;
@@ -689,11 +693,11 @@ let env_builtin =
       tconstr_tvars = [tv] ;
       tconstr_def = Tconstr_def_sum [
         (constr "[]", typ_list t) ;
-        (constr "::", typ_arrow [t] (typ_list t)) ;
+        (constr "::", typ_arrow [t] (typ_list t)) ; (* Note : isn't this a "typ_arrow [t] (typ_arrow [typ_list t] (typ_list t))" *)
       ] ;
       tconstr_typ = None
     } in
-  let e =
+  (* let e =
     let tv = tvar_rigid "'a" in
     let t = typ_rigid tv in
     env_add_var e (var "[]") (mk_base_constr "[]" [] [tv] (typ_list t)) in
@@ -706,10 +710,10 @@ let env_builtin =
   let e =
     env_add_var e (var "^")
       (mk_base_constr "^" [Mode_in; Mode_in] []
-        (typ_arrow [the_typ_string; the_typ_string] the_typ_string)) in
+        (typ_arrow [the_typ_string; the_typ_string] the_typ_string)) in *)
   e
 
-let env_builtin_with_tuples =
+(* let env_builtin_with_tuples =
   List.fold_left (fun e i ->
     let tvs = List.init i (fun i -> tvar_rigid (Printf.sprintf "'a%i" i)) in
     let tys = List.map typ_rigid tvs in
@@ -729,7 +733,7 @@ let env_builtin_with_tuples =
     e) env_builtin
 
 let env_builtin_tuples () = env_builtin_with_tuples (all_seen_tuple_arity ())
-
+ *)
 (* ** Smart constructors *)
 
 let env_item_var_nonpolymorphic (ty : typ) : sch = sch_of_nonpolymorphic_typ ty

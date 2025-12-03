@@ -40,7 +40,7 @@ let check_flexible_not_occuring_typ (tflexible : typ) (ty : typ) : unit =
 
 let varid_is_resolved (varid:varid) : bool =
   match varid.varid_resolution with
-  | VarRegular | VarResolved _ -> true
+  | VarRegular (* | VarResolved _ *) -> true
   | _ -> false
 
 exception Contains_unresolved of varid
@@ -48,8 +48,9 @@ exception Contains_unresolved of varid
 let rec all_varid_in_varid_are_resolved_exn (x : varid) : unit =
   match x.varid_resolution with
   | VarRegular -> ()
-  | VarResolved (_, xs) -> List.iter all_varid_in_varid_are_resolved_exn xs
-  | _ -> raise (Contains_unresolved x)
+  (* | VarResolved (_, xs) -> List.iter all_varid_in_varid_are_resolved_exn xs
+   *)
+   | _ -> raise (Contains_unresolved x)
 
 let rec all_varid_in_trm_are_resolved_exn (t : trm) : unit =
   match t.trm_desc with
@@ -99,14 +100,14 @@ let check_fully_typed ~in_depth ~test_acylic (t : trm) (s : symbol) : unit =
   try all_varid_in_trm_are_resolved_exn t
   with Contains_unresolved x ->
     debug () ;
-    begin match x.varid_resolution with
+    (* begin match x.varid_resolution with
     | VarUnresolved candidates ->
       let candidates = candidates.candidates_and_modes_candidates in
       Debug.log "++Here are the candidates for symbol %s:\n - %s"
         (symbol_to_string_message x.varid_symbol)
         (String.concat "\n - " (List.map (Ast_print.instance_to_string ~style:style_debug) candidates))
     | _ -> ()
-    end ;
+    end ; *)
     raise (Error (Missing_information
       (Printf.sprintf "for resolving symbol %s within %s"
         (symbol_to_string_message x.varid_symbol) (symbol_to_string_message s),
@@ -512,15 +513,15 @@ let check_arity env (x : symbol) (sch : sch) (insts : candidates_and_modes) : un
 (*#########################################################################*)
 (* ** Extension of environments *)
 
-let env_find_overload ?(loc = loc_none) (e : env) (x : symbol) : candidates_and_modes =
+(* let env_find_overload ?(loc = loc_none) (e : env) (x : symbol) : candidates_and_modes =
   match Env.read_option e.env_var x with
   | None -> { candidates_and_modes_candidates = []; candidates_and_modes_modes = None }
   | Some (Env_item_overload candidates_and_modes) -> candidates_and_modes
   | Some (Env_item_var _) -> raise (Error (Overload_of_a_regular_variable x, loc))
-
+ *)
 (* We add checks into [env_add_var]. *)
-let env_add_var (e : env) (x : var) (it : env_item) : env =
-  let alt_check_fully_resolved (sch : sch) =
+let env_add_var (e : env) (x : var) (s : sch) : env =
+(*   let alt_check_fully_resolved (sch : sch) =
     (* It could be tempting to add [assert (not (contains_flexible sch.sch_body))] here,
       but this would prevent local unannotated let-bindings. *)
     () in
@@ -530,8 +531,9 @@ let env_add_var (e : env) (x : var) (it : env_item) : env =
     | Env_item_overload { candidates_and_modes_candidates = i :: _ ; _ } ->
       alt_check_fully_resolved (instance_sch i.instance_sig)
   end;
-  Debug.env_add_item ~style:style_debug x it false;
-  env_add_var e x it
+ *)
+  Debug.env_add_item ~style:style_debug x s false;
+  env_add_var e x s
 
 let env_add_tconstr_var (e : env) (x : tconstr) (ty : typ) : env =
   Debug.env_add_tconstr x ty ;

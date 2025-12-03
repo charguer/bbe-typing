@@ -44,16 +44,16 @@ let collect_all_var_and_symbol_names p =
   let vars = ref SSet.empty in
   let symbols = ref SySet.empty in
   let add n = vars := SSet.add n !vars in
-  let add_symbol n = symbols := SySet.add n !symbols in
-  Env.fold (env_builtin_tuples ()).env_var (fun () x _ -> add (symbol_to_string x)) () ;
+  (* let add_symbol n = symbols := SySet.add n !symbols in
+  Env.fold (env_builtin_tuples ()).env_var (fun () x _ -> add (symbol_to_string x)) () ; *)
   program_iter (fun d ->
     match d.topdef_desc with
     | Topdef_val_def { let_def_bind = b ; let_def_body = t ; _ } ->
       begin match b with
       | Bind_var (v, _) ->
         add (Var.print_var v)
-      | Bind_register_instance (sym, _) ->
-        add_symbol sym
+      (* | Bind_register_instance (sym, _) ->
+        add_symbol sym *)
       | _ -> ()
       end ;
       let rec aux t =
@@ -61,11 +61,11 @@ let collect_all_var_and_symbol_names p =
         | Trm_let ({ let_def_bind = Bind_var (v, _) ; _ }, _) ->
           add (Var.print_var v) ;
           trm_iter aux t
-        | Trm_let ({ let_def_bind = Bind_register_instance (sym, _) ; _ }, _) ->
+        (* | Trm_let ({ let_def_bind = Bind_register_instance (sym, _) ; _ }, _) ->
           add_symbol sym ;
-          trm_iter aux t
-        | Trm_var { varid_symbol = SymbolName _ ; _ } -> ()
-        | Trm_var { varid_symbol = sym ; _ } -> add_symbol sym
+          trm_iter aux t *)
+        (* | Trm_var { varid_symbol = SymbolName _ ; _ } -> ()
+        | Trm_var { varid_symbol = sym ; _ } -> add_symbol sym *)
         | _ -> trm_iter aux t in
       aux t
     | Topdef_typ_def { typ_def_td = tds ; _ } ->
@@ -217,7 +217,7 @@ let instantiate p =
       (* This typically happens for built-in instances, whose values directly binds to OCaml's built-ins. *)
       inst.instance_value in
   (* Adding definitions from the built-in environnment. *)
-  let built_in =
+  (* let built_in =
     Env.fold (env_builtin_tuples ()).env_var (fun p x i ->
       (* This [x] is supposed to refer to a definition in the standard library. *)
       let ds =
@@ -237,7 +237,9 @@ let instantiate p =
               term_declaration names t_builtin t_ty in
             topdef_val Asttypes.Nonrecursive (Bind_var vty) t in
           List.map build insts in
-      ds @ p) [] in
+      ds @ p) [] *)
+    let built_in = [] (* Might be a source of error. I am still not sure of what this variable is for. But since we remove any occurence of overloading, we would want this to be good I guess?? *)
+    in
   (* Replacing the resolved instances within the terms by their actual value. *)
   let rec replace_in_term t =
     let loc = t.trm_loc in
@@ -247,15 +249,15 @@ let instantiate p =
         | None -> varid.varid_typ
         | Some ty -> ty in
       match varid.varid_resolution with
-      | VarUnknown | VarUnresolved _ ->
+      | VarUnknown ->
         (* This shouldn't happen with the default options.
           But -keep-failing may lead here. *)
         trm_var_varid ~loc ~typ varid
-      | VarResolved (inst, []) -> get_instance_term ~loc typ inst
+      (* | VarResolved (inst, []) -> get_instance_term ~loc typ inst
       | VarResolved (inst, args) ->
         let args = List.map (instantiate_varid ~loc) args in
         let ty_inst = typ_arrow (List.map typ_of args) typ in
-        trm_apps ~loc ~typ (get_instance_term ~loc ty_inst inst) args
+        trm_apps ~loc ~typ (get_instance_term ~loc ty_inst inst) args *)
       | VarRegular -> trm_var_varid ~loc ~typ varid in
     match t.trm_desc with
     | Trm_var varid -> instantiate_varid ~loc:t.trm_loc ~typ:t.trm_typ varid
@@ -266,13 +268,13 @@ let instantiate p =
     | Trm_apps (t0, ts) ->
       let t0 = replace_in_term t0 in
       let ts = List.map replace_in_term ts in
-      let annot =
+      let annot =(*
         match t0.trm_desc with
         | Trm_var { varid_symbol = SymbolGetField _ ; _ } -> AnnotRecordGet
         | Trm_var { varid_symbol = SymbolSetField _ ; _ } -> AnnotRecordSet
         | Trm_var { varid_symbol = SymbolMakeRecord _ ; _ } -> AnnotRecordMake
         | Trm_var { varid_symbol = SymbolRecordWith _ ; _ } -> AnnotRecordWith
-        | _ -> t.trm_annot in
+        | _ -> *) t.trm_annot in
       trm_apps ~annot ~loc:t.trm_loc ~typ:t.trm_typ t0 ts
     | _ -> trm_map replace_in_term t in
   (* Generating the instantiated program. *)
@@ -366,7 +368,7 @@ let instantiate p =
     let x = Var.var (fresh names "_x") in
     let ty = typ_arrow [typ_constr a []] the_typ_unit in
     let sty = mk_syntyp_tconstr a in
-    let ignore_t = 
+    let ignore_t =
       trm_forall a (trm_funs ~typ:ty [(x, sty)]
         (trm_unit ~typ:the_typ_unit ())) in
     topdef_val Asttypes.Nonrecursive (Bind_var (ignore_var, None)) ignore_t in
@@ -509,30 +511,31 @@ let rec trm_map_env local env f t =
   let annot = t.trm_annot in
   match t.trm_desc with
   | Trm_funs (vs, t') ->
-    let env' = List.fold_left (fun env (v, _ty) -> local env (SymbolName v)) env vs in
+    let env' = List.fold_left (fun env (v, _ty) -> local env v) env vs in
     f env (trm_funs ~typ ~loc ~annot vs (f env' t'))
   | Trm_let ({ let_def_rec = rf ; let_def_bind = Bind_var (x, ty) ; let_def_body = t1 }, t2) ->
-    let env' = local env (SymbolName x) in
+    let env' = local env x in
     let t1 = f (if rf = Asttypes.Nonrecursive then env else env') t1 in
     let t2 = f env' t2 in
     f env (trm_let ~typ ~loc ~annot rf (x, ty) t1 t2)
-  | Trm_match (t, pts) ->
+  | Trm_match _ -> failwith "trm_map_env (small_compile.ml) with trm \"Trm_match\" is not handled"
+    (* | Trm_match (t, pts) ->
     f env (trm_match ~typ ~loc ~annot (aux env t) (List.map (fun (p, t) ->
       let xs = variables_of_pat p in
       let env = SySet.fold (fun v env -> local env v) xs env in
-      (p, aux env t)) pts))
+      (p, aux env t)) pts)) *)
   | _ -> f env (trm_map (aux env) t)
 
 (* Called when finding a term [x args] where [x] is associated to the function [fun vs -> t]
   in the current environment. *)
 let beta_reduce vs t args =
-  let module M = Map.Make (struct type t = symbol let compare = compare end) in
+  let module M = Map.Make (struct type t = Var.var let compare = compare end) in
   assert (List.length vs = List.length args) ;
   let env : trm M.t =
     List.fold_left2 (fun env v arg -> M.add v arg env) M.empty vs args in
   let aux env t =
     match t.trm_desc with
-    | Trm_var { varid_symbol = x ; _ } ->
+    | Trm_var { varid_var = x ; _ } ->
       begin match M.find_opt x env with
       | None -> t
       | Some t' -> t'
@@ -540,12 +543,13 @@ let beta_reduce vs t args =
     | _ -> t in
   trm_map_env (fun env v -> M.remove v env) env aux t
 
+(* Unused for the moment *)
 (* Given an environment and a term, inline all its subterms that can be inlined according to
   the environment. *)
-let inline_term env =
+(* let inline_term env =
   let aux (env : inline_env) (t : trm) =
     match t.trm_desc with
-    | Trm_apps ({ trm_desc = Trm_var { varid_symbol = x ; _ } ; _ }, args) ->
+    | Trm_apps ({ trm_desc = Trm_var { varid_var = x ; _ } ; _ }, args) ->
       let inline_trm_case (vs, t') = beta_reduce vs t' args in
       begin match Env.read_option env x with
       | None | Some (Inline_no, _) -> t
@@ -556,7 +560,7 @@ let inline_term env =
         | _ -> inline_trm_case vst
       end
     | _ -> t in
-  trm_map_env Env.remove env aux
+  trm_map_env Env.remove env aux *)
 
 (* Check whether a type constructor appears within a type. *)
 let rec tcons_in_typ tc ty =
@@ -580,7 +584,7 @@ let remove_tcons_in_term tc t =
 (* Given a let-binding (rf being the recflag and t its definition), decide whether it should
   be inlined or not (according to an ad-hoc heuristic).
   This function also returns its dependencies: it can directly be stored within the environment. *)
-let decide_inline_info env rf t =
+(* let decide_inline_info env rf t =
   let deps =
     let r = ref SySet.empty in
     let rec aux shadowed t =
@@ -675,10 +679,10 @@ let decide_inline_info env rf t =
       | Trm_annot (t, _) -> aux t
       (* TODO: Possibly other cases, typically using match. *)
       | _ -> (Inline_no, deps) in
-    aux t
+    aux t *)
 
-
-let inline_simple (p : program) =
+(*Unused for the moment...*)
+(* let inline_simple (p : program) =
   let (vars, symbols) = collect_all_var_and_symbol_names p in
   let env = (Env.empty () : inline_env) in
   let env =
@@ -722,7 +726,7 @@ let inline_simple (p : program) =
             Inline_cst (([SymbolName x], trm_apps (trm_var te.external_def_var) [trm_var x]), f) in
         let env = env_add env (SymbolName te.external_def_var) info SySet.empty in
         (env, td :: p)) (env, []) p in
-  List.rev p
+  List.rev p *)
 
 (* * Adding explicit type on pattern-matching. *)
 

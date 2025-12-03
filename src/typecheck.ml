@@ -2,6 +2,7 @@ open Ast_aux
 open Ast_fix
 open Blocks
 open Errors
+open Var
 
 module List = struct
   include List
@@ -82,7 +83,7 @@ let typ_constant = function
 
 
 (* Checking that two environments as computed by typecheck_pat below are the same. *)
-let check_same_domains_in_pattern  (e : env) ~loc (e1 : (Var.var, typ) Env.t) (e2 : (Var.var, typ) Env.t) : unit =
+let check_same_domains_in_pattern  (e : env) ~loc (e1 : (var, typ) Env.t) (e2 : (var, typ) Env.t) : unit =
   let (e1, e2) =
     if Env.size e1 > Env.size e2 then
       (* This will return an error, but we would like to first find a variable in the domain
@@ -97,11 +98,11 @@ let check_same_domains_in_pattern  (e : env) ~loc (e1 : (Var.var, typ) Env.t) (e
         (Conflict_with_context (trm_var ~loc ~typ:ty1 x, ty1, ty2))
   ) ()
 
-let typecheck_variable  loc (e : env) (sym : symbol) : varid =
-  let env_item =
-    match Env.read_option e.env_var sym with
-    | None -> raise (Error (Unbound_variable sym, loc))
-    | Some it -> it in
+let typecheck_variable  loc (e : env) (v : var) : varid =
+  let s =
+    match Env.read_option e.env_var v with
+    | None -> raise (Error (Unbound_variable (SymbolName v), loc)) (* SymbolName is a temporary solution. Later replace the type of Unbound_variable to var, or even string. *)
+    | Some s -> s in
   (* We compute the type of the variable, based on the item associated
     with [sym] in the environment.
     - If the item is a conventional type scheme, then the type of [sym]
@@ -109,24 +110,17 @@ let typecheck_variable  loc (e : env) (sym : symbol) : varid =
     - If the item describes it as an overloaded symbol, the type of [sym]
       is of the form [Env_item_overload instances], where [instances] is the
       list of possible instances. *)
-  let (typ, resolution) =
-    match env_item with
-    | Env_item_var sch ->
-      let typ = apply_to_fresh_flexibles sch in
-      (typ, VarRegular)
-    | Env_item_overload instances ->
-      let typ = typ_nameless () in
-      (typ, VarUnresolved instances) in
-  let varid = create_varid ~loc ~env:e sym ~typ ~resolution in
+  let typ = apply_to_fresh_flexibles s in
+  let varid = create_varid ~loc ~env:e v ~typ ~resolution:VarRegular in
   varid
 
 
 (* For each pattern, we returned the typed pattern and the environment it introduces. *)
-let rec typecheck_pat  ?(expected_typ:typ option) (e : env) (p : pat) : pat * (Var.var, typ) Env.t =
+let rec typecheck_pat  ?(expected_typ:typ option) (e : env) (p : pat) : pat * (var, typ) Env.t =
   let loc = p.pat_loc in
-  let aux ?(env : env = e) ?(expected_typ:typ option) (p : pat) : pat * (Var.var, typ) Env.t =
+  let aux ?(env : env = e) ?(expected_typ:typ option) (p : pat) : pat * (var, typ) Env.t =
     typecheck_pat  ?expected_typ env p in
-  let return (typ : typ) (p_d : pat_desc) ex : pat * (Var.var, typ) Env.t =
+  let return (typ : typ) (p_d : pat_desc) ex : pat * (var, typ) Env.t =
     (* Unify typ with expected type if provided *)
     Option.iter (fun typ' ->
       unify_or_error  ~loc e typ typ'
@@ -182,7 +176,7 @@ let rec typecheck_pat  ?(expected_typ:typ option) (e : env) (p : pat) : pat * (V
       List.fold_left (fun e1 (_p, e2) ->
         Env.fold e2 Env.add e1) (Env.empty ()) pes in
     let ps = List.map fst pes in
-    let x = typecheck_variable  loc e (SymbolName (Var.constr_to_var c)) in
+    let x = typecheck_variable  loc e (Var.constr_to_var c) in
     let tyr = typ_nameless () in
     let ty = typ_arrow_flexible (List.map (fun p -> p.pat_typ) ps) tyr in
     unify_or_error ~loc e ty x.varid_typ
@@ -324,7 +318,7 @@ let rec typecheck_ml_let_sch  ~loc ?(fully_resolved=false) rf (e : env) ((x, syn
      before processing the body of the definition *)
   let e3 =
     if rf = Asttypes.Recursive then (
-      env_add_var e2 x (Env_item_var sch)
+      env_add_var e2 x sch
     ) else e2 in
   (* Now we are ready to typecheck the body of the type scheme in that environment *)
   let t1' = typecheck_ml  e3 ~expected_typ:sch.sch_body t1 in
@@ -371,7 +365,7 @@ and typecheck_let  ~loc (e : env) (b : let_def) : let_def * env * sch =
             synsch_syntax = (sch.sch_tvars, styp_any) ;
             synsch_sch = sch
           } in
-      let e2 = env_add_var e x (Env_item_var sch) in
+      let e2 = env_add_var e x sch in
       return (Bind_var (x, Some synsch)) e2 t1 sch
 
   | Bind_register_instance (x, inst_sig) ->
@@ -446,7 +440,7 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
   let result =
   match t.trm_desc with
   | Trm_var x ->
-      let varid = typecheck_variable  loc e x.varid_symbol in
+      let varid = typecheck_variable loc e x.varid_var in
       let ty = varid.varid_typ in
       return ty (Trm_var varid)
 
@@ -523,7 +517,7 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
     (* This constructor should only appear at let-definitions. *)
     raise (Error (Unsupported_term "Trm_forall", loc))
 
-  | Trm_match (t0, pts) ->
+(*   | Trm_match (t0, pts) ->
       let t0 = aux t0 in
       let tyr = typ_nameless () in
       let pts =
@@ -534,7 +528,8 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
               env_add_var e' x (Env_item_var (sch_of_nonpolymorphic_typ ty))) e in
           let ti = aux ~env:e' ~expected_typ:tyr ti in
           (pi, ti)) pts in
-      return tyr (Trm_match (t0, pts))
+      return tyr (Trm_match (t0, pts)) *)
+    | Trm_match _ -> raise (Error (Unsupported_term "Trm_match", loc))
 
     | Trm_bbeis _ -> raise (Error (Unsupported_term "Trm_bbeis", loc))
     | Trm_patvar _ -> raise (Error (Unsupported_term "Trm_patvar", loc))
@@ -613,10 +608,10 @@ Function signature :
 (*******************************************)
 (** * Ordered resolution *)
 
-let varid_assumptions (varid:varid) : varid list =
+(* let varid_assumptions (varid:varid) : varid list =
   match varid.varid_resolution with
   | VarResolved (_, assumptions) -> assumptions
-  | _ -> []
+  | _ -> [] *)
 
 type 'a result =
   | Success of 'a
@@ -624,7 +619,7 @@ type 'a result =
 
 (* Given an unresolved varid, consider all its possible instances and filter the ones that are
   still compatible with the varid's type. *)
-let try_resolve varid : unit =
+(* let try_resolve varid : unit =
   Counters.(compute_count_and_time counter_resolution_attempt time_resolution_attempt (fun () ->
   let insts =
     match varid.varid_resolution with
@@ -671,13 +666,13 @@ let try_resolve varid : unit =
     varid.varid_resolution <- VarResolved (i, assumptions)
   | _ ->
     varid.varid_resolution <- VarUnresolved { insts with candidates_and_modes_candidates = remaining_correct_instances }
-  ))
+  )) *)
 
 (** Performs resolution in AST order, with handling of overloaded
     function before and after resolution inside arguments.
     Returns the number of resolved symbols at this step and
     the number of remaining unresolved symbols. *)
-let ordered_resolve_in (t:trm) : int * int =
+(* let ordered_resolve_in (t:trm) : int * int =
   let nb_resolved_at_this_traversal = ref 0 in
   let nb_unresolved = ref 0 in
   let rec process varid : unit =
@@ -700,12 +695,12 @@ let ordered_resolve_in (t:trm) : int * int =
         process varid
     | _ -> trm_iter resolve_in t in
   resolve_in t;
-  (!nb_resolved_at_this_traversal, !nb_unresolved)
+  (!nb_resolved_at_this_traversal, !nb_unresolved) *)
 
 (** Iterate ordered resolution. Returns the number of steps until
     convergence. Returns a boolean indicating the success of
     resolution for all varids. *)
-let ordered_resolution ?(max_traversals = max_int) (t:trm) : bool * int =
+(* let ordered_resolution ?(max_traversals = max_int) (t:trm) : bool * int =
   let nb_traversals = ref 0 in
   let converged = ref false in
   let success = ref false in
@@ -717,8 +712,8 @@ let ordered_resolution ?(max_traversals = max_int) (t:trm) : bool * int =
     success := (nb_unresolved = 0);
   done;
   (!success, !nb_traversals)
-
-let try_resolve_with_result  varid : bool =
+ *)
+(* let try_resolve_with_result  varid : bool =
   match varid.varid_resolution with
   | VarUnknown | VarRegular -> assert false
   | VarResolved _ -> true
@@ -732,7 +727,7 @@ let try_resolve_with_result  varid : bool =
       (* FIXME: should we do add_triggers_into_typ into the type of assumptions? *)
       true
     | VarUnresolved _ -> false
-
+ *)
 
 (* A stack in which all elements are at most present once. *)
 module StackUnique (E : sig
@@ -959,7 +954,7 @@ let typecheck_topdef ?exact_error_messages ~style (env : env) (td : topdef) : to
     (* TODO FACTORIZE *)
 
     (* Switch the printing mode: [let __print = false] or [let __print = true] *)
-    | Topdef_val_def { let_def_bind = Bind_var (c, _) ; let_def_body = t ; _ } when c = Var.var "__print" ->
+    | Topdef_val_def { let_def_bind = Bind_var (c, _) ; let_def_body = t ; _ } when c = var "__print" ->
         begin match t.trm_desc with
         | Trm_cst (Cst_bool b) ->
             print_types := b;
@@ -969,7 +964,7 @@ let typecheck_topdef ?exact_error_messages ~style (env : env) (td : topdef) : to
 
     (* Switch to the debug mode: [let __debug = 0] or [let __debug = 1],
        or [let __debug = -1] to exit the program *)
-    | Topdef_val_def { let_def_bind = Bind_var (c, _) ; let_def_body = t ; _ } when c = Var.var "__debug" ->
+    | Topdef_val_def { let_def_bind = Bind_var (c, _) ; let_def_body = t ; _ } when c = var "__debug" ->
         begin match t.trm_desc with
         | Trm_cst (Cst_int n) ->
             if n = -1 then begin
@@ -998,13 +993,13 @@ let typecheck_topdef ?exact_error_messages ~style (env : env) (td : topdef) : to
         Counters.(compute_and_time time_symbol_resolution (fun () ->
           iterative_resolution varids)); *)
         Debug.log "🟩 Conclude that this definition has the type scheme %s." (sch_to_string sch) ;
-        let sym =
+(*         let sym =
           match d.let_def_bind with
-          | Bind_anon -> SymbolName (Var.var "<anonymous>")
+          | Bind_anon -> SymbolName (var "<anonymous>")
           | Bind_var (x, _) -> SymbolName x
           | Bind_register_instance (sym, _) -> sym in
         Counters.(compute_and_time time_check_fully_typed (fun () ->
-          check_fully_typed ~in_depth:true ~test_acylic:true (snd (trm_foralls_inv d.let_def_body)) sym));
+          check_fully_typed ~in_depth:true ~test_acylic:true (snd (trm_foralls_inv d.let_def_body)) sym)); *)
         ({ td with topdef_desc = Topdef_val_def d }, env')
 
     (* Process the declaration of an external function, e.g.
@@ -1012,7 +1007,7 @@ let typecheck_topdef ?exact_error_messages ~style (env : env) (td : topdef) : to
     | Topdef_external tde ->
         let synsch = synsch_internalize ~loc:td.topdef_loc env tde.external_def_syntyp in
         let tde = { tde with external_def_syntyp = synsch } in
-        let env = env_add_var env tde.external_def_var (Env_item_var synsch.synsch_sch) in
+        let env = env_add_var env tde.external_def_var synsch.synsch_sch in
         Debug.log "🟩 Internalised as %s." (sch_to_string synsch.synsch_sch) ;
         ({ td with topdef_desc = Topdef_external tde }, env)
 
@@ -1048,7 +1043,7 @@ let typecheck_program ?exact_error_messages ?(continue_on_error = false) ~style 
         | Typecheck_error msg when continue_on_error ->
           prerr_endline (Printf.sprintf "🟥 Type error: %s" msg) ;
           (td, env) in
-      (env, td :: tds)) (env_builtin_tuples (), []) tds in
+      (env, td :: tds)) (env_builtin, []) tds in
   Debug.log "++++++++++++++++++++++++++++++++++" ;
   List.rev tds
 

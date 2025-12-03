@@ -17,5 +17,6 @@ val typecheck_program : ?exact_error_messages:bool -> ?continue_on_error:bool ->
 
 val typecheck_ml : ?expected_typ:typ -> env -> trm -> trm
 
-val ordered_resolution : ?max_traversals:int -> trm -> bool * int
+(* val ordered_resolution : ?max_traversals:int -> trm -> bool * int
 
+ *)

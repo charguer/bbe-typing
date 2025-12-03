@@ -378,9 +378,6 @@ let pvar_inv (e : expression) : bool =
     | Pexp_ident {txt= Longident.Lident "??"} -> true
     | _ -> false
 
-(* let recognize_ident (lid_loc : Longident.t) : trm_desc =
-  match tr
- *)
 let rec tr_exp (e : expression) : trm =
   let loc = e.pexp_loc in
   let return ?(annot=AnnotNone) (e':trm_desc) : trm =
@@ -497,14 +494,14 @@ let rec tr_exp (e : expression) : trm =
   | Pexp_construct (c, Some e) ->
       return (trm_desc_constr (constr (tr_longident c.txt)) [tr_exp e])
 
-  | Pexp_tuple ts ->
+  (* | Pexp_tuple ts -> (* TODO: handle Pexp_tuple properly. No need to see this as a specific constructor. We just see a constructor as a label and a list of arguments applied to it. No need to worry. *)
       (* In the tuple case, there is conceptually an infinite number of instances: one for each arity.
        We can't add that many instances at once in the environment, so we add them lazily: each time
        we see a new tuple, we check whether its associated instance is already declared.
        This then enables users to define new overloaded instances of tuples. *)
       let i = List.length ts in
       add_tuple_arity i ;
-      return ~annot:(AnnotTuple i) (trm_tuple_flex (List.map tr_exp ts)).trm_desc
+      return ~annot:(AnnotTuple i) (trm_tuple_flex (List.map tr_exp ts)).trm_desc *)
 
   | Pexp_record (fs, None) ->
       let fs = List.map (fun (f, t) -> (tr_longident f.txt, t)) fs in

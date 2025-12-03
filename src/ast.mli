@@ -115,7 +115,7 @@ and sch = {
     in particular in the case it is an overloaded symbol. *)
 and varid = {
   varid_unique_int : varid_unique_int; (* Used for storing varids in sets *)
-  varid_symbol : symbol; (* Needed to print assumption instantiations in the output AST. *)
+  varid_var : var; (* Needed to print assumption instantiations in the output AST. *)
   varid_loc : loc ;
   mutable varid_env : env0 ; (* Needed to resolve the assumptions that may be associated with instances *)
   mutable varid_resolution : varid_resolution; (* Describes how the symbol is resolved *)
@@ -136,9 +136,6 @@ and varid_resolution =
   | VarUnknown (* Status is unknown after parsing. *)
   | VarRegular (* Variable bound by a let or a lambda-expression. *)
                (* LATER of loc (* Location of the binding point *) *)
-  | VarResolved of instance (* Instance to which we were resolved. *)
-                   * assumptions (* Information on the resolution of the assumptions introduced to derive this instance. *)
-  | VarUnresolved of candidates_and_modes (* Invariant: there are at least two elements in this list. *)
 
 (** [assumptions] describes a list of varids that corresponds to the
     assumptions of a instance. E.g. addition on type ['a matrix] has
