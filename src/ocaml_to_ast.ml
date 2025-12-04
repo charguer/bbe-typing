@@ -431,7 +431,7 @@ let rec tr_exp (e : expression) : trm =
   | Pexp_apply (e0, aes) when atsign_inv e0 ->
     begin match infix_op_inv ~loc e0 aes with
     | Some (e1, e2, e3) ->
-      if !Flags.verbose && !Flags.debug then
+      (* if !Flags.verbose && !Flags.debug then
         begin
           let pr = Printast.expression 0 in
           Format.printf "handling @ %a %a %a:\n" pr e1 pr e2 pr e3;
@@ -439,7 +439,7 @@ let rec tr_exp (e : expression) : trm =
 
           take as argument workspace folder + current path folder.
           *)
-        end;
+        end; *)
       let t1 = tr_exp e1 in
       let t3 = tr_exp e3 in
         return (recognize_infix_op ~loc e2 t1 t3)

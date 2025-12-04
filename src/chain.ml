@@ -66,8 +66,8 @@ let full
   (* Convert *)
   let ast : Ast_fix.program = Ocaml_to_ast.tr_structure ocaml_ast in
 
-  if !Flags.debug then Printf.printf ("%s\n") (Debug.print_low_level_program ast);
-
+  (* if !Flags.debug then Printf.printf ("%s\n") (Debug.print_low_level_program ast);
+ *)
   Debug.log "Tuples declared: %s."
     (String.concat ", " (List.map string_of_int (Ast_aux.all_seen_tuple_arity ()))) ;
 

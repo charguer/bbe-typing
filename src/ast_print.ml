@@ -705,16 +705,16 @@ and trm_to_doc_raw ~style (t : trm) : doc =
         parens (
              d1
           ^^ blank 1
-          ^^ string "is"
+          ^^ string "@_is"
           ^^ blank 1
           ^^ d2
         )
 
     | Trm_patvar varid ->
-         string "?"
+         string "??"
       ^^ varid_to_doc ~style varid
 
-    | Trm_patwild -> string "_"
+    | Trm_patwild -> string "__"
 
     end
 

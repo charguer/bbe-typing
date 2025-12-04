@@ -482,7 +482,7 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       (* TODO: the intersection between the two environments *)
       let t1 = aux (* ~env:(bindsof ~loc b) *) t1 in
       let t2 = aux t2 in
-      if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s \n %s : %s\n" (trm_to_string b)(Ast_print.typ_to_string b.trm_typ) (trm_to_string t1) (Ast_print.typ_to_string t1.trm_typ) (trm_to_string t2) (Ast_print.typ_to_string t2.trm_typ);
+      (* if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s \n %s : %s\n" (trm_to_string b)(Ast_print.typ_to_string b.trm_typ) (trm_to_string t1) (Ast_print.typ_to_string t1.trm_typ) (trm_to_string t2) (Ast_print.typ_to_string t2.trm_typ); *)
       unify_or_error ~loc e (typeof t1) (typeof t2) (Branches_mismatch_if (typeof t1, typeof t2));
       return (typeof t2) (Trm_if (b,t1,t2))
 
