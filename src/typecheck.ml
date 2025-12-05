@@ -71,6 +71,11 @@ let merge_distinct (e1 : env) (e2 : env) : env =
 1. Remove env_item, just an sch is enough, no need for overloading anyway.
 2. Remove symbols inside env, simply replace with a variable name (type "var")
 3. Removing all of this will break a lot of code, find all of these, document them, and modify accordingly*)
+  Env.fold e1.env_var (fun () k _ ->
+    if (Env.mem e2.env_var k) then
+      failwith "no distinct in env. Temporary error message. Please modify [Typecheck.merge_distinct]"
+    else ()) ();
+
   failwith "TODO"
 
 let typ_constant = function
@@ -549,7 +554,7 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
   let _aux_bbe ?(env : env = e) (t : trm) : bbe =
     typecheck_bbe env t in
   let aux_pat ?(env : env = e) (typ : typ) (p : trm_pat) : trm_pat =
-    typecheck_pattern env typ p in
+    typecheck_pattern env p in
   let return ?(annot = b.trm_annot) (typ : typ) (u : trm_desc) (binds : env) : trm =
     (* We also unify with the previously stored type in place, for the rare cases in which the parser
       shares types between terms. *)
@@ -569,17 +574,20 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
       if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s\n" (trm_to_string t)(Ast_print.typ_to_string t.trm_typ) (trm_to_string p) (Ast_print.typ_to_string p.trm_typ);
       let p = aux_pat (t.trm_typ) p in (*Very probably handle a concatenation function between the environments. For the moment, just concatenate them, but in the near future check for shadowing *)
       unify_or_error ~loc e (typeof t) (typeof p) (Mismatch_type_is (typeof t, typeof p));
+
+      Printf.printf "Environment bound by p : %s\n" (Ast_print.env_to_string ~style:Ast_print.style_debug (bindsof p ~loc));
+
       return (the_typ_bool) (Trm_bbeis (t, p)) (bindsof ~loc p)
     | _ -> aux_ml ~expected_typ:the_typ_bool b
 
-and typecheck_pattern (e : env) (typ : typ) (p : trm_pat) : trm_pat =
+and typecheck_pattern (e : env) (p : trm_pat) : trm_pat =
   let loc = p.trm_loc in
   let _aux_ml ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
     typecheck_ml ?expected_typ env t in
   let _aux_bbe ?(env : env = e) (t : trm) : bbe =
     typecheck_bbe env t in
-  let _aux_pat ?(env : env = e) (typ : typ) (p : trm_pat) : trm_pat =
-    typecheck_pattern env typ p in
+  let aux_pat ?(env : env = e) (p : trm_pat) : trm_pat =
+    typecheck_pattern env p in
   let return ?(annot = p.trm_annot) (typ : typ) (u : trm_desc) (binds : env) : trm =
     (* We also unify with the previously stored type in place, for the rare cases in which the parser
       shares types between terms. *)
@@ -593,12 +601,22 @@ and typecheck_pattern (e : env) (typ : typ) (p : trm_pat) : trm_pat =
       trm_binds = Some binds;
       trm_annot = annot } in
 
-  if !Flags.verbose then Printf.printf "Entering typecheck_pattern with :\n expected_type = %s \n t = %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e) *) (Ast_print.typ_to_string typ) (trm_to_string p);
+  if !Flags.verbose then Printf.printf "Entering typecheck_pattern with :\n t = %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e) *) (trm_to_string p);
 
   match p.trm_desc with
-  | Trm_patwild -> return typ Trm_patwild env_empty
-  | Trm_annot _ -> raise (Error (Unsupported_term "Trm_annot", loc)) (* Should add as condition that the annotated type is to be the same as the input type of the pattern. In the same way for aliases, we have to unify the variable's type with the input type of the pattern. *)
-  | Trm_patvar x -> raise (Error (Unsupported_term "Trm_patvar", loc))
+  | Trm_patwild -> return (typ_nameless ()) Trm_patwild env_empty
+  | Trm_annot (t, sty) ->
+    let sty = syntyp_internalize e sty in
+    let typ = sty.syntyp_typ in
+    let t = aux_pat ~env:e t in
+    return typ (Trm_annot (t, sty)) (t.trm_env)
+  | Trm_patvar x ->
+    let typ = typ_nameless () in
+    let new_env = env_add_var (env_empty) x.varid_var (sch_of_nonpolymorphic_typ typ) in
+    return typ (Trm_patvar x) new_env
+
+  | Trm_apps _ -> raise (Error (Unsupported_term "Trm_apps", loc))
+
   | _ -> raise (Error (Unsupported_term "\"Pattern not yet handled\"", loc))
 
 (*Time to write a new typing judgement. For BBEs and for patterns.

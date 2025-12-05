@@ -404,7 +404,7 @@ and varid_to_doc ~style ?(is_arg = false) varid : doc =
       ^^ blank 1
       ^^ typ_to_doc varid.varid_typ)
   else d *)
-  parens (string "\"Temporary printing: modify [Ast_print.varid_to_doc] to remove this.\"")
+  var_to_doc varid.varid_var
 
 
 and trm_to_doc ~style t =
