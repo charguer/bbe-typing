@@ -72,6 +72,8 @@ val print_tconstr : tconstr -> string
 val print_constr : constr -> string
 val print_field : field -> string
 
+val string_to_tconstr : string -> tconstr (* ?????? I need this for some reason, but I would expect ocaml to recognize type aliases... *)
+
 val print_tvar : tvar -> string
 
 (* Return the raw name of the (flexible) type variable. *)

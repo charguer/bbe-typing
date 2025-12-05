@@ -365,7 +365,7 @@ and trm = {
   trm_typ : typ; (* a fresh flexible after parsing *)
   (* Should we add a trm_binds attribute? Like : if it was a bbe, then it would bind ...
     And then for patterns, the type would be the input, and "binds" would be the output... *)
-  trm_binds : env0 option; (* Note that this could probably replace trm_env... I don't think trm_env is so usefull actually... *)
+  trm_binds : env0 option; (* An option used both to easily get result bindings, and notify if the term actually has result bindings *)
   trm_env : env0; (* a dummy environment after parsing *)
   trm_annot : annot (* to help printing back of encoded terms *)
 }

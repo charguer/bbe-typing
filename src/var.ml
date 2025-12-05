@@ -125,6 +125,7 @@ let print_var = function
   | VarNormal n -> n
   | VarNoName i -> Printf.sprintf "__local_var_%i" i
 
+let string_to_tconstr (s : string) : tconstr = s
 
 let instance_id x loc = {
   instance_name = set_new_name (print_var x) ;

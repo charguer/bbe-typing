@@ -59,32 +59,38 @@ let synsch_internalize ~loc (e:env) (synsch:synsch) : synsch =
 let typeof (t : trm) : typ =
   t.trm_typ
 
-let bindsof ~loc (t : trm) : env =
+let bindsof (t : trm) : env =
   match t.trm_binds with
   | Some bs -> bs
-  | None -> raise (Error (Expected_bindings, loc))
+  | None -> failwith "Call to bindsof with a term with an empty trm_binds"
 
 (** * Custom functions, to be put elsewhere later *)
-let merge_distinct (e1 : env) (e2 : env) : env =
+let merge_distinct ~loc (e1 : (var, sch) Env.t) (e2 : (var, sch) Env.t) : (var, sch) Env.t =
 (* use Env.mem with the variables. *)
 (* Plan :
 1. Remove env_item, just an sch is enough, no need for overloading anyway.
 2. Remove symbols inside env, simply replace with a variable name (type "var")
 3. Removing all of this will break a lot of code, find all of these, document them, and modify accordingly*)
-  Env.fold e1.env_var (fun () k _ ->
-    if (Env.mem e2.env_var k) then
-      failwith "no distinct in env. Temporary error message. Please modify [Typecheck.merge_distinct]"
-    else ()) ();
+  Env.fold e2 (fun e k v ->
+    (if (Env.mem e1 k) then raise (Error (Expected_bindings, loc));
+    (Env.add e k v))) e1
 
-  failwith "TODO"
+(** [merge_distinct_env e1 e2]: adds the bindings of binds inside e1.  *)
+let merge_distinct_env ~loc (e1 : env) (binds : env) : env = (* TODO: env_bbe = env_var, and binds/"eb" has type env_bbe *)
+  {e1 with env_var = (merge_distinct ~loc e1.env_var binds.env_var)}
 
-let typ_constant = function
+ let typ_constant = function
   | Cst_bool _ -> the_typ_bool
   | Cst_int _ -> the_typ_int
   | Cst_float _ -> the_typ_float
   | Cst_string _ -> the_typ_string
   | Cst_unit _ -> the_typ_unit
 
+let tconstr_inv (e : env_tconstr) (v : var) : bool =
+  Env.mem e (string_to_tconstr (print_var v))
+
+let tconstr_inv_bind (e : env_tconstr) (v : var) : tconstr_desc option =
+  Env.read_option e (string_to_tconstr (print_var v))
 
 
 (* Checking that two environments as computed by typecheck_pat below are the same. *)
@@ -485,7 +491,7 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
   | Trm_if (b, t1, t2) ->
       let b = aux_bbe b in
       (* TODO: the intersection between the two environments *)
-      let t1 = aux (* ~env:(bindsof ~loc b) *) t1 in
+      let t1 = aux ~env:(merge_distinct_env ~loc e (bindsof b)) t1 in
       let t2 = aux t2 in
       (* if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s \n %s : %s\n" (trm_to_string b)(Ast_print.typ_to_string b.trm_typ) (trm_to_string t1) (Ast_print.typ_to_string t1.trm_typ) (trm_to_string t2) (Ast_print.typ_to_string t2.trm_typ); *)
       unify_or_error ~loc e (typeof t1) (typeof t2) (Branches_mismatch_if (typeof t1, typeof t2));
@@ -575,9 +581,9 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
       let p = aux_pat (t.trm_typ) p in (*Very probably handle a concatenation function between the environments. For the moment, just concatenate them, but in the near future check for shadowing *)
       unify_or_error ~loc e (typeof t) (typeof p) (Mismatch_type_is (typeof t, typeof p));
 
-      Printf.printf "Environment bound by p : %s\n" (Ast_print.env_to_string ~style:Ast_print.style_debug (bindsof p ~loc));
+      Printf.printf "Environment bound by p : %s\n" (Ast_print.env_to_string ~style:Ast_print.style_debug (bindsof p));
 
-      return (the_typ_bool) (Trm_bbeis (t, p)) (bindsof ~loc p)
+      return (the_typ_bool) (Trm_bbeis (t, p)) (bindsof p)
     | _ -> aux_ml ~expected_typ:the_typ_bool b
 
 and typecheck_pattern (e : env) (p : trm_pat) : trm_pat =
@@ -609,13 +615,16 @@ and typecheck_pattern (e : env) (p : trm_pat) : trm_pat =
     let sty = syntyp_internalize e sty in
     let typ = sty.syntyp_typ in
     let t = aux_pat ~env:e t in
-    return typ (Trm_annot (t, sty)) (t.trm_env)
+    return typ (Trm_annot (t, sty)) env_empty
   | Trm_patvar x ->
     let typ = typ_nameless () in
     let new_env = env_add_var (env_empty) x.varid_var (sch_of_nonpolymorphic_typ typ) in
     return typ (Trm_patvar x) new_env
 
-  | Trm_apps _ -> raise (Error (Unsupported_term "Trm_apps", loc))
+  (* | Trm_apps ({trm_desc = Trm_var v}, pl) when tconstr_inv e.env_tconstr v.varid_var -> (* Fonction d'inversion qui vérifie si v est dans l'environnement de types d'entrée. Si oui, alors c'est un constructeur de type et faire cas particulier, sinon autre cas. Ça devrait surement pouvoir être mis dans une clause "when". *)
+  match tconstr_inv_bind e.env_tconstr v.varid_var with
+    | None -> assert false
+    | Some tconstr_desc ->  *)
 
   | _ -> raise (Error (Unsupported_term "\"Pattern not yet handled\"", loc))
 

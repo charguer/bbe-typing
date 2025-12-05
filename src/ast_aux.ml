@@ -699,20 +699,20 @@ let env_builtin =
       ] ;
       tconstr_typ = None
     } in
-  (* let e =
+  let e =
     let tv = tvar_rigid "'a" in
     let t = typ_rigid tv in
-    env_add_var e (var "[]") (mk_base_constr "[]" [] [tv] (typ_list t)) in
+    env_add_var e (var "[]") (mk_sch [tv] (typ_list t)) in
   let e =
     let tv = tvar_rigid "'a" in
     let t = typ_rigid tv in
     env_add_var e (var "::")
-      (mk_base_constr "::" [Mode_in] [tv]
+      (mk_sch [tv]
         (typ_arrow [typ_tuple [t; typ_list t]] (typ_list t))) in
   let e =
     env_add_var e (var "^")
-      (mk_base_constr "^" [Mode_in; Mode_in] []
-        (typ_arrow [the_typ_string; the_typ_string] the_typ_string)) in *)
+      (mk_sch []
+        (typ_arrow [the_typ_string; the_typ_string] the_typ_string)) in
   e
 
 (* let env_builtin_with_tuples =
