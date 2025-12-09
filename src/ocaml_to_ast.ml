@@ -428,6 +428,14 @@ let rec tr_exp (e : expression) : trm =
       return (Trm_if (t1, t2, trm_unit ()))
       (* LATER: trm_desc_fixs *)
 
+  (* Recognize sugar 'boolof b' *)
+  | Pexp_apply ({ desc = Pexp_var { id= "boolof"; _ } ; _ }, ts)  ->
+      begin match ts with
+      | [t0] -> trm_if (tr_exp t0) trm_true trm_false
+      | _ -> failwith "boolof expects exactly on argument"
+  end
+
+  (* Recognize special syntax with at-symbol e.g. 't @is p' *)
   | Pexp_apply (e0, aes) when atsign_inv e0 ->
     begin match infix_op_inv ~loc e0 aes with
     | Some (e1, e2, e3) ->
@@ -485,6 +493,8 @@ let rec tr_exp (e : expression) : trm =
   | Pexp_construct ({txt = Lident b; _}, _) when b = "true" || b = "false" ->
       let cst = Cst_bool (b = "true") in
       return (trm_desc_cst cst)
+
+
 
   | Pexp_construct (c, None) ->
       return (trm_desc_constr (constr (tr_longident c.txt)) [])

@@ -600,7 +600,7 @@ let type_constructor e overall_type (c : Parsetree.constructor_declaration) : co
   (name, ty)
 
 (* Adding an implicitely overloaded variable. *)
-(* let add_implicit_overloaded_instance ?(loc = loc_none) ?modes e var_names x ty =
+let add_implicit_overloaded_instance ?(loc = loc_none) ?modes e var_names x ty =
   (* The expected modes for this variable: they are implicitely all [in]. *)
   let modes =
     match modes with
@@ -632,13 +632,13 @@ let type_constructor e overall_type (c : Parsetree.constructor_declaration) : co
     instance_symbol = x
   } in
   env_add_instance ~loc e x inst
- *)
+
 (** [env_add_type_declaration e td]: processes the OCaml type declarations and adds them to the environment  *)
-(* let env_add_type_declaration (e : env) (td : Parsetree.type_declaration) : env * tconstr_desc =
+let env_add_type_declaration (e : env) (td : Parsetree.type_declaration) : env * tconstr_desc =
   let loc = td.Parsetree.ptype_loc in
   let id = tconstr td.ptype_name.txt in
   let (var_names, vars) = get_vars_params td in
-  let ty_overall = typ_constr id vars in
+  let ty_overall = typ_constr id vars in (* eg id=option, vars=['a] *)
   let e_with_locals = env_add_tvars e var_names vars in
   let tconstr_def =
     match td.ptype_kind, td.ptype_manifest with
@@ -666,9 +666,26 @@ let type_constructor e overall_type (c : Parsetree.constructor_declaration) : co
   (* Adding the constructors into the environment, if any. *)
   let e =
     match tconstr_def with
-    | Tconstr_def_sum cs ->
+    | Tconstr_def_sum cs -> (* eg cs=[("None",'a option]); ("Some",'a->'a option)] *)
       (* We add each constructor as an implicit overloaded instance. *)
       List.fold_left (fun e (c, ty) ->
+        let typ_of_constructors =
+            assert (ty =?= ty_overall);
+            ty in
+        let typ_of_inversor =
+            match typ_arrow_inv ty with
+            | Some (ty_args,ty_ret) ->
+                 assert (ty_ret =?= ty_overall);
+                 typ_arrow [ty_ret] (typ_option (typ_tuple ty_args))
+                 (* typ_tuple ts = typ_constr "__tuple" ts *)
+           | None -> (* eg None *)
+              typ_arrow [ty_ret] typ_bool
+          in
+        let env_add_var e x s =
+           if debug_env then printf "adding %s %s" x (string_of_sch s);
+            Env.add e x s
+        let e = env_add_var c (mk_sch vars typ_of_constructor) in
+        let e = env_add_var ("Pattern__" ^ c) .. typ_of_inversor in
         add_implicit_overloaded_instance ~loc e var_names (SymbolName (constr_to_var c)) ty) e cs
     | Tconstr_record fs ->
       let e =
@@ -693,7 +710,7 @@ let type_constructor e overall_type (c : Parsetree.constructor_declaration) : co
     | Tconstr_def_alias _ -> e
     | Tconstr_special_nary -> assert false (* These can't be defined by the user for now. *) in
   (e, tdesc)
- *)
+
 
 
 (*#########################################################################*)

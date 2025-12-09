@@ -1,4 +1,4 @@
-(* let cst_bool = true
+let cst_bool = true
 let cst_unit = ()
 let cst_int = 1
 
@@ -12,13 +12,90 @@ let vunit : unit = ()
 
 let str : string = "test"
 let str_unannot = ""
- *)
+
 let bbe_is = if true @_is __ then true else false
+let bbe_is_syntyp = if true @_is (__ : bool) then true else false
+
+(* Expected to fail *)
+let[@type_error ""]  bbe_is_syntyp_fail = if true @_is (__ : int) then true else false
+
+let bbe_is_bind : bool = if true @_is ??x then x else false
+
+let bbe_is_bind_constr = if (Some true) @_is (Some ??x) then x else false
+
+type myoptionint = MyNoneInt | MySomeInt of int
+type 'a myoption = MyNone | MySome of 'a
+type 'a mylist = MyNil | MyCons of 'a * 'a mylist (* MyCons: typ_arrow ['a; typ_constr "mylist" ['a]] (typ_constr "mylist" ['a]) *)
+type 'a mylistp = MyNilp | MyConsp of ('a * 'a list) (* MyCons: typ_arrow [typ_tuple ['a; typ_constr "mylistp" ['a]]] (typ_constr "mylistp" ['a]) *)
+type ('a,'b) mypair = 'a * 'b (* typ_tuple ['a; 'b] *)
+
+let tuple2 = (2,3)
+let tuple3 = (2,3,4)
+
+let mylist0 : int mylist = MyNil
+
+let mylist1 = MyCons (1, MyNil)
+let mylistp1 = MyConsp (2, MyNilp)
+
+let myoptionnone : int myoption = MyNone
+let myoptionnsome : (int mylist) myoption = MySome mylist1
+
+let inv_lit c =
+  bool_of (c @is 3)
+
+let inv_bool c =
+  bool_of (c @is true)
+let inv_tuple2 c =
+  bool_of (c @is (true,false))
+
+let inv_none (c:'a myoption) : bool =
+  bool_of (c @is MyNone)
+
+let alltrue (b1 b2 b3: bool) : bool =
+  b1 && b2 && b3
+
+let optioneven (o: option int) : bool =
+  (o is Some ??n) && (even n)
 
 
-(* let bbe_is_bind_easy = if true @_is ??x then x else false
-let bbe_is_bind : bool = if true @_is (Some (??x, ??y)) then x else false
- *)
+
+  (*
+  if (o is Some ??n) && (even n) then f() else g()
+
+  let r = (o is Some ??n) && (even n) in
+  if r then f() else g()
+
+  if (o is Some ??n) && (even n) then f' n else g ()
+
+   let r = (o is Some ??n) && (even n) in
+   if r then (* n not in scope *) else g()
+
+   let r () = if (o is Some ??n) && (even n) then Some ?n else None in
+   if () is r(??n) then f' n else g()
+
+   same with syntactic sugar:
+
+   let r () = Pattern.make ((o is Some ??n) && (even n)) in
+   if r(??n) then f' n else g()
+
+     Pattern.make would take the ??XX in the order of AST-traversal, and put them in "then Some"
+
+     si on met "p" en position de bbe, ça veut dire
+     () is p
+
+
+   let r o = Pattern.make ((o is Some ??n) && (even n)) in
+   if o @is r(??n) then f' n else g()
+
+
+
+
+  *)
+
+
+  (* sucre pour "if b then true else false" *)
+
+
 
 (* let x1 : int option = Some 1
 let x2 : int option = Some 2

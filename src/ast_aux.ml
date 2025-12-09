@@ -671,6 +671,8 @@ let pat_ors ?loc ?typ (ps : pats) =
       candidates_and_modes_modes = Some (inputs, Mode_in)
   }
  *)
+
+ (* "tuple" is not in env_builtin, there are special rules for it in the typechecker *)
 let env_builtin =
   let mk_special = {
     tconstr_tvars = [] ;

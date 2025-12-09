@@ -259,6 +259,8 @@ let rec typ_to_doc (t : typ) : doc =
   match t.typ_desc with
   | Flexible v -> string (print_tvar v)
   | Unified t0 -> typ_to_doc t0
+  | Typ_constr ("tuple", ts) ->
+       put_parens (List.map typ_to_doc ts)
   | Typ_constr (x, ts) ->
       let x = print_tconstr x in
       match ts with
