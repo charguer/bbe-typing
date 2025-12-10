@@ -702,7 +702,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
          ^^ hardline
          ^^ string "end"
 
-    | Trm_bbeis (t1, p2) ->
+    | Trm_bbe_is (t1, p2) ->
         let d1 = aux t1 in
         let d2 = aux p2 in
         parens (
@@ -713,11 +713,11 @@ and trm_to_doc_raw ~style (t : trm) : doc =
           ^^ d2
         )
 
-    | Trm_patvar varid ->
+    | Trm_pat_var varid ->
          string "??"
       ^^ varid_to_doc ~style varid
 
-    | Trm_patwild -> string "__"
+    | Trm_pat_wild -> string "__"
 
     end
 

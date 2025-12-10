@@ -341,6 +341,14 @@ type let_def = {
 }
 
 (* Records are compiled as stated in the article. *) (* YL : unnecessary now *)
+
+(* List of functions to modify/list of dependencies when changing trm_desc:
+  - debug.ml: [print_low_level_trm] function
+  - ast_aux.ml: [trm_iter] and [trm_map] functions
+  - typecheck.ml: [typecheck_ml] "let result = match t.trm_desc with [...]" function
+  - ast_print.ml: [trm_to_doc] function
+*)
+
 type trm_desc =
   | Trm_var of varid
   | Trm_cst of cst
@@ -351,11 +359,12 @@ type trm_desc =
   | Trm_annot of trm * syntyp             (* (t : ty) *)
   | Trm_forall of tvar_rigid * trm        (* fun (type a) -> t *)
   | Trm_match of trm * (pat * trm) list   (* match t with p1 -> t1 | ... | pn -> tn *)
+  | Trm_tuple of trm list
   (*BBE constructions*)
-  | Trm_bbeis of trm * trm_pat
+  | Trm_bbe_is of trm * trm_pat
   (*Pattern constructions*)
-  | Trm_patvar of varid
-  | Trm_patwild
+  | Trm_pat_var of varid
+  | Trm_pat_wild
 
 and trm = {
   trm_desc : trm_desc;

@@ -74,10 +74,10 @@ val trm_desc_seq : trm -> trm -> trm_desc
 val trm_desc_apps : trm -> trms -> trm_desc
 val trm_desc_match : trm -> (pat * trm) list -> trm_desc
 
-val trm_desc_bbeis : trm -> trm_pat -> trm_desc
-val trm_desc_patvar : ?typ:typ0 -> ?resolution:varid_resolution -> var -> trm_desc
-val trm_desc_patvar_varid : varid -> trm_desc
-val trm_desc_patwild : unit -> trm_desc
+val trm_desc_bbe_is : trm -> trm_pat -> trm_desc
+val trm_desc_pat_var : ?typ:typ0 -> ?resolution:varid_resolution -> var -> trm_desc
+val trm_desc_pat_var_varid : varid -> trm_desc
+val trm_desc_pat_wild : unit -> trm_desc
 
 (** ** For Terms *)
 
@@ -114,11 +114,11 @@ val trm_record_set : ?loc:loc -> ?typ:typ -> trm -> field -> trm -> trm
 val trm_record_make : ?loc:loc -> ?typ:typ -> (field * trm) list -> trm
 val trm_record_with : ?loc:loc -> ?typ:typ -> trm -> field -> trm -> trm
  *)
-val trm_bbeis : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> trm_pat -> trm
+val trm_bbe_is : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> trm_pat -> trm
 
-val trm_patvar : ?loc:loc -> ?typ:typ -> ?annot:annot -> ?resolution:varid_resolution -> var -> trm
-val trm_patvar_varid : ?loc:loc -> ?typ:typ -> ?annot:annot -> varid -> trm
-val trm_patwild : ?loc:loc -> ?typ:typ -> ?annot:annot -> unit -> trm
+val trm_pat_var : ?loc:loc -> ?typ:typ -> ?annot:annot -> ?resolution:varid_resolution -> var -> trm
+val trm_pat_var_varid : ?loc:loc -> ?typ:typ -> ?annot:annot -> varid -> trm
+val trm_pat_wild : ?loc:loc -> ?typ:typ -> ?annot:annot -> unit -> trm
 
 (* Like [trm_funs], but simply returns the body if no arguments are provided. *)
 val trm_funs_if_non_empty : ?loc:loc -> ?typ:typ -> ?annot:annot -> varsyntyps -> trm -> trm

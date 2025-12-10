@@ -367,7 +367,7 @@ let recognize_infix_op ~loc (op : expression) (arg1 : trm) (arg2 : trm) : trm_de
   match op.pexp_desc with
   | Pexp_ident {txt = Longident.Lident s} ->
     begin match s with
-    | "_is" -> trm_desc_bbeis arg1 arg2
+    | "_is" -> trm_desc_bbe_is arg1 arg2
     | _ -> unsupported ~loc "infix operation not yet handled"
     end
   | _ -> unsupported ~loc "operator is not an ident"
@@ -389,9 +389,9 @@ let rec tr_exp (e : expression) : trm =
       trm_annot = annot } in
   match e.pexp_desc with
   | Pexp_ident lid_loc ->
-    (*Goal : look at the identifier, and write different variables -> either the ident is optional, and give a pattern var, or it is a specific ident (here __ -> Trm_patwild) *)
+    (*Goal : look at the identifier, and write different variables -> either the ident is optional, and give a pattern var, or it is a specific ident (here __ -> Trm_pat_wild) *)
     if lid_loc.txt = Longident.Lident "__" then
-       return (trm_desc_patwild ())
+       return (trm_desc_pat_wild ())
     else return (trm_desc_var (var (tr_longident lid_loc.txt)))
   | Pexp_constant c ->
       let cst = tr_constant ~loc c in
@@ -459,7 +459,7 @@ let rec tr_exp (e : expression) : trm =
   | Pexp_apply (e0, aes) when pvar_inv e0 ->
     begin match aes with
     | [(_, {pexp_desc = Pexp_ident lid_loc})] ->
-      return (trm_desc_patvar (var (tr_longident lid_loc.txt)))
+      return (trm_desc_pat_var (var (tr_longident lid_loc.txt)))
     | _ -> unsupported ~loc "pattern variable but wrong argument"
     end
 
@@ -506,12 +506,14 @@ let rec tr_exp (e : expression) : trm =
   | Pexp_construct (c, Some e) ->
       return (trm_desc_constr (constr (tr_longident c.txt)) [tr_exp e])
 
-  (* | Pexp_tuple ts -> (* TODO: handle Pexp_tuple properly. No need to see this as a specific constructor. We just see a constructor as a label and a list of arguments applied to it. No need to worry. *)
+  | Pexp_tuple ts -> (* TODO: handle Pexp_tuple properly. No need to see this as a specific constructor. We just see a constructor as a label and a list of arguments applied to it. No need to worry. *)
       (* In the tuple case, there is conceptually an infinite number of instances: one for each arity.
        We can't add that many instances at once in the environment, so we add them lazily: each time
        we see a new tuple, we check whether its associated instance is already declared.
        This then enables users to define new overloaded instances of tuples. *)
-      let i = List.length ts in
+      return (trm_tuple (List.map tr_exp ts)).trm_desc
+(*
+       let i = List.length ts in
       add_tuple_arity i ;
       return ~annot:(AnnotTuple i) (trm_tuple_flex (List.map tr_exp ts)).trm_desc *)
 
