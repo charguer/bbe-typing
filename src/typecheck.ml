@@ -571,6 +571,10 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       end;
       return ty_tuple (Trm_tuple ts)
 
+    | Trm_not _ -> raise (Error (Unsupported_term "Trm_not", loc))
+    | Trm_and _ -> raise (Error (Unsupported_term "Trm_and", loc))
+    | Trm_or _ -> raise (Error (Unsupported_term "Trm_or", loc))
+
     | Trm_bbe_is _ -> raise (Error (Unsupported_term "Trm_bbe_is", loc))
     | Trm_pat_var _ -> raise (Error (Unsupported_term "Trm_pat_var", loc))
     | Trm_pat_wild  -> raise (Error (Unsupported_term "Trm_pat_wild", loc))

@@ -67,6 +67,9 @@ let print_low_level_trm =
     | Trm_tuple ts ->
       sprintf "Tuple [%s]"
         (String.concat " ; " (List.map aux ts))
+    | Trm_not t -> sprintf "Not %s" (aux t)
+    | Trm_and (t1, t2) -> sprintf "And (%s, %s)" (aux t1) (aux t2)
+    | Trm_or (t1, t2) -> sprintf "Or (%s, %s)" (aux t1) (aux t2)
     | Trm_bbe_is (t, p) -> sprintf "Is (%s, %s)" (aux t) (aux p)
     | Trm_pat_var varid -> sprintf "PVar %s" (var_to_string varid.varid_var)
     | Trm_pat_wild -> sprintf "Wildcard"

@@ -21,23 +21,29 @@ let[@type_error ""]  bbe_is_syntyp_fail = if true @_is (__ : int) then true else
 
 let bbe_is_bind : bool = if true @_is ??x then x else false
 
+(* Tuple terms *)
+let tuple2 = (2,3)
+let tuple3 = (2,3,4)
+
+let bbe_and_bind = if true @_is ??x && x then true else false
+
+let bbe_or_bind = if true @_is ??x || false @_is ??x then x else false
+
 
 
 
 
 (* Constructor inversion *)
-let bbe_is_bind_constr = if (Some true) @_is (Some ??x) then x else false
-
+(* let bbe_is_bind_constr = if (Some true) @_is (Some ??x) then x else false
+ *)
 (* Custom type definition *)
-type myoptionint = MyNoneInt | MySomeInt of int
+(* type myoptionint = MyNoneInt | MySomeInt of int
 type 'a myoption = MyNone | MySome of 'a
 type 'a mylist = MyNil | MyCons of 'a * 'a mylist (* MyCons: typ_arrow ['a; typ_constr "mylist" ['a]] (typ_constr "mylist" ['a]) *)
 type 'a mylistp = MyNilp | MyConsp of ('a * 'a list) (* MyCons: typ_arrow [typ_tuple ['a; typ_constr "mylistp" ['a]]] (typ_constr "mylistp" ['a]) *)
 type ('a,'b) mypair = 'a * 'b (* typ_tuple ['a; 'b] *)
 
 (* Constructors *)
-let tuple2 = (2,3)
-let tuple3 = (2,3,4)
 
 let mylist0 : int mylist = MyNil
 
@@ -96,9 +102,9 @@ let even_opt n = if even n then Some n/2 else None
 
 let f (x : int) : int = x
 
-let testing_and (t : int option) =
+let testing_inv_and (t : int option) =
   if (t @_is Some ??k) && k @_is even_opt v then f v else f 0
-
+ *)
 
   (*
   if (o is Some ??n) && (even n) then f() else g()

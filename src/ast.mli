@@ -346,8 +346,14 @@ type let_def = {
   - src/debug.ml: [print_low_level_trm] function
   - src/ast_aux.ml: [trm_iter] and [trm_map] functions
   - src/typecheck.ml: [typecheck_ml], [typecheck_bbe] and [typecheck_pattern] functions
-  - src/ast_print.ml: [trm_to_doc] function
+  - src/ast_print.ml: [trm_to_doc_raw] function
 *)
+
+(* Code architecture choices:
+  - Tuples are represented with a specific syntax constructor [Trm_tuple]
+  - Binding boolean operators "&&", "||" and "not" (respectively [Trm_and], [Trm_or] and [Trm_not]) will have their own constructors as well
+    -> The verification of the number of arguments will be done during translation from OCaml.
+  *)
 
 type trm_desc =
   | Trm_var of varid
@@ -360,6 +366,9 @@ type trm_desc =
   | Trm_forall of tvar_rigid * trm        (* fun (type a) -> t *)
   | Trm_match of trm * (pat * trm) list   (* match t with p1 -> t1 | ... | pn -> tn *)
   | Trm_tuple of trm list
+  | Trm_not of trm
+  | Trm_and of trm * trm
+  | Trm_or of trm * trm
   (*BBE constructions*)
   | Trm_bbe_is of trm * trm_pat
   (*Pattern constructions*)

@@ -466,6 +466,15 @@ let trm_desc_match (t : trm) (pts : (pat * trm) list) : trm_desc =
 let trm_desc_tuple (ts : trm list) : trm_desc =
   Trm_tuple ts
 
+let trm_desc_not (t : trm) : trm_desc =
+  Trm_not t
+
+let trm_desc_and (t1 : trm) (t2 : trm) : trm_desc =
+  Trm_and (t1, t2)
+
+let trm_desc_or (t1 : trm) (t2 : trm) : trm_desc =
+  Trm_or (t1, t2)
+
 (* ** Smart constructors for bbe trm descriptors*)
 let trm_desc_bbe_is (t : trm) (p : trm_pat) : trm_desc =
   Trm_bbe_is (t, p)
@@ -576,6 +585,15 @@ let trm_tuple ?loc ?typ ?annot (ts : trms) : trm =
   mktrm ?loc ?typ ~annot:(AnnotTuple i)
     (trm_desc_apps (trm_var_symbol ?loc (SymbolTuple i)) ts) *)
   mktrm ?loc ?typ (trm_desc_tuple ts)
+
+let trm_not ?loc ?typ ?annot (t : trm) : trm =
+  mktrm ?loc ?typ (trm_desc_not t)
+
+let trm_and ?loc ?typ ?annot (t1 : trm) (t2 : trm) : trm =
+  mktrm ?loc ?typ (trm_desc_and t1 t2)
+
+let trm_or ?loc ?typ ?annot (t1 : trm) (t2 : trm) : trm =
+  mktrm ?loc ?typ (trm_desc_or t1 t2)
 
 let trm_tuple_flex ?loc ?typ ?annot (ts : trms) : trm =
   match ts with
@@ -973,7 +991,10 @@ let trm_iter (f : trm -> unit) (t : trm) : unit =
   | Trm_forall (_, t) -> f t
   | Trm_match (t, pts) -> List.iter f (t :: List.map snd pts)
   | Trm_tuple ts -> List.iter f ts
-    | Trm_bbe_is (t, p) -> List.iter f [t; p]
+  | Trm_not t -> f t
+  | Trm_and (t1, t2) -> List.iter f [t1; t2]
+  | Trm_or (t1, t2) -> List.iter f [t1; t2]
+  | Trm_bbe_is (t, p) -> List.iter f [t; p]
 
 let trm_map (f : trm -> trm) (t : trm) : trm =
   let loc = t.trm_loc in
@@ -1022,6 +1043,20 @@ let trm_map (f : trm -> trm) (t : trm) : trm =
     let ts' = List.map f ts in
     if List.for_all2 (==) ts' ts then t
     else trm_tuple ~loc ~typ ~annot ts'
+  | Trm_not t ->
+    let t' = f t in
+    if t' == t then t
+    else trm_not ~loc ~typ ~annot t'
+  | Trm_and (t1, t2) ->
+    let t1' = f t1 in
+    let t2' = f t2 in
+    if t1' == t1 && t2' == t2 then t
+    else trm_and ~loc ~typ ~annot t1' t2'
+  | Trm_or (t1, t2) ->
+    let t1' = f t1 in
+    let t2' = f t2 in
+    if t1' == t1 && t2' == t2 then t
+    else trm_or ~loc ~typ ~annot t1' t2'
   | Trm_bbe_is (t1, p1) ->
     let t1' = f t1 in
     let p1' = f p1 in

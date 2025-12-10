@@ -703,7 +703,23 @@ and trm_to_doc_raw ~style (t : trm) : doc =
 
   | Trm_tuple ts -> (* TODO: check if this is the correct result. *)
     parens (separate hardline
-      (List.map (trm_to_doc_raw ~style) ts))
+      (List.map aux ts))
+  | Trm_not t ->
+         string "not"
+      ^^ blank 1
+      ^^ aux t
+  | Trm_and (t1 ,t2) ->
+         aux t1
+      ^^ blank 1
+      ^^ string "&&"
+      ^^ blank 1
+      ^^ aux t2
+  | Trm_or (t1 ,t2) ->
+         aux t1
+      ^^ blank 1
+      ^^ string "||"
+      ^^ blank 1
+      ^^ aux t2
 
   | Trm_bbe_is (t1, p2) ->
       let d1 = aux t1 in

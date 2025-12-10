@@ -73,6 +73,11 @@ val trm_desc_let_def : let_def -> trm -> trm_desc
 val trm_desc_seq : trm -> trm -> trm_desc
 val trm_desc_apps : trm -> trms -> trm_desc
 val trm_desc_match : trm -> (pat * trm) list -> trm_desc
+val trm_desc_tuple : trm list -> trm_desc
+
+val trm_desc_not : trm -> trm_desc
+val trm_desc_and : trm -> trm -> trm_desc
+val trm_desc_or : trm -> trm -> trm_desc
 
 val trm_desc_bbe_is : trm -> trm_pat -> trm_desc
 val trm_desc_pat_var : ?typ:typ0 -> ?resolution:varid_resolution -> var -> trm_desc
@@ -109,6 +114,11 @@ val trm_forall : ?loc:loc -> ?typ:typ -> ?annot:annot -> tvar_rigid -> trm -> tr
 val trm_foralls : ?loc:loc -> ?typ:typ -> tvar_rigid list -> trm -> trm (* Works even if the list is empty. *)
 val trm_match : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> (pat * trm) list -> trm
 
+val trm_not : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> trm
+val trm_and : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> trm -> trm
+val trm_or : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> trm -> trm
+
+
 (* val trm_record_get : ?loc:loc -> ?typ:typ -> trm -> field -> trm
 val trm_record_set : ?loc:loc -> ?typ:typ -> trm -> field -> trm -> trm
 val trm_record_make : ?loc:loc -> ?typ:typ -> (field * trm) list -> trm
@@ -122,7 +132,6 @@ val trm_pat_wild : ?loc:loc -> ?typ:typ -> ?annot:annot -> unit -> trm
 
 (* Like [trm_funs], but simply returns the body if no arguments are provided. *)
 val trm_funs_if_non_empty : ?loc:loc -> ?typ:typ -> ?annot:annot -> varsyntyps -> trm -> trm
-
 (* Like [trm_tuple], but accepts any list (return the one term if there is only one, and unit
    if there are none). *)
 val trm_tuple_flex : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm list -> trm

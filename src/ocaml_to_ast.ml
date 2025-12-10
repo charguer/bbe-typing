@@ -378,6 +378,17 @@ let pvar_inv (e : expression) : bool =
     | Pexp_ident {txt= Longident.Lident "??"} -> true
     | _ -> false
 
+let bool_op_inv (e : expression) : bool =
+  match e.pexp_desc with
+    | Pexp_ident {txt= Longident.Lident s} -> ( s = "&&" || s = "||" || s = "not")
+    | _ -> false
+
+let bool_op_inv_opt (e : expression) : string option =
+  match e.pexp_desc with
+    | Pexp_ident {txt= Longident.Lident s} -> Some s
+    | _ -> None
+
+
 let rec tr_exp (e : expression) : trm =
   let loc = e.pexp_loc in
   let return ?(annot=AnnotNone) (e':trm_desc) : trm =
@@ -437,7 +448,7 @@ let rec tr_exp (e : expression) : trm =
       | _ -> failwith "boolof expects exactly on argument"
   end *)
 
-  (* Recognize special syntax with at-symbol e.g. 't @is p' *)
+  (* Recognize special syntax with at-symbol e.g. 't @_is p' *)
   | Pexp_apply (e0, aes) when atsign_inv e0 ->
     begin match infix_op_inv ~loc e0 aes with
     | Some (e1, e2, e3) ->
@@ -463,6 +474,33 @@ let rec tr_exp (e : expression) : trm =
     | _ -> unsupported ~loc "pattern variable but wrong argument"
     end
 
+  | Pexp_apply (e0, aes) when bool_op_inv e0 ->
+    begin match bool_op_inv_opt e0 with
+      | Some "not" ->
+        begin match aes with
+        | [(_, e)] ->
+            let t = tr_exp e in
+            return (trm_desc_not t)
+        | _ -> unsupported ~loc "expected 1 argument";
+        end
+      | Some "&&" ->
+        begin match aes with
+        | [(_, e1); (_, e2)] ->
+          let t1 = tr_exp e1 in
+          let t2 = tr_exp e2 in
+          return (trm_desc_and t1 t2)
+        | _ -> unsupported ~loc "expected 2 arguments";
+        end
+      | Some "||" ->
+        begin match aes with
+        | [(_, e1); (_, e2)] ->
+          let t1 = tr_exp e1 in
+          let t2 = tr_exp e2 in
+          return (trm_desc_or t1 t2)
+        | _ -> unsupported ~loc "expected 2 arguments";
+        end
+      | _ -> assert false (* It should be impossible to have an operator that is not handled here *)
+    end
   | Pexp_apply (e0, aes) ->
     let is_labeled lbl =
       match lbl with
