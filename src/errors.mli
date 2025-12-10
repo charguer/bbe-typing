@@ -49,5 +49,7 @@ type error =
   | Maximum_varid_depth_reached
   | Expected_bindings
   | Unsupported_term of string
+  | Trying_to_unifying_bbe
+
 
 exception Error of (error * loc)

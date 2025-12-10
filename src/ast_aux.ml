@@ -289,11 +289,16 @@ let typ_float () : typ =
 let typ_bool () : typ =
   typ_constr (tconstr "bool") []
 
+let typ_bbe () : typ =
+  typ_constr (tconstr "type_bbe") []
+
 let the_typ_bool = typ_bool ()
 let the_typ_int = typ_int ()
 let the_typ_float = typ_float ()
 let the_typ_string = typ_string ()
 let the_typ_unit = typ_unit ()
+
+let the_typ_bbe = typ_bbe ()
 
 let typ_arrow (ty_args: typ list) (ty_ret: typ) : typ =
   assert (ty_args <> []) ;

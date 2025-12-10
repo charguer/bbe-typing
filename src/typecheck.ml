@@ -4,7 +4,7 @@ open Blocks
 open Errors
 open Var
 
-let debug_env = false
+let debug_env = true
 
 module List = struct
   include List
@@ -64,7 +64,7 @@ let typeof (t : trm) : typ =
 let bindsof (t : trm) : env =
   match t.trm_binds with
   | Some bs -> bs
-  | None -> failwith "Call to bindsof with a term with an empty trm_binds"
+  | None -> failwith (Printf.sprintf "Call to bindsof with a term with an empty trm_binds : %s" (trm_to_string t))
 
 let mk_env_binds (bs : env_var) : env =
   {env_empty with env_var = bs}
@@ -571,9 +571,18 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       end;
       return ty_tuple (Trm_tuple ts)
 
-    | Trm_not _ -> raise (Error (Unsupported_term "Trm_not", loc))
-    | Trm_and _ -> raise (Error (Unsupported_term "Trm_and", loc))
-    | Trm_or _ -> raise (Error (Unsupported_term "Trm_or", loc))
+    (* Handling boolean operators. Very trivial typing for terms. *)
+    | Trm_not t ->
+      let t = aux t in
+      return the_typ_bool (Trm_not t)
+    | Trm_and (t1, t2) ->
+      let t1 = aux t1 in
+      let t2 = aux t2 in
+      return the_typ_bool (Trm_and (t1, t2))
+    | Trm_or (t1, t2) ->
+      let t1 = aux t1 in
+      let t2 = aux t2 in
+      return the_typ_bool (Trm_or (t1, t2))
 
     | Trm_bbe_is _ -> raise (Error (Unsupported_term "Trm_bbe_is", loc))
     | Trm_pat_var _ -> raise (Error (Unsupported_term "Trm_pat_var", loc))
@@ -589,7 +598,7 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
   let loc = b.trm_loc in
   let aux_ml ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
     typecheck_ml ?expected_typ env t in
-  let _aux_bbe ?(env : env = e) (t : trm) : bbe =
+  let aux_bbe ?(env : env = e) (t : trm) : bbe =
     typecheck_bbe env t in
   let aux_pat ?(env : env = e) (typ : typ) (p : trm_pat) : trm_pat =
     typecheck_pattern env p in
@@ -600,12 +609,24 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
       generating the types the right way? *)
     { trm_desc = u;
       trm_loc = loc;
-      trm_typ = the_typ_bool(* the_typ_bbe *); (* TODO: binder ça, et unify doit interdir d'unifier typ_bbe avec lui meme *) (* TODO mid efforts/high prority "specific type for bbe" : forbidding unification. Asks for going a little deep in the unification function. As soon as we see a "the_type_bbe", we stop and return an error. All good *)
+      trm_typ = the_typ_bbe; (* TODO: binder ça, et unify doit interdir d'unifier typ_bbe avec lui meme *) (* TODO mid efforts/high prority "specific type for bbe" : forbidding unification. Asks for going a little deep in the unification function. As soon as we see a "the_type_bbe", we stop and return an error. All good *)
       trm_env = e;
       trm_binds = Some binds;
       trm_annot = annot } in (* LATER: factorizable return functions? *)
 
   match b.trm_desc with
+    (* Handling boolean operators. Very trivial typing for terms. *)
+    | Trm_not b ->
+      let b = aux_bbe b in
+      return (Trm_not b) (bindsof b)
+    | Trm_and (b1, b2) ->
+      let b1 = aux_bbe b1 in
+      let e = env_extend ~loc e (bindsof b1) in
+      let b2 = aux_bbe ~env:e b2 in
+      let total_binds = env_merge_binds ~loc [bindsof b1; bindsof b2] in
+      return (Trm_and (b1, b2)) total_binds
+
+    | Trm_or (t1, t2) -> raise (Error (Unsupported_term "Trm_or as BBE", loc))
     | Trm_bbe_is (t, p) ->
       let t = aux_ml t in
       if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s\n" (trm_to_string t)(Ast_print.typ_to_string t.trm_typ) (trm_to_string p) (Ast_print.typ_to_string p.trm_typ);
@@ -615,7 +636,10 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
       if debug_env then Printf.printf "Environment bound by p : %s\n" (Ast_print.env_to_string ~style:Ast_print.style_debug (bindsof p));
 
       return (Trm_bbe_is (t, p)) (bindsof p)
-    | _ -> aux_ml ~expected_typ:the_typ_bool b
+
+    (* simply returning aux_ml would not initialize trm_binds, meaning that the result term would be interpreted as a term, and not as a BBE by the "bindsof" function.
+      Instead, we wrap with the "return" function to initialize the result bindings to [Some {}] *)
+    | _ -> return (aux_ml ~expected_typ:the_typ_bool b).trm_desc (env_empty)
 
     (* typecheck_pat TODO change name. typecheck_pat -> typecheck_match pour le moment. Type pat -> match_pat ? *)
 and typecheck_pattern (* TODO add ?expected_typ : typ option  *)(e : env) (p : trm_pat) : trm_pat =

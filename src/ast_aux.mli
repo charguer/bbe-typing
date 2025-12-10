@@ -186,6 +186,7 @@ val the_typ_int : typ
 val the_typ_float : typ
 val the_typ_string : typ
 val the_typ_unit : typ
+val the_typ_bbe : typ
 (* FIXME: Do we still need these?
    val typ_overload : typ -> candidates_and_modes -> internal_type
   val typ_resolving_parameters : typ -> instance -> ?modes:symbol_modes -> symbol_type list -> internal_type

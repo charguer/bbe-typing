@@ -256,7 +256,9 @@ let rec unfold_alias env t =
 
 (* ... auxiliary function for unification *)
 
-(*Error: the file does not compile, said to have a syntax error here. Debug next week.*)
+(* Temporary fix since the .mli file does not give information on the internal representation of tvar_rigid *)
+let is_type_bbe (id : tvar_rigid) : bool =
+  (print_tvar_rigid id) = "type_bbe"
 
 (* Question: what is this function for? This is a factorized code to test two types.
 If both roots of their respective unions are not the same, then force a unification.*)
@@ -276,6 +278,8 @@ and unify_desc ?(loc = loc_none) env (t1 : typ) (t2 : typ) : unit =
     | Flexible _, _ -> unify_flexible t1 t2
     | _, Flexible _ -> unify_flexible t2 t1
     | Typ_constr (id1, ts1), Typ_constr (id2, ts2) ->
+        if is_type_bbe id1 || is_type_bbe id2 then
+          raise (Error (Trying_to_unifying_bbe, loc));
         if id1 <> id2 then
           (* At this stage, id1 and id2 can't be aliases: the function unfold_alias has already
             unfolded them. *)
