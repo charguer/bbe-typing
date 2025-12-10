@@ -428,12 +428,14 @@ let rec tr_exp (e : expression) : trm =
       return (Trm_if (t1, t2, trm_unit ()))
       (* LATER: trm_desc_fixs *)
 
+  (* YL : low effort/low priority TODO. Function to see BBEs as terms with a wrapper that deletes its bindings. *)
   (* Recognize sugar 'boolof b' *)
+(*
   | Pexp_apply ({ desc = Pexp_var { id= "boolof"; _ } ; _ }, ts)  ->
       begin match ts with
-      | [t0] -> trm_if (tr_exp t0) trm_true trm_false
+      | [t0] -> trm_if (tr_exp t0 trm_true trm_false
       | _ -> failwith "boolof expects exactly on argument"
-  end
+  end *)
 
   (* Recognize special syntax with at-symbol e.g. 't @is p' *)
   | Pexp_apply (e0, aes) when atsign_inv e0 ->

@@ -600,7 +600,7 @@ let type_constructor e overall_type (c : Parsetree.constructor_declaration) : co
   (name, ty)
 
 (* Adding an implicitely overloaded variable. *)
-let add_implicit_overloaded_instance ?(loc = loc_none) ?modes e var_names x ty =
+(* let add_implicit_overloaded_instance ?(loc = loc_none) ?modes e var_names x ty =
   (* The expected modes for this variable: they are implicitely all [in]. *)
   let modes =
     match modes with
@@ -631,13 +631,17 @@ let add_implicit_overloaded_instance ?(loc = loc_none) ?modes e var_names x ty =
     instance_loc = loc ;
     instance_symbol = x
   } in
-  env_add_instance ~loc e x inst
+  env_add_instance ~loc e x inst *)
+
+
+(* TODO "Type declarations" : quite explicit. When we will need types. No atomic functions needed, handle this later.*)
 
 (** [env_add_type_declaration e td]: processes the OCaml type declarations and adds them to the environment  *)
-let env_add_type_declaration (e : env) (td : Parsetree.type_declaration) : env * tconstr_desc =
+(* let env_add_type_declaration (e : env) (td : Parsetree.type_declaration) : env * tconstr_desc =
   let loc = td.Parsetree.ptype_loc in
   let id = tconstr td.ptype_name.txt in
   let (var_names, vars) = get_vars_params td in
+  (* Declared type, with its variables  *)
   let ty_overall = typ_constr id vars in (* eg id=option, vars=['a] *)
   let e_with_locals = env_add_tvars e var_names vars in
   let tconstr_def =
@@ -668,26 +672,30 @@ let env_add_type_declaration (e : env) (td : Parsetree.type_declaration) : env *
     match tconstr_def with
     | Tconstr_def_sum cs -> (* eg cs=[("None",'a option]); ("Some",'a->'a option)] *)
       (* We add each constructor as an implicit overloaded instance. *)
+      (* Constructor types are in Rocq style, meaning that they are seen as functions that output their corresponding type *)
       List.fold_left (fun e (c, ty) ->
         let typ_of_constructors =
-            assert (ty =?= ty_overall);
+            (* assert (ty =?= ty_overall); *) (* Verify if the output type of the constructor is the same as the computed one. *)
             ty in
         let typ_of_inversor =
-            match typ_arrow_inv ty with
-            | Some (ty_args,ty_ret) ->
-                 assert (ty_ret =?= ty_overall);
-                 typ_arrow [ty_ret] (typ_option (typ_tuple ty_args))
+            begin
+            match typ_arrow_inv_opt ty with
+            | Some (ty_args, ty_ret) ->
+                 (* assert (ty_ret =?= ty_overall); *) (* Here I agree: Verify of the return type of the constructor the same as the overall type *)
+                 typ_arrow [ty_ret] (typ_option (typ_tuple ty_args)) (* TODO "option" : Add an option type, with smart constructors and inversors "the_type_option" or smthing *)
                  (* typ_tuple ts = typ_constr "__tuple" ts *)
            | None -> (* eg None *)
-              typ_arrow [ty_ret] typ_bool
+              typ_arrow [ty_ret] the_typ_bool (* Here this is good *)
+            end
           in
+        (* Debugging with printings. Good idea of having a local debug flag. Not very modular but not bad for working on a specific file. *)
         let env_add_var e x s =
            if debug_env then printf "adding %s %s" x (string_of_sch s);
             Env.add e x s
         let e = env_add_var c (mk_sch vars typ_of_constructor) in
         let e = env_add_var ("Pattern__" ^ c) .. typ_of_inversor in
         add_implicit_overloaded_instance ~loc e var_names (SymbolName (constr_to_var c)) ty) e cs
-    | Tconstr_record fs ->
+    (* | Tconstr_record fs ->
       let e =
         let ty = typ_arrow (List.map snd fs) ty_overall in
         add_implicit_overloaded_instance ~loc e var_names (SymbolMakeRecord (List.map fst fs)) ty in
@@ -705,11 +713,14 @@ let env_add_type_declaration (e : env) (td : Parsetree.type_declaration) : env *
         let e =
           add_implicit_overloaded_instance ~loc e var_names (SymbolRecordWith proj)
             (typ_arrow [ty_overall; ty] ty_overall) in
-        e) e fs
+        e) e fs *)
+    | Tconstr_record _ -> failwith "Records are not accepted in the language. Temporary error message, modify [Blocks.env_add_type_declaration]" (* TODO: proper error messages *)
     | Tconstr_abstract
     | Tconstr_def_alias _ -> e
-    | Tconstr_special_nary -> assert false (* These can't be defined by the user for now. *) in
-  (e, tdesc)
+    | Tconstr_special_nary -> assert false (* These can't be defined by the user for now. *)
+    | _ -> assert false
+  in
+  (e, tdesc) *)
 
 
 

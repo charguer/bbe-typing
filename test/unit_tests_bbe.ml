@@ -21,14 +21,21 @@ let[@type_error ""]  bbe_is_syntyp_fail = if true @_is (__ : int) then true else
 
 let bbe_is_bind : bool = if true @_is ??x then x else false
 
+
+
+
+
+(* Constructor inversion *)
 let bbe_is_bind_constr = if (Some true) @_is (Some ??x) then x else false
 
+(* Custom type definition *)
 type myoptionint = MyNoneInt | MySomeInt of int
 type 'a myoption = MyNone | MySome of 'a
 type 'a mylist = MyNil | MyCons of 'a * 'a mylist (* MyCons: typ_arrow ['a; typ_constr "mylist" ['a]] (typ_constr "mylist" ['a]) *)
 type 'a mylistp = MyNilp | MyConsp of ('a * 'a list) (* MyCons: typ_arrow [typ_tuple ['a; typ_constr "mylistp" ['a]]] (typ_constr "mylistp" ['a]) *)
 type ('a,'b) mypair = 'a * 'b (* typ_tuple ['a; 'b] *)
 
+(* Constructors *)
 let tuple2 = (2,3)
 let tuple3 = (2,3,4)
 
@@ -40,16 +47,17 @@ let mylistp1 = MyConsp (2, MyNilp)
 let myoptionnone : int myoption = MyNone
 let myoptionnsome : (int mylist) myoption = MySome mylist1
 
+(* Explicit BBE conversion *)
 let inv_lit c =
-  bool_of (c @is 3)
+  bool_of (c @_is 3)
 
 let inv_bool c =
-  bool_of (c @is true)
+  bool_of (c @_is true)
 let inv_tuple2 c =
-  bool_of (c @is (true,false))
+  bool_of (c @_is (true,false))
 
 let inv_none (c:'a myoption) : bool =
-  bool_of (c @is MyNone)
+  bool_of (c @_is MyNone)
 
 let alltrue (b1 b2 b3: bool) : bool =
   b1 && b2 && b3
@@ -57,6 +65,39 @@ let alltrue (b1 b2 b3: bool) : bool =
 let optioneven (o: option int) : bool =
   (o is Some ??n) && (even n)
 
+
+(* Deep inversors *)
+type trm_desc =
+| Trm_bool of bool
+| Trm_if of trm_desc * trm_desc * trm_desc
+
+let trm_bool (b : bool) = Trm_bool b
+
+let trm_if t1 t2 t3 = Trm_if (t1, t2, t3)
+
+let trm_and t1 t2 = trm_if t1 t2 (trm_bool false)
+
+let trm_bool_inv (t : trm_desc) : bool option =
+  if t @_is (Trm_bool ??b) then Some b else None
+
+let trm_if_inv (t : trm_desc) : (trm_desc * trm_desc * trm_desc) option =
+  if t @_is (Trm_if (??t1, ??t2, ??t3)) then Some (t1, t2, t3) else None
+
+let trm_and_inv (t : trm_desc) : (trm_desc * trm_desc) option =
+  if t @_is (trm_if_inv (??t1, ??t2, trm_bool_inv false)) then Some (t1, t2) else None
+
+let trm_and_3_inv (t : trm_desc) : (trm_desc * trm_desc * trm_desc) option =
+  if t @_is (trm_and_inv (??t1, (trm_and_inv ??t2 ??t3))) then Some (t1,t2,t3) else None
+
+(* Binding boolean expressions *)
+
+let even n = n mod 2 = 0
+let even_opt n = if even n then Some n/2 else None
+
+let f (x : int) : int = x
+
+let testing_and (t : int option) =
+  if (t @_is Some ??k) && k @_is even_opt v then f v else f 0
 
 
   (*
@@ -85,7 +126,7 @@ let optioneven (o: option int) : bool =
 
 
    let r o = Pattern.make ((o is Some ??n) && (even n)) in
-   if o @is r(??n) then f' n else g()
+   if o @_is r(??n) then f' n else g()
 
 
 

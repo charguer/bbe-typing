@@ -484,6 +484,7 @@ type env_tconstr = (tconstr, tconstr_desc) Env.t
 type env = {
   env_var : env_var;
   env_tconstr : env_tconstr;
+  (* env_is_in_pattern : bool; *) (* AC *)
 }
 
 end
