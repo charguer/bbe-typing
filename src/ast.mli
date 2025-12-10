@@ -340,9 +340,7 @@ type let_def = {
   let_def_body : trm0;
 }
 
-(* The representation of [42] in a parsed AST is
-  [Trm_apps (Trm_var (SymbolNumericInt, ...), [Trm_cst (Cst_int 42)]]. *) (*Yanni: Unnecessary now, a normal cst is enough.*)
-(* Records are compiled as stated in the article. *)
+(* Records are compiled as stated in the article. *) (* YL : unnecessary now *)
 type trm_desc =
   | Trm_var of varid
   | Trm_cst of cst
@@ -374,6 +372,48 @@ and trms = trm list
 
 and bbe = trm
 and trm_pat = trm (*temporary solution, hoping to remove the "pat" type and change "pattern" to pat later on.*)
+
+
+(*
+  The current goal is to support polymorphic algebraic data types
+  (of the form [type 'a t = A | B of 'a * int * 'a t])
+
+  Defined constructors are added to the environment as functions of the type [argument list -> return_type].
+  e.g : [type 'a t = A | B of 'a * int -> 'a t] would add to the environment : "A : forall a. a t" and "B : forall a. a * int -> a t".
+        Internally, we would have the representation :
+        A => {sch_tvars = ["a"] ;
+             sch_body = {typ_desc = Typ_constr ("->", [Typ_constr ("t", [a])])
+                         typ_mark = _}
+            }
+        B => {sch_tvars = ["a"] ;
+             sch_body = {typ_desc = Typ_constr ("->", [Typ_constr ("t", [a]), Typ_constr ("int",[])  ,Typ_constr ("t", [a])])
+                         typ_mark = _}
+            }
+  Constructors with no arguments are typed as variables.
+  Note : another choice for typing could have been to see constructors with no arguments as functions that take unit
+        Alternative solution:
+        A => {sch_tvars = ["a"] ;
+             sch_body = {typ_desc = Typ_constr ("->", [Typ_constr ("unit", []), Typ_constr ("t", [a])])
+                         typ_mark = _}
+            }
+
+  Constructor declaration implicitly adds into context correspoding inversors for pattern matching.
+  Identically to OCaml pattern matching, they take a "return_type" as argument, and returns an option on the "argument list".
+  Constructor inversors with no arguments are typed as boolean predicates, as they would return an option on "unit".
+  e.g : With the same example: "Pattern__A : forall a. a t -> bool" and "Pattern__B : forall a. a t -> (a * int) option".
+        Internally, we would have the representation :
+        Pattern__A => {sch_tvars = ["a"] ;
+                       sch_body = {typ_desc = Typ_constr ("->", [Typ_constr ("t", [a])])
+                         typ_mark = _}
+            }
+        Pattern__B => {sch_tvars = ["a"] ;
+             sch_body = {typ_desc = Typ_constr ("->", [Typ_constr ("t", [a]), Typ_constr ("int",[])  ,Typ_constr ("t", [a])])
+                         typ_mark = _}
+            }
+
+  About arrow ("->"): The arrow type is part of the builtin type constructors. It takes a list of types as arguments (of size n), and represents an n-ary type [(T1, ..., T(n-1)) -> Tn].
+  *)
+
 
 (* Definition of a type. *)
 type tconstr_def =
