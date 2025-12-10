@@ -699,7 +699,7 @@ let env_builtin =
       tconstr_tvars = [tv] ;
       tconstr_def = Tconstr_def_sum [
         (constr "[]", typ_list t) ;
-        (constr "::", typ_arrow [t] (typ_list t)) ; (* Note : isn't this a "typ_arrow [t] (typ_arrow [typ_list t] (typ_list t))" *)
+        (constr "::", typ_arrow [t; typ_list t] (typ_list t)) ; (* Note : isn't this a "typ_arrow [t] (typ_arrow [typ_list t] (typ_list t))" *)
       ] ;
       tconstr_typ = None
     } in
@@ -712,7 +712,7 @@ let env_builtin =
     let t = typ_rigid tv in
     env_add_var e (var "::")
       (mk_sch [tv]
-        (typ_arrow [typ_tuple [t; typ_list t]] (typ_list t))) in
+        (typ_arrow [t; typ_list t] (typ_list t))) in
   let e =
     env_add_var e (var "^")
       (mk_sch []
