@@ -577,14 +577,12 @@ let trm_tuple ?loc ?typ ?annot (ts : trms) : trm =
     (trm_desc_apps (trm_var_symbol ?loc (SymbolTuple i)) ts) *)
   mktrm ?loc ?typ (trm_desc_tuple ts)
 
-
-(* This is hack fix. Deprecated version. To be handled soon. *)
-(* let trm_tuple_flex ?loc ?typ ?annot (ts : trms) : trm =
+let trm_tuple_flex ?loc ?typ ?annot (ts : trms) : trm =
   match ts with
   | [] -> trm_unit ?loc ?typ ?annot ()
   | [t] -> t
-  | _ -> trm_unit ?loc ?typ ?annot () (* Here should instead use trm_tuple *)
- *)
+  | _ -> trm_tuple ?loc ?typ ?annot ts
+
 
 (** [trm_desc_constr] Note: previously translated several arguments to a singleton of a tuple for some reason. Still unsure about why. *)
 let trm_desc_constr ?loc ?typ (c : constr) (ts : trms) : trm_desc =
@@ -974,7 +972,8 @@ let trm_iter (f : trm -> unit) (t : trm) : unit =
   | Trm_annot (t, _) -> f t
   | Trm_forall (_, t) -> f t
   | Trm_match (t, pts) -> List.iter f (t :: List.map snd pts)
-  | Trm_bbe_is (t, p) -> List.iter f [t; p]
+  | Trm_tuple ts -> List.iter f ts
+    | Trm_bbe_is (t, p) -> List.iter f [t; p]
 
 let trm_map (f : trm -> trm) (t : trm) : trm =
   let loc = t.trm_loc in
@@ -1019,6 +1018,10 @@ let trm_map (f : trm -> trm) (t : trm) : trm =
     let pts' = List.map (fun (p, t) -> (p, f t)) pts in
     if t2 == t1 && List.for_all2 (fun (_p', t') (_p, t) -> t' == t) pts' pts then t
     else trm_match ~loc ~typ ~annot t2 pts'
+  | Trm_tuple ts ->
+    let ts' = List.map f ts in
+    if List.for_all2 (==) ts' ts then t
+    else trm_tuple ~loc ~typ ~annot ts'
   | Trm_bbe_is (t1, p1) ->
     let t1' = f t1 in
     let p1' = f p1 in

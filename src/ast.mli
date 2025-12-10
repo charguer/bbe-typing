@@ -343,10 +343,10 @@ type let_def = {
 (* Records are compiled as stated in the article. *) (* YL : unnecessary now *)
 
 (* List of functions to modify/list of dependencies when changing trm_desc:
-  - debug.ml: [print_low_level_trm] function
-  - ast_aux.ml: [trm_iter] and [trm_map] functions
-  - typecheck.ml: [typecheck_ml] "let result = match t.trm_desc with [...]" function
-  - ast_print.ml: [trm_to_doc] function
+  - src/debug.ml: [print_low_level_trm] function
+  - src/ast_aux.ml: [trm_iter] and [trm_map] functions
+  - src/typecheck.ml: [typecheck_ml], [typecheck_bbe] and [typecheck_pattern] functions
+  - src/ast_print.ml: [trm_to_doc] function
 *)
 
 type trm_desc =

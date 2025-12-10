@@ -419,13 +419,14 @@ and trm_to_doc ~style t =
 and trm_to_doc_raw ~style (t : trm) : doc =
   let aux = trm_to_doc_raw ~style in
   let auxs = List.map aux in
-  let match_trm_apps =
+(*   let match_trm_apps =
     match t.trm_desc with
     | Trm_apps (t0, ts) -> Some (t0.trm_desc, ts)
     | _ -> None in
-
-  match style.style_print_symbols, t.trm_annot, match_trm_apps with
+ *)
 (*
+  match style.style_print_symbols, t.trm_annot, match_trm_apps with
+
   | false, AnnotLiteralUnit,
     Some (Trm_var { varid_symbol = SymbolTuple 0 ; _ },
           [{ trm_desc = Trm_cst (Cst_unit ()); _ }]) ->
@@ -499,227 +500,227 @@ and trm_to_doc_raw ~style (t : trm) : doc =
   | false, AnnotTuple i,
     Some (Trm_var { varid_symbol = SymbolTuple j ; _ }, ts) when i = j ->
       parens (separate (comma ^^ blank 1) (List.map aux ts))
- *)
   | _, _, _ ->
+*)
+  match t.trm_desc with
+  | Trm_cst c -> cst_to_doc c
 
-    begin match t.trm_desc with
+  | Trm_var varid -> varid_to_doc ~style varid
 
-    | Trm_cst c -> cst_to_doc c
-
-    | Trm_var varid -> varid_to_doc ~style varid
-
-    | Trm_funs (xs_raw, t1) ->
-      (* fun (x1 : ty1) ... : tyr -> t *)
-      let xs = List.map fst xs_raw in
-      let xs = List.map print_var_parens xs in
-      let args =
-        if List.mem style.style_types [TypesSubterms; TypesVarsAndBinders; TypesVars] then begin
-          let ty = repr (typ_of t) in
-          match typ_arrow_inv_opt ty with
-          | None ->
-            (* This is typically executed when debugging. Falling back the syntactic types. *)
-            separate (blank 1) (List.map (fun (x, sty) ->
-              parens (
-                   string (print_var_parens x)
-                   (* OCaml interprets ['a] variables as rigid instead of flexible when in function
-                     parameters. *)
-                ^^ if sty.syntyp_syntax.ptyp_desc = Ptyp_any then empty
-                   else (
-                       blank 1
-                    ^^ string ":"
-                    ^^ blank 1
-                    ^^ syntyp_to_doc sty
-                   ))) xs_raw)
-          | Some (tys, tyr) ->
-            if List.length xs <> List.length tys
-              then failwith "incorrect arity for function";
-            (* This prints the type of argument according to the inferred type of the function,
-              and ignores the provided styp of arguments. *)
-               separate (blank 1) (List.map2 var_and_typ_to_doc tys xs)
-            ^^ blank 1
-            ^^ string ":"
-            ^^ blank 1
-            ^^ parens (typ_to_doc tyr)
-        end else begin
-          separate (blank 1) (List.map string xs)
-        end in
-      separate (blank 1) [
-        string "fun";
-        args;
-        string "->";
-        aux t1
-      ]
-
-    | Trm_if (t0, t1, t2) ->
-             string "if"
-          ^^ blank 1
-          ^^ aux t0
-          ^^ blank 1
-          ^^ string "then"
-          ^^ hardline
-          ^^ aux t1
-          ^^ hardline
-          ^^ string "else"
-          ^^ hardline
-          ^^ aux t2
-
-    | Trm_let ({ let_def_bind = Bind_anon; let_def_body = { trm_desc = Trm_funs (xs, t1); _ }; _ }, t2) ->
-        failwith "functions cannot appear as first argument of a trm_seq"
-
-    | Trm_let ({ let_def_bind = Bind_var f; let_def_body = { trm_desc = Trm_funs (xs, t1); _ }; let_def_rec }, t2) ->
-        let isrec =
-          match let_def_rec with
-          | Recursive -> true
-          | Nonrecursive -> false in
-           string (if isrec then "let rec" else "let")
-        ^^ blank 1
-        ^^ var_to_doc (fst f) (* VERY LATER: snd *)
-        ^^ blank 1
-        ^^ separate (blank 1) (List.map (fun (x, sty) ->
+  | Trm_funs (xs_raw, t1) ->
+    (* fun (x1 : ty1) ... : tyr -> t *)
+    let xs = List.map fst xs_raw in
+    let xs = List.map print_var_parens xs in
+    let args =
+      if List.mem style.style_types [TypesSubterms; TypesVarsAndBinders; TypesVars] then begin
+        let ty = repr (typ_of t) in
+        match typ_arrow_inv_opt ty with
+        | None ->
+          (* This is typically executed when debugging. Falling back the syntactic types. *)
+          separate (blank 1) (List.map (fun (x, sty) ->
             parens (
-             string (print_var_parens x)
-             ^^ blank 1 ^^ string ":" ^^ blank 1
-             ^^ syntyp_to_doc sty)) xs)
-        ^^ show_typ_of_trm ~style ~is_binder:true t1
+                  string (print_var_parens x)
+                  (* OCaml interprets ['a] variables as rigid instead of flexible when in function
+                    parameters. *)
+              ^^ if sty.syntyp_syntax.ptyp_desc = Ptyp_any then empty
+                  else (
+                      blank 1
+                  ^^ string ":"
+                  ^^ blank 1
+                  ^^ syntyp_to_doc sty
+                  ))) xs_raw)
+        | Some (tys, tyr) ->
+          if List.length xs <> List.length tys
+            then failwith "incorrect arity for function";
+          (* This prints the type of argument according to the inferred type of the function,
+            and ignores the provided styp of arguments. *)
+              separate (blank 1) (List.map2 var_and_typ_to_doc tys xs)
+          ^^ blank 1
+          ^^ string ":"
+          ^^ blank 1
+          ^^ parens (typ_to_doc tyr)
+      end else begin
+        separate (blank 1) (List.map string xs)
+      end in
+    separate (blank 1) [
+      string "fun";
+      args;
+      string "->";
+      aux t1
+    ]
+
+  | Trm_if (t0, t1, t2) ->
+            string "if"
         ^^ blank 1
-        ^^ string "="
+        ^^ aux t0
         ^^ blank 1
+        ^^ string "then"
+        ^^ hardline
         ^^ aux t1
-        ^^ blank 1
-        ^^ string "in"
+        ^^ hardline
+        ^^ string "else"
         ^^ hardline
         ^^ aux t2
 
-    | Trm_let ({ let_def_bind = Bind_anon; let_def_body = t1; _ }, t2) ->
-         aux t1 ^^ semi ^^ hardline ^^ aux t2
+  | Trm_let ({ let_def_bind = Bind_anon; let_def_body = { trm_desc = Trm_funs (xs, t1); _ }; _ }, t2) ->
+      failwith "functions cannot appear as first argument of a trm_seq"
 
-    | Trm_let ({ let_def_bind = Bind_var (x, bind_sch); let_def_body = t1; let_def_rec }, t2) ->
-        let isrec =
-          match let_def_rec with
-          | Recursive -> true
-          | Nonrecursive -> false in
-           string (if isrec then "let rec" else "let")
+  | Trm_let ({ let_def_bind = Bind_var f; let_def_body = { trm_desc = Trm_funs (xs, t1); _ }; let_def_rec }, t2) ->
+      let isrec =
+        match let_def_rec with
+        | Recursive -> true
+        | Nonrecursive -> false in
+          string (if isrec then "let rec" else "let")
+      ^^ blank 1
+      ^^ var_to_doc (fst f) (* VERY LATER: snd *)
+      ^^ blank 1
+      ^^ separate (blank 1) (List.map (fun (x, sty) ->
+          parens (
+            string (print_var_parens x)
+            ^^ blank 1 ^^ string ":" ^^ blank 1
+            ^^ syntyp_to_doc sty)) xs)
+      ^^ show_typ_of_trm ~style ~is_binder:true t1
+      ^^ blank 1
+      ^^ string "="
+      ^^ blank 1
+      ^^ aux t1
+      ^^ blank 1
+      ^^ string "in"
+      ^^ hardline
+      ^^ aux t2
+
+  | Trm_let ({ let_def_bind = Bind_anon; let_def_body = t1; _ }, t2) ->
+        aux t1 ^^ semi ^^ hardline ^^ aux t2
+
+  | Trm_let ({ let_def_bind = Bind_var (x, bind_sch); let_def_body = t1; let_def_rec }, t2) ->
+      let isrec =
+        match let_def_rec with
+        | Recursive -> true
+        | Nonrecursive -> false in
+          string (if isrec then "let rec" else "let")
+      ^^ blank 1
+      ^^ var_to_doc x
+      ^^ blank 1
+      ^^ show_synsch_or (
+          if List.mem style.style_types [TypesSubterms; TypesVarsAndBinders] then string ": _"
+          else empty
+          ) bind_sch
+      ^^ blank 1
+      ^^ string "="
+      ^^ blank 1
+      ^^ wrap_typ_of_trm ~style ~is_binder:true t1
+      ^^ blank 1
+      ^^ string "in"
+      ^^ hardline
+      ^^ aux t2
+
+  | Trm_let ({ let_def_bind = Bind_register_instance (sym, inst); let_def_body = t1; _ }, t2) ->
+          string "let"
+      ^^ string "[@register"
+      ^^ symbol_to_attr_doc sym
+      ^^ string "]"
+      ^^ blank 1
+      ^^ string "_"
+      ^^ blank 1
+      ^^ string "="
+      ^^ blank 1
+      ^^ print_tvars_arg inst.instance_tvars
+      ^^ parens (
+        if inst.instance_assumptions = [] then (
+          wrap_typ_of_trm ~style ~is_binder:true t1
+        ) else (
+            string "fun"
         ^^ blank 1
-        ^^ var_to_doc x
+        ^^ print_assumptions_arg inst.instance_assumptions
         ^^ blank 1
-        ^^ show_synsch_or (
-            if List.mem style.style_types [TypesSubterms; TypesVarsAndBinders] then string ": _"
-            else empty
-           ) bind_sch
+        ^^ string ":"
         ^^ blank 1
-        ^^ string "="
+        ^^ parens (typ_to_doc inst.instance_typ)
+        ^^ blank 1
+        ^^ string "->"
         ^^ blank 1
         ^^ wrap_typ_of_trm ~style ~is_binder:true t1
+        ))
+      ^^ blank 1
+      ^^ string "in"
+      ^^ hardline
+      ^^ aux t2
+
+  | Trm_apps (t0, ts) ->
+      let d0 = aux t0 in
+      let d0 = put_parens_trm t0 d0 in
+      let ds = auxs ts in
+      let ds = List.map2 put_parens_trm ts ds in
+      separate (blank 1) (List.map2 (trm_and_typ_to_doc ~style) (t0::ts) (d0::ds))
+
+  | Trm_annot (t0, ty) ->
+      parens (
+            aux t0
         ^^ blank 1
-        ^^ string "in"
+        ^^ string ":"
+        ^^ blank 1
+        ^^ syntyp_to_doc ty)
+  | Trm_forall (n, t1) ->
+      let (n, t1) =
+        (* Sometimes a rigid variable's name starts with a quote, but such variable can't appear
+          in a [fun (type _)] construct in Ocaml.  In such places, we replace it on the fly. *)
+        let str = print_tconstr n in
+        assert (String.length str > 0) ;
+        if str.[0] = '\'' then
+          let n' =
+            tconstr (sprintf "rigid_%s (* was %s *)"
+              (String.sub str 1 (String.length str - 1)) str) in
+          (n', trm_map_typ (replace_rigid_with n (typ_constr n' [])) t1)
+        else (n, t1) in
+          string "fun (type"
+        ^^ blank 1
+        ^^ string (print_tconstr n)
+        ^^ string ")"
+        ^^ blank 1
+        ^^ string "->"
+        ^^ blank 1
+        ^^ parens (aux t1)
+
+  | Trm_match (t, pts) ->
+          string "begin match"
+        ^^ blank 1
+        ^^ aux t
+        ^^ blank 1
+        ^^ string "with"
         ^^ hardline
-        ^^ aux t2
-
-    | Trm_let ({ let_def_bind = Bind_register_instance (sym, inst); let_def_body = t1; _ }, t2) ->
-           string "let"
-        ^^ string "[@register"
-        ^^ symbol_to_attr_doc sym
-        ^^ string "]"
-        ^^ blank 1
-        ^^ string "_"
-        ^^ blank 1
-        ^^ string "="
-        ^^ blank 1
-        ^^ print_tvars_arg inst.instance_tvars
-        ^^ parens (
-          if inst.instance_assumptions = [] then (
-            wrap_typ_of_trm ~style ~is_binder:true t1
-          ) else (
-             string "fun"
-          ^^ blank 1
-          ^^ print_assumptions_arg inst.instance_assumptions
-          ^^ blank 1
-          ^^ string ":"
-          ^^ blank 1
-          ^^ parens (typ_to_doc inst.instance_typ)
-          ^^ blank 1
-          ^^ string "->"
-          ^^ blank 1
-          ^^ wrap_typ_of_trm ~style ~is_binder:true t1
-          ))
-        ^^ blank 1
-        ^^ string "in"
+        ^^ separate hardline
+            (List.map (fun (p, t) ->
+                  blank 2
+              ^^ string "|"
+              ^^ blank 1
+              ^^ pat_to_doc p
+              ^^ blank 1
+              ^^ string "->"
+              ^^ blank 1
+              ^^ aux t) pts)
         ^^ hardline
-        ^^ aux t2
+        ^^ string "end"
 
-    | Trm_apps (t0, ts) ->
-        let d0 = aux t0 in
-        let d0 = put_parens_trm t0 d0 in
-        let ds = auxs ts in
-        let ds = List.map2 put_parens_trm ts ds in
-        separate (blank 1) (List.map2 (trm_and_typ_to_doc ~style) (t0::ts) (d0::ds))
+  | Trm_tuple ts -> (* TODO: check if this is the correct result. *)
+    parens (separate hardline
+      (List.map (trm_to_doc_raw ~style) ts))
 
-    | Trm_annot (t0, ty) ->
-        parens (
-             aux t0
-          ^^ blank 1
-          ^^ string ":"
-          ^^ blank 1
-          ^^ syntyp_to_doc ty)
-    | Trm_forall (n, t1) ->
-        let (n, t1) =
-          (* Sometimes a rigid variable's name starts with a quote, but such variable can't appear
-            in a [fun (type _)] construct in Ocaml.  In such places, we replace it on the fly. *)
-          let str = print_tconstr n in
-          assert (String.length str > 0) ;
-          if str.[0] = '\'' then
-            let n' =
-              tconstr (sprintf "rigid_%s (* was %s *)"
-                (String.sub str 1 (String.length str - 1)) str) in
-            (n', trm_map_typ (replace_rigid_with n (typ_constr n' [])) t1)
-          else (n, t1) in
-            string "fun (type"
-         ^^ blank 1
-         ^^ string (print_tconstr n)
-         ^^ string ")"
-         ^^ blank 1
-         ^^ string "->"
-         ^^ blank 1
-         ^^ parens (aux t1)
+  | Trm_bbe_is (t1, p2) ->
+      let d1 = aux t1 in
+      let d2 = aux p2 in
+      parens (
+            d1
+        ^^ blank 1
+        ^^ string "@_is"
+        ^^ blank 1
+        ^^ d2
+      )
 
-    | Trm_match (t, pts) ->
-            string "begin match"
-         ^^ blank 1
-         ^^ aux t
-         ^^ blank 1
-         ^^ string "with"
-         ^^ hardline
-         ^^ separate hardline
-              (List.map (fun (p, t) ->
-                   blank 2
-                ^^ string "|"
-                ^^ blank 1
-                ^^ pat_to_doc p
-                ^^ blank 1
-                ^^ string "->"
-                ^^ blank 1
-                ^^ aux t) pts)
-         ^^ hardline
-         ^^ string "end"
+  | Trm_pat_var varid ->
+        string "??"
+    ^^ varid_to_doc ~style varid
 
-    | Trm_bbe_is (t1, p2) ->
-        let d1 = aux t1 in
-        let d2 = aux p2 in
-        parens (
-             d1
-          ^^ blank 1
-          ^^ string "@_is"
-          ^^ blank 1
-          ^^ d2
-        )
-
-    | Trm_pat_var varid ->
-         string "??"
-      ^^ varid_to_doc ~style varid
-
-    | Trm_pat_wild -> string "__"
-
-    end
+  | Trm_pat_wild -> string "__"
 
 and var_and_typ_to_doc (ty : typ) (x : string) =
   parens (

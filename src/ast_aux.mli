@@ -95,8 +95,8 @@ val trm_var : ?loc:loc -> ?typ:typ -> ?annot:annot -> ?resolution:varid_resoluti
 (* val trm_var_symbol : ?loc:loc -> ?typ:typ -> ?annot:annot -> ?resolution:varid_resolution -> symbol -> trm
  *)
 val trm_var_varid : ?loc:loc -> ?typ:typ -> ?annot:annot -> varid -> trm
-(* val trm_tuple : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm list -> trm (* Doesn't work if the list is empty: use [trm_tuple_flex] in such cases. *)
- *)
+val trm_tuple : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm list -> trm
+
 val trm_funs : ?loc:loc -> ?typ:typ -> ?annot:annot -> varsyntyps -> trm -> trm (* Doesn't work if the list is empty: use [trm_funs_if_non_empty] in such cases. *)
 val trm_constr : ?loc:loc -> ?typ:typ -> ?annot:annot -> constr -> trms -> trm
 val trm_if : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> trm -> trm -> trm

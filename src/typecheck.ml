@@ -66,20 +66,24 @@ let bindsof (t : trm) : env =
   | Some bs -> bs
   | None -> failwith "Call to bindsof with a term with an empty trm_binds"
 
+let mk_env_binds (bs : env_var) : env =
+  {env_empty with env_var = bs}
+
 (** * Custom functions, to be put elsewhere later *)
-let merge_distinct ~loc (e1 : (var, sch) Env.t) (e2 : (var, sch) Env.t) : (var, sch) Env.t =
-(* use Env.mem with the variables. *)
-(* Plan :
-1. Remove env_item, just an sch is enough, no need for overloading anyway.
-2. Remove symbols inside env, simply replace with a variable name (type "var")
-3. Removing all of this will break a lot of code, find all of these, document them, and modify accordingly*)
+(** [merge_distinct e1 e2]: merges the environments e1 and e2, raising an error if there is shadowing *)
+let merge_distinct ~loc (e1 : env_var) (e2 : env_var) : env_var =
   Env.fold e2 (fun e k v ->
     (if (Env.mem e1 k) then raise (Error (Expected_bindings, loc));
     (Env.add e k v))) e1
 
-(** [merge_distinct_env e1 e2]: adds the bindings of binds inside e1.  *)
-let merge_distinct_env ~loc (e1 : env) (binds : env) : env = (* TODO: env_bbe = env_var, and binds/"eb" has type env_bbe *)
+(** [env_extend e1 e2]: adds the bindings of binds inside e1.*)
+let env_extend ~loc (e1 : env) (binds : env) : env = (* TODO: env_bbe = env_var, and binds/"eb" has type env_bbe *)
+  assert (Env.size binds.env_tconstr = 0); (* it is assumed no expression can bind type constructors *)
   {e1 with env_var = (merge_distinct ~loc e1.env_var binds.env_var)}
+
+let env_merge_binds ~loc (bl : env list) : env =
+  let ev = env_empty in
+  List.fold_left (env_extend ~loc) ev bl
 
  let typ_constant = function
   | Cst_bool _ -> the_typ_bool
@@ -496,7 +500,7 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
   | Trm_if (b, t1, t2) ->
       let b = aux_bbe b in
       (* TODO: the intersection between the two environments *)
-      let t1 = aux ~env:(merge_distinct_env ~loc e (bindsof b)) t1 in
+      let t1 = aux ~env:(env_extend ~loc e (bindsof b)) t1 in
       let t2 = aux t2 in
       (* if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s \n %s : %s\n" (trm_to_string b)(Ast_print.typ_to_string b.trm_typ) (trm_to_string t1) (Ast_print.typ_to_string t1.trm_typ) (trm_to_string t2) (Ast_print.typ_to_string t2.trm_typ); *)
       unify_or_error ~loc e (typeof t1) (typeof t2) (Branches_mismatch_if (typeof t1, typeof t2));
@@ -511,7 +515,7 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
   (* YL : Still a prototype. TODO "on-the-fly boolof": think about it when everything is done. *)
    (* LATER: On-the-fly boolof
    | Trm_apps (t0, ps) when is_builtin_func_and t0 || is_builtin_func_or t0
-   | Trm_bbeis (t0, p) ->
+   | Trm_bbe_is (t0, p) ->
       let b = aux_bbe e t in
       return the_type_bool b.trm_desc
     *)
@@ -557,9 +561,19 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       return tyr (Trm_match (t0, pts)) *)
     | Trm_match _ -> raise (Error (Unsupported_term "Trm_match", loc))
 
-    | Trm_bbeis _ -> raise (Error (Unsupported_term "Trm_bbeis", loc))
-    | Trm_patvar _ -> raise (Error (Unsupported_term "Trm_patvar", loc))
-    | Trm_patwild  -> raise (Error (Unsupported_term "Trm_patwild", loc))
+    | Trm_tuple ts ->
+      let ts = List.map aux ts in
+      let ty_tuple = typ_tuple (List.map typeof ts) in
+      if !Flags.verbose then
+        begin
+        Printf.printf "Tuple :\n";
+        List.iter (fun arg -> Printf.printf "%s : %s\n" (trm_to_string arg) (Ast_print.typ_to_string arg.trm_typ)) ts;
+      end;
+      return ty_tuple (Trm_tuple ts)
+
+    | Trm_bbe_is _ -> raise (Error (Unsupported_term "Trm_bbe_is", loc))
+    | Trm_pat_var _ -> raise (Error (Unsupported_term "Trm_pat_var", loc))
+    | Trm_pat_wild  -> raise (Error (Unsupported_term "Trm_pat_wild", loc))
     in
 
     if !Flags.verbose && !Flags.debug then Printf.printf "Exiting typecheck_ml with %s\n\n" (trm_to_string result);
@@ -588,7 +602,7 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
       trm_annot = annot } in (* LATER: factorizable return functions? *)
 
   match b.trm_desc with
-    | Trm_bbeis (t, p) ->
+    | Trm_bbe_is (t, p) ->
       let t = aux_ml t in
       if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s\n" (trm_to_string t)(Ast_print.typ_to_string t.trm_typ) (trm_to_string p) (Ast_print.typ_to_string p.trm_typ);
       let p = aux_pat (t.trm_typ) p in (* TODO "expected type for pat" : add the type of t as expected for p *)
@@ -596,7 +610,7 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
 
       if debug_env then Printf.printf "Environment bound by p : %s\n" (Ast_print.env_to_string ~style:Ast_print.style_debug (bindsof p));
 
-      return (Trm_bbeis (t, p)) (bindsof p)
+      return (Trm_bbe_is (t, p)) (bindsof p)
     | _ -> aux_ml ~expected_typ:the_typ_bool b
 
     (* typecheck_pat TODO change name. typecheck_pat -> typecheck_match pour le moment. Type pat -> match_pat ? *)
@@ -628,9 +642,9 @@ and typecheck_pattern (* TODO add ?expected_typ : typ option  *)(e : env) (p : t
   if !Flags.verbose then Printf.printf "Entering typecheck_pattern with :\n t = %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e) *) (trm_to_string p);
 
   match p.trm_desc with
-  | Trm_patwild ->
+  | Trm_pat_wild ->
       let typ = typ_nameless () in
-      return typ Trm_patwild env_empty
+      return typ Trm_pat_wild env_empty
   (* TODO : add expected_typ to pat *)
   (* | Trm_annot (t1, sty) ->
     let sty = syntyp_internalize e sty in
@@ -638,15 +652,17 @@ and typecheck_pattern (* TODO add ?expected_typ : typ option  *)(e : env) (p : t
     let t1 = aux_pat ~expected_typ:typ ~env:e t1 in
     return (typeof t1) (Trm_annot (t1, sty)) (bindsof t1) *)
 
-  | Trm_patvar x ->
+  | Trm_pat_var x ->
     let typ = typ_nameless () in
     let new_env = env_add_var (env_empty) x.varid_var (sch_of_nonpolymorphic_typ typ) in
     (* TODO: env_single  pour env_add_var (env_empty) *)
-    return typ (Trm_patvar x) new_env
+    return typ (Trm_pat_var x) new_env
 
-    | Trm_cst cst ->
-      let typ = typ_constant cst in
-      return typ (Trm_cst cst) env_empty
+  | Trm_cst cst ->
+    let typ = typ_constant cst in
+    return typ (Trm_cst cst) env_empty
+
+   (* Tuples : specific kind of constructors, for later *)
 
    (* Conjunction *)
    (* TODO : add expected_typ to pat *)
@@ -685,7 +701,7 @@ and typecheck_pattern (* TODO add ?expected_typ : typ option  *)(e : env) (p : t
       let typ_args = List.map (fun ti -> typ_nameless()) ps in
       let t0 = typecheck_trm ~expected_typ:(typ_arrow [typ] (typ_option (typ_tuple typ_args))) e t0 in
       let ps = List.map2 (fun pi typ_arg_i -> typecheck_pattern e ~expected_typ:typ_arg_i pi) ps typ_args in
-      return typ (Trm_apps (t0,ps)) (env_disjoint_merge_list (List.map bindsof ps)) *)
+      return typ (Trm_apps (t0,ps)) (env_merge_binds (List.map bindsof ps)) *)
 
 
 

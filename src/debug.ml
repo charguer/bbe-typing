@@ -64,6 +64,9 @@ let print_low_level_trm =
       sprintf "Match (%s, [%s])"
         (aux t)
         (String.concat " ; " (List.map (fun (_p, t) -> "_ -> " ^ aux t) pts))
+    | Trm_tuple ts ->
+      sprintf "Tuple [%s]"
+        (String.concat " ; " (List.map aux ts))
     | Trm_bbe_is (t, p) -> sprintf "Is (%s, %s)" (aux t) (aux p)
     | Trm_pat_var varid -> sprintf "PVar %s" (var_to_string varid.varid_var)
     | Trm_pat_wild -> sprintf "Wildcard"
