@@ -5,6 +5,9 @@ open Ast_print
 
 let debug () = !Flags.debug
 
+let debug_binds = true
+let debug_binds_verbose = false
+
 let if_debug f =
   if debug () then f ()
 
@@ -31,6 +34,12 @@ let print_low_level_syntyp sty =
     (syntyp_to_string sty)
     (print_low_level_typ sty.syntyp_typ)
 
+let print_binds (t : trm) =
+  let open Printf in
+  match t.trm_binds with
+  | Some b -> (String.concat " , " (List.map (fun (v, s) -> (sprintf "%s : %s" (print_var v) (print_low_level_typ s.sch_body))) (Env.to_list b.env_var)))
+  | _ -> "{}"
+
 let print_low_level_trm =
   let open Printf in
   let rec pr_desc i =
@@ -51,7 +60,10 @@ let print_low_level_trm =
         (String.concat " ; " (List.map (fun (x, sty) ->
           sprintf "(%s : %s)" (print_var x) (print_low_level_syntyp sty)) xs))
         (aux t)
-    | Trm_if (t1, t2, t3) -> sprintf "IfThenElse (%s, %s, %s)" (aux t1) (aux t2) (aux t3)
+    | Trm_if (t1, t2, t3) ->
+      let s1 = if debug_binds then sprintf "%s ~> {%s}" (aux t1) (print_binds t1) else (aux t1) in
+        sprintf "IfThenElse (%s, %s, %s)" s1 (aux t2) (aux t3)
+
     | Trm_let ({ let_def_body = t1 ; _ }, t2) -> sprintf "Let (%s, %s)" (aux t1) (aux t2)
     | Trm_apps (t, ts) ->
       sprintf "Apps (%s, [%s])"

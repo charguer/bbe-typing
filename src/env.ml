@@ -54,4 +54,5 @@ let print print_key print_val t =
 let is_empty (type a) (type b) (module O : T with type key = a and type value = b) =
   O.Map.is_empty O.env
 
-(* TODO: add an intersection function *)
+let to_list (type a) (type b) (module O : T with type key = a and type value = b) : (a * b) list =
+  O.Map.bindings O.env

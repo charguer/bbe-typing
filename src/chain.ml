@@ -71,8 +71,21 @@ let full
   Debug.log "Tuples declared: %s."
     (String.concat ", " (List.map string_of_int (Ast_aux.all_seen_tuple_arity ()))) ;
 
+
+
+  let ast =
+    wrapper
+      (chain
+        ~exact_error_messages
+        ~continue_on_error
+        ~remove_failing
+        ~instantiate
+        ~readable
+        ~printing_styles)
+        ast in
+
   if !Flags.print_parsed then (
-    let res = Ast_print.to_string ~style:{ (*Modify for BBE typing information, useful for debugging*)
+    let res = Ast_print.to_string ~style:{
       printing_styles with
       style_resolution_full = ResolutionInstanceOrSymbol ;
       style_resolution_base = ResolutionInstanceOrSymbol ;
@@ -86,18 +99,6 @@ let full
       Printf.printf "Readable ast :\n%s\n" res;
     call_back_syntax res
   ) ;
-
-  let ast =
-    wrapper
-      (chain
-        ~exact_error_messages
-        ~continue_on_error
-        ~remove_failing
-        ~instantiate
-        ~readable
-        ~printing_styles)
-        ast in
-
   (* Print *)
   let out_str = Ast_print.to_string ~style:printing_styles ast in
 
