@@ -48,7 +48,7 @@ type styp = Parsetree.core_type (* FIXME: rename to parsetyp *)
 
 (** * Types *)
 
-
+(* ARTHUR: retirer tous les modes *)
 (** Mode for instance arguments.
    The [mode] can be 'input' or 'output'.
    For an overloaded function, we have a mode to every argument.
@@ -80,7 +80,19 @@ type tvar_rigid = tconstr
     - a 'structured' type, that is, the application of a type constructor, e.g. [int list].
     - internal types can furthermore be a 'not-yet-resolved-instance-of-an-overloaded-symbol'
       (see [internal_type] below).
-    - a 'rigid' variable (i.e. polymorphic type) is also represented as a constr. *)
+    - a 'rigid' variable (i.e. polymorphic type) is also represented as a constr.
+
+    A constant type is represented as a [Typ_constr] with no arguments,
+    e.g. the type [int] is [Typ_constr (tconstr "int") []].
+
+    The function type describes n-ary functions (i.e. not curried function types).
+    A function that expects 3 arguments is written [let f (x:ty_x) (y:ty_y) (z:ty_z) : ty_ret = t]
+    using the curried syntax, but internally is represented as a [trm_funs], whose type
+    is written [(tx_x, ty_y, ty_z) -> ty_ret], and represented using the following encoding:
+    [typ_constr (tconstr "->") ([ty_x; ty_y; ty_pz; ty_ret])], with the return type at the
+    end of the list. This encoding should be manipulated exclusively via functions
+    [typ_arrow] and [typ_arrow_inv], never directly.
+    *)
 type typ_desc =
   | Flexible of tvar
   | Unified of typ
@@ -355,10 +367,19 @@ type let_def = {
     -> The verification of the number of arguments will be done during translation from OCaml.
   *)
 
+  (* ARTHUR: Trm_tuple n'est-il pas juste représenté comme
+   [Trm_apps (Trm_var "__tuple") [t1; .. tn]] ?
+   Idem pour not, and, or, ..
+   Pour moi ça serait cohérent avec le fait d'avoir
+   le type [t1 * t2] comme [Typ_constr "__tuple" [t1;t2]].*
+   Là ça oblige à avoir du code pour typer "Trm_and" dans "typecheck_ml"
+   alors qu'il suffirait de déclarer "&&" comme une fonction de type
+   "bool->bool->bool" dans l'environnement initial pour avoir le même effet. *)
+
 type trm_desc =
   | Trm_var of varid
   | Trm_cst of cst
-  | Trm_funs of varsyntyps * trm          (* fun (xn : tyn) -> trm_body *)
+  | Trm_funs of varsyntyps * trm          (* fun (x1 : tyn) ... (xn : tyn) -> trm_body *)
   | Trm_if of trm * trm * trm             (* if t1 then t2 else t3 *)
   | Trm_let of let_def * trm              (* [t1 ; t2], [let rec x = t1 in t2], [let[@register (+) _ = t1 in t2]] *)
   | Trm_apps of trm * trms                (* Application. Partial application is not allowed. *)
@@ -396,8 +417,15 @@ and trm_pat = trm (*temporary solution, hoping to remove the "pat" type and chan
   The current goal is to support polymorphic algebraic data types
   (of the form [type 'a t = A | B of 'a * int * 'a t])
 
+  ARTHUR: tu utilises des virgules à places des point-virgules dans les listes, c'est pas top.
+  ARTHUR: il faudrait utiliser "typ_arrow" et pas [Type_constr "->"] directement.
+  ARTHUR: certains commentaires pourrasont à remonter à côté de la définition de "typ_desc",
+  à côté de ceux que j'ai mis. Dans cette section là, il faut simplement commenter sur
+  qu'est ce qu'on génère pour une définition de type: un A et un Pattern_A, et montrer
+  leur types, sans forcément réexpliquer ici comment on encode les types flèches.
+
   Defined constructors are added to the environment as functions of the type [argument list -> return_type].
-  e.g : [type 'a t = A | B of 'a * int -> 'a t] would add to the environment : "A : forall a. a t" and "B : forall a. a * int -> a t".
+  e.g : [type 'a t = A | B of 'a * int -> 'a t] would add to the environment : "A : forall a. a t" and "B : forall a. (a, int) -> a t".
         Internally, we would have the representation :
         A => {sch_tvars = ["a"] ;
              sch_body = {typ_desc = Typ_constr ("->", [Typ_constr ("t", [a])])
