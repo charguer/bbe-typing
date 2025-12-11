@@ -29,8 +29,14 @@ let bbe_and_bind = if true @_is ??x && x then true else false
 
 let bbe_or_bind = if true @_is ??x || false @_is ??x then x else false
 
+(* Expected to fail *)
+let[@type_error "unbound variable x"]  bbe_or_bind_fail1 = if false @_is ??x || true then x else false
+
+(* Expected to fail *)
+let[@type_error "unable to unify"]  bbe_or_bind_fail2 = if false @_is ??x || 2 @_is ??x then x else false
 
 
+(* TODO: write a unit-test where the typer tries to unify BBEs *)
 
 
 (* Constructor inversion *)
