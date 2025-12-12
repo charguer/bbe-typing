@@ -39,6 +39,21 @@ let[@type_error "unbound variable x"]  bbe_or_bind_fail1 = if false @_is ??x || 
 let[@type_error "unable to unify"]  bbe_or_bind_fail2 = if false @_is ??x || 2 @_is ??x then x else false
 
 
+let simple_option1 = Some 2
+let simple_option2 : bool option = None
+
+(* Observation : maybe this works ever since we removed all of the instance resolution.*)
+let[@type_error ""] simple_option2_fail = None
+
+let unify_options = if true then Some 2 else Some 3
+
+
+let[@type_error ""] unify_options_fail = if true then Some 2 else Some false
+
+
+(* Writing tests for the shape of it, not expected to be working for the moment *)
+let trm_if_inv =
+
 
 (* TODO: write a unit-test where the typer tries to unify BBEs *)
 

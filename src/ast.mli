@@ -432,14 +432,14 @@ and trm_pat = trm (*temporary solution, hoping to remove the "pat" type and chan
                          typ_mark = _}
             }
         B => {sch_tvars = ["a"] ;
-             sch_body = {typ_desc = Typ_constr ("->", [Typ_constr ("t", [a]), Typ_constr ("int",[])  ,Typ_constr ("t", [a])])
+             sch_body = {typ_desc = Typ_constr ("->", [Typ_constr ("t", [a]); Typ_constr ("int",[]); Typ_constr ("t", [a])])
                          typ_mark = _}
             }
   Constructors with no arguments are typed as variables.
   Note : another choice for typing could have been to see constructors with no arguments as functions that take unit
         Alternative solution:
         A => {sch_tvars = ["a"] ;
-             sch_body = {typ_desc = Typ_constr ("->", [Typ_constr ("unit", []), Typ_constr ("t", [a])])
+             sch_body = {typ_desc = Typ_constr ("->", [Typ_constr ("unit", []); Typ_constr ("t", [a])])
                          typ_mark = _}
             }
 
@@ -453,7 +453,7 @@ and trm_pat = trm (*temporary solution, hoping to remove the "pat" type and chan
                          typ_mark = _}
             }
         Pattern__B => {sch_tvars = ["a"] ;
-             sch_body = {typ_desc = Typ_constr ("->", [Typ_constr ("t", [a]), Typ_constr ("int",[])  ,Typ_constr ("t", [a])])
+             sch_body = {typ_desc = Typ_constr ("->", [Typ_constr ("t", [a]); Typ_constr ("int",[])  ,Typ_constr ("t", [a])])
                          typ_mark = _}
             }
 

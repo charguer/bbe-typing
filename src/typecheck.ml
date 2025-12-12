@@ -668,7 +668,22 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
       Instead, we wrap with the "return" function to initialize the result bindings to [Some {}] *)
     | _ -> return (aux_ml ~expected_typ:the_typ_bool b).trm_desc (env_empty)
 
-    (* typecheck_pat TODO change name. typecheck_pat -> typecheck_match pour le moment. Type pat -> match_pat ? *)
+
+
+(* Note on constructor destruction and inversor patterns:
+  - Any defined constructor would implicitly define a destructor function, of the form "Pattern__XXX".
+  - For this reason, it is admitted that any constructor has its "Pattern__" counterpart, meaning that we can easily discriminate constructors from inversor functions.
+  - The "Pattern__" versions have an type that is "opposite" to the original constructor. (more details in [src/ast.mli])
+  pattern matching with inversion works this way :
+    1. Any application is firstly considered as a constructor application. We look for a "Pattern__" version.
+      -> If we find it, consider it as the current application, otherwise use the original one (happens in the case of an inversor function application)
+      -> If there any sub-pattern (>= 1), then assert that the return type is an option. Otherwise (= 0), assert it is the type bool.
+      -> Propagate the expected types to the corresponding sub-patterns if any.
+    2. "List.map2 (fun typ p -> typecheck_pattern ~expected_typ:typ p [...]) typs pats", and merge all of the result bindings, checking for conflicts.
+    3. The result bindings of the pattern is the disjoint union of all of the sub-pattern bindings.
+*)
+
+(* typecheck_pat TODO change name. typecheck_pat -> typecheck_match pour le moment. Type pat -> match_pat ? *)
 and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_pat =
   let loc = p.trm_loc in
   let _aux_ml ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
