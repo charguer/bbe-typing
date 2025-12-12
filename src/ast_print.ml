@@ -5,6 +5,8 @@ open PPrint
 open Printf
 open Tools
 
+let debug_binds = true
+let debug_binds_verbose = false
 
 type style_types =
   | TypesSubterms
@@ -25,13 +27,19 @@ type style_debug =
   | DebugResolving of varid
   | DebugResolved of varid
 
+type style_binds =
+  | BindsNone
+  | BindsToplevel
+  | BindsAll
+
 type style = {
   style_types : style_types ;
   style_resolution_full : style_resolution ;
   style_resolution_base : style_resolution ;
   style_resolution_args : style_resolution ;
   style_debug : style_debug ;
-  style_print_symbols : bool
+  style_print_symbols : bool ;
+  style_binds : style_binds
 }
 
 (* Printing styles for error messages. *)
@@ -41,11 +49,14 @@ let style_debug = {
   style_resolution_base = ResolutionSymbol ;
   style_resolution_args = ResolutionSymbol ;
   style_debug = DebugNone ;
-  style_print_symbols = true
+  style_print_symbols = true ;
+  style_binds = BindsNone
 }
 
 
 type doc = document
+
+let comment = enclose (lparen ^^ star ^^ blank 1) (blank 1 ^^ star ^^ rparen)
 
 (* Note: useful templates may be found in the file
    ocaml/parsing/pprintast.ml *)
@@ -194,6 +205,7 @@ let print_tvars_arg (tvars : tvar_rigid list) =
 
 (*#########################################################################*)
 (* ** Print terms *)
+
 
 let cst_to_doc c =
   match c with
@@ -410,6 +422,31 @@ and varid_to_doc ~style ?(is_arg = false) varid : doc =
   var_to_doc varid.varid_var
 
 
+(* This is a hack because of the order of definition. TODO (low priority) : clean this in a better order, and especially out of the mutual recursion *)
+and sch_to_string ty = doc_to_string (sch_to_doc ty)
+
+and env_to_string ~style (e : env) : string =
+  (* let print_val =
+  function
+    | Env_item_var sch -> sch_to_string sch
+    | Env_item_overload is -> (doc_to_string (overload_to_doc ~style is))
+  in *)
+  Env.print (var_to_string) (sch_to_string) e.env_var
+
+and binds_to_doc ~style (binds : env option) : doc =
+  comment (
+     string "~>"
+  ^^ blank 1
+  ^^ braces (
+    string (Option.fold binds ~none:("") ~some:(env_to_string ~style)))
+  )
+
+and with_bindings ~style (t : trm) : doc =
+  trm_to_doc_raw ~style t
+  ^^ blank 1
+  ^^ (binds_to_doc ~style t.trm_binds)
+
+
 and trm_to_doc ~style t =
   let d = trm_to_doc_raw ~style t in
   if style.style_types = TypesSubterms then (
@@ -550,17 +587,22 @@ and trm_to_doc_raw ~style (t : trm) : doc =
     ]
 
   | Trm_if (t0, t1, t2) ->
-            string "if"
-        ^^ blank 1
-        ^^ aux t0
-        ^^ blank 1
-        ^^ string "then"
-        ^^ hardline
-        ^^ aux t1
-        ^^ hardline
-        ^^ string "else"
-        ^^ hardline
-        ^^ aux t2
+      let s0 =
+        if style.style_binds <> BindsNone then (* In this case, the style is either "BindsToplevel" or "BindsAll" *)
+          with_bindings ~style t0
+        else aux t0
+      in
+         string "if"
+      ^^ blank 1
+      ^^ s0
+      ^^ blank 1
+      ^^ string "then"
+      ^^ hardline
+      ^^ aux t1
+      ^^ hardline
+      ^^ string "else"
+      ^^ hardline
+      ^^ aux t2
 
   | Trm_let ({ let_def_bind = Bind_anon; let_def_body = { trm_desc = Trm_funs (xs, t1); _ }; _ }, t2) ->
       failwith "functions cannot appear as first argument of a trm_seq"
@@ -704,26 +746,55 @@ and trm_to_doc_raw ~style (t : trm) : doc =
   | Trm_tuple ts -> (* TODO: check if this is the correct result. *)
     parens (separate hardline
       (List.map aux ts))
-  | Trm_not t ->
+  | Trm_not t0 ->
+      let d =
+        if style.style_binds = BindsAll then
+          with_bindings ~style t0 else
+        aux t
+      in
          string "not"
       ^^ blank 1
-      ^^ aux t
+      ^^ d
   | Trm_and (t1 ,t2) ->
-         aux t1
+    let d1 =
+        if style.style_binds = BindsAll then
+          with_bindings ~style t1 else
+        aux t1
+      in
+    let d2 =
+        if style.style_binds = BindsAll then
+          with_bindings ~style t2 else
+        aux t2
+      in
+         d1
       ^^ blank 1
       ^^ string "&&"
       ^^ blank 1
-      ^^ aux t2
+      ^^ d2
   | Trm_or (t1 ,t2) ->
-         aux t1
+    let d1 =
+        if style.style_binds = BindsAll then
+          with_bindings ~style t1 else
+        aux t1
+      in
+    let d2 =
+        if style.style_binds = BindsAll then
+          with_bindings ~style t2 else
+        aux t2
+      in
+         d1
       ^^ blank 1
       ^^ string "||"
       ^^ blank 1
-      ^^ aux t2
+      ^^ d2
 
   | Trm_bbe_is (t1, p2) ->
       let d1 = aux t1 in
-      let d2 = aux p2 in
+      let d2 =
+        if style.style_binds = BindsAll then
+        with_bindings ~style p2
+        else aux p2
+      in
       parens (
             d1
         ^^ blank 1
@@ -733,10 +804,32 @@ and trm_to_doc_raw ~style (t : trm) : doc =
       )
 
   | Trm_pat_var varid ->
-        string "??"
+    (* if style.style_binds = BindsAll then
+       string "??"
+    ^^ varid_to_doc ~style varid
+    ^^ blank 1
+    ^^ comment (
+         string "~>"
+      ^^ blank 1
+      ^^ braces (
+           varid_to_doc ~style varid
+        ^^ blank 1
+        ^^ string ":"
+        ^^ blank 1
+        ^^ string "_"
+      )
+    )
+    else *)
+       string "??"
     ^^ varid_to_doc ~style varid
 
-  | Trm_pat_wild -> string "__"
+  | Trm_pat_wild ->
+    (* if style.style_binds = BindsAll then
+       string "__"
+    ^^ blank 1
+    ^^ binds_to_doc ~style None
+    else *)
+    string "__"
 
 and var_and_typ_to_doc (ty : typ) (x : string) =
   parens (
@@ -851,8 +944,6 @@ and pat_to_doc (p : pat) : doc =
 
 
 let varid_to_string ~style x = doc_to_string (varid_to_doc ~style x)
-
-let sch_to_string ty = doc_to_string (sch_to_doc ty)
 
 let typ_to_string ty = doc_to_string (typ_to_doc ty)
 
@@ -1054,15 +1145,6 @@ let to_string ~style (ast : Ast_fix.program) : string =
   let out = Buffer.create 16 in
   ToBuffer.pretty 0.9 code_print_width out (ast_to_doc ~style ast) ;
   Buffer.contents out
-
-let env_to_string ~style (e : env) : string =
-  (* let print_val =
-  function
-    | Env_item_var sch -> sch_to_string sch
-    | Env_item_overload is -> (doc_to_string (overload_to_doc ~style is))
-  in *)
-  Env.print (var_to_string) (sch_to_string) e.env_var
-
 
 (*#########################################################################*)
 (* ** Printing for debug *)

@@ -33,7 +33,6 @@ let raise_typecheck_error loc msg =
   let msg = Printf.sprintf "%s\n  %s" (Ast_print.print_loc loc) msg in
   raise (Typecheck_error msg)
 
-
 let trm_to_string t =
   let open Ast_print in
   trm_to_string ~style:{
@@ -42,7 +41,8 @@ let trm_to_string t =
       style_resolution_base = !Flags.style_resolution_base ;
       style_resolution_args = !Flags.style_resolution_args ;
       style_debug = !Flags.style_debug ;
-      style_print_symbols = !Flags.print_raw_symbols
+      style_print_symbols = !Flags.print_raw_symbols ;
+      style_binds = !Flags.style_binds ;
     } t
 
 

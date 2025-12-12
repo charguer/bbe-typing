@@ -23,13 +23,19 @@ type style_debug =
   | DebugResolving of varid (* For this particular varid, we do ResolutionInstanceOrSymbol and TypesVarsOverloaded. *)
   | DebugResolved of varid (* For this particular varid, we do TypesVarsOverloaded. *)
 
+type style_binds =
+  | BindsNone
+  | BindsToplevel (* Only prints binds after a toplevel binding expression. e.g : the condition in an if-then-else statement *)
+  | BindsAll (* Prints all the result bindings of any binding expression *)
+
 type style = {
   style_types : style_types ;
   style_resolution_full : style_resolution (* The style for the main function of a fully resolved instance. *) ;
   style_resolution_base : style_resolution (* The style for the main function of a partially resolved instance. *) ;
   style_resolution_args : style_resolution (* The style for the assumptions of a partially resolved instance. *) ;
   style_debug : style_debug ;
-  style_print_symbols : bool (* Whether internal symbols (to encode record and constant constructs) should be printed as stored internally. *)
+  style_print_symbols : bool (* Whether internal symbols (to encode record and constant constructs) should be printed as stored internally. *) ;
+  style_binds : style_binds (* Adds in a comment the result bindings of an expression *)
 }
 
 val style_debug : style

@@ -47,7 +47,7 @@ let fold (type a) (type b) (module O : T with type key = a and type value = b) f
 let print print_key print_val t =
   String.concat " ; " (
     fold t (fun l k v ->
-      Printf.sprintf "%s -> %s" (print_key k) (print_val v) :: l
+      Printf.sprintf "%s : %s" (print_key k) (print_val v) :: l
     ) []
   )
 

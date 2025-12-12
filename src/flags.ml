@@ -2,7 +2,7 @@
 (** Global flags to change the behavior of the program.
   They are only modified in Typer. **)
 
-let debug = ref true
+let debug = ref false
 let verbose = ref true
 
 let quiet = ref false
@@ -48,6 +48,12 @@ let readable = ref true
 (* Print symbols as they are parsed (showing the encoded symbols for records and constants). *)
 let print_raw_symbols = ref false
 
+
+(* Prints binding results;
+  - 0 for no bindings
+  - 1 for toplevel only
+  - 2 for all bindings *)
+
 open Ast_print
 (* Options on how to print terms. *)
 let style_types = ref TypesVarsAndBinders
@@ -55,6 +61,7 @@ let style_resolution_full = ref ResolutionInstanceOrSymbol
 let style_resolution_base = ref ResolutionInstanceOrSymbol
 let style_resolution_args = ref ResolutionInstanceOrSymbol
 let style_debug = ref DebugNone
+let style_binds = ref BindsAll
 
 
 (** When annotating a let-binding with a [let[@type_error "msg"] … = …], do we

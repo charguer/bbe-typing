@@ -237,7 +237,8 @@ let _ =
           style_resolution_base = !Flags.style_resolution_base ;
           style_resolution_args = !Flags.style_resolution_args ;
           style_debug = !Flags.style_debug ;
-          style_print_symbols = !Flags.print_raw_symbols
+          style_print_symbols = !Flags.print_raw_symbols ;
+          style_binds = !Flags.style_binds
         }
         ?wrapper
         (fun str ->
