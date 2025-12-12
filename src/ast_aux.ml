@@ -312,6 +312,33 @@ let typ_tuple (args: typ list) : typ =
   if args = [] then the_typ_unit
   else typ_constr (tconstr "*") args
 
+
+(* Design choices:
+  Option types are heavily used for pattern matching on inversor functions.
+  As it is required to have an n-ary option return for variable binding.
+
+  It is also very important that the option takes several possible arguments, to bind several variables at a time.
+  e.g. ('a * 'b * 'c) option. With constructor [Some : 'a * 'b * 'c -> ('a * 'b * 'c) option].
+
+
+  3 possible choices:
+    - We represent an option as a [Tconstr_special_nary] type. building an option takes a list of types, representing the n-arity.
+    - An option is wrapper around a single type. This means that n-arity is represented with a tuple type argument.
+
+  Implementation issues:
+    - Choice 1: what would be the type of the constructors ? And how would we unify them ? How do we unify None, and Some (1, 2), since there is no "a priori" knowledge on the constructor type.
+    - Choice 2: This is not an issue we have, as any flexible type would be correctly bound to the according tuple type. This however asks for conversion of tuple instances when using the constructors.
+
+    unify (Some (2, 3), Some (true, false)) would raise an error since trying to unify "tuple (int, int)" and "tuple (bool, bool)"
+
+  *)
+
+
+let typ_option (ty : typ) : typ =
+  (* if args = [] then the_typ_bool (* still to be determined, whether I want an "option on unit" or a bool *)
+  else  *)
+  typ_constr (tconstr "option") [ty]
+
 (* FIXME: Do we still need these?
 let typ_overload (ty : typ) (is : candidates_and_modes) : typ =
   ITyp_symbol (ITyp_overload (transform, ty, is))
@@ -710,6 +737,7 @@ let env_builtin =
   let e = env_empty in
   let e = env_add_tconstr e (tconstr "*") mk_special in
   let e = env_add_tconstr e (tconstr "->") mk_special in
+  let e = env_add_tconstr e (tconstr "option") mk_special in
   let e = env_add_tconstr e (tconstr "int") (mk_base the_typ_int) in
   let e = env_add_tconstr e (tconstr "bool") (mk_base the_typ_bool) in
   let e = env_add_tconstr e (tconstr "float") (mk_base the_typ_float) in
@@ -968,10 +996,20 @@ let rec trm_foralls_inv (t : trm) : tvar_rigid list * trm =
       (n :: vs, t2)
   | _ -> ([], t)
 
-let typ_tuple_inv_opt ty : typ list option =
+let typ_tuple_inv_opt ty : (typ list) option =
   match ty.typ_desc with
   | Typ_constr (c, tys) when c = tconstr "*" -> Some tys
   | _ -> None
+
+let typ_option_inv_opt ty : typ option =
+  match ty.typ_desc with
+  | Typ_constr (c, [typ]) when c = tconstr "option" -> Some typ
+  | _ -> None
+
+let typ_option_inv (ty: typ) : typ list * typ =
+  match typ_arrow_inv_opt ty with
+  | Some res -> res
+  | None -> failwith "typ_option_inv: the argument is not an option type"
 
 
 let typ_of (t : trm) : typ = (* TODO: should we put get_repr here ? or in a wrapper for this function in typecheck.ml? *)

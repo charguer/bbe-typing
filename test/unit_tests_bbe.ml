@@ -19,7 +19,10 @@ let bbe_is_syntyp = if true @_is (__ : bool) then true else false
 (* Expected to fail *)
 let[@type_error ""]  bbe_is_syntyp_fail = if true @_is (__ : int) then true else false
 
-let bbe_is_bind : bool = if true @_is ??x then x else false
+let bbe_is_bind1 : bool = if true @_is ??x then x else false
+
+let bbe_is_bind2 : bool = if (true @_is ??x) && (true @_is ??y) then x else false
+
 
 (* Tuple terms *)
 let tuple2 = (2,3)
@@ -36,7 +39,18 @@ let[@type_error "unbound variable x"]  bbe_or_bind_fail1 = if false @_is ??x || 
 let[@type_error "unable to unify"]  bbe_or_bind_fail2 = if false @_is ??x || 2 @_is ??x then x else false
 
 
+
 (* TODO: write a unit-test where the typer tries to unify BBEs *)
+
+(* About inversors : *)
+
+external some : 'a -> 'a option
+
+(*
+external Some : 'a -> 'a option ?
+
+
+*)
 
 
 (* Constructor inversion *)

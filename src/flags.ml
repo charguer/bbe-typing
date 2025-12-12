@@ -48,12 +48,6 @@ let readable = ref true
 (* Print symbols as they are parsed (showing the encoded symbols for records and constants). *)
 let print_raw_symbols = ref false
 
-
-(* Prints binding results;
-  - 0 for no bindings
-  - 1 for toplevel only
-  - 2 for all bindings *)
-
 open Ast_print
 (* Options on how to print terms. *)
 let style_types = ref TypesVarsAndBinders

@@ -181,6 +181,7 @@ val typ_float : unit -> typ
 val typ_bool : unit -> typ
 val typ_arrow : typ list -> typ -> typ (* Doesn't work if the list is empty: use [typ_arrow_flexible] in such cases. *)
 val typ_tuple : typ list -> typ (* Works even if the list is empty. *)
+val typ_option : typ -> typ
 val the_typ_bool : typ
 val the_typ_int : typ
 val the_typ_float : typ
@@ -253,7 +254,9 @@ val typ_compare : typ -> typ -> int
 val typ_of : trm -> typ
 val typ_arrow_inv_opt : typ -> (typ list * typ) option
 val typ_arrow_inv : typ -> typ list * typ
-val typ_tuple_inv_opt : typ -> typ list option
+val typ_tuple_inv_opt : typ -> (typ list) option
+val typ_option_inv_opt : typ -> typ option
+val typ_option_inv : typ -> typ
 val typ_matrix_inv_opt : typ -> typ option
 val trm_foralls_inv : trm -> tvar_rigid list * trm
 

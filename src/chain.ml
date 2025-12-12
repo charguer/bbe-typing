@@ -92,7 +92,7 @@ let full
       style_resolution_args = ResolutionInstanceOrSymbol ;
       style_types = TypesVarsAndBinders ;
       style_print_symbols = true ;
-      style_binds = BindsAll ;
+      style_binds = !Flags.style_binds ;
     } ast in
     if !Flags.verbose then
       Printf.printf "Raw ast :\n%s\n"
