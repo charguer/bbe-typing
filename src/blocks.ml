@@ -260,8 +260,6 @@ let rec unfold_alias env t =
 let is_type_bbe (id : tvar_rigid) : bool =
   (print_tvar_rigid id) = "type_bbe"
 
-(* Question: what is this function for? This is a factorized code to test two types.
-If both roots of their respective unions are not the same, then force a unification.*)
 let rec unify_exn_aux ?loc env (t1 : typ) (t2 : typ) : unit =
   Counters.(compute_count_and_time counter_unify time_unify (fun () ->
     let tr1 = Repr.get_repr t1 in

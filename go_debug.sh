@@ -13,4 +13,4 @@ if [ ${res} -eq 0 ]; then
     echo 'test/unit_tests_debug_typed.ml'
 fi
 
-code output.txt
+# code output.txt

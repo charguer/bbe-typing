@@ -737,7 +737,7 @@ let env_builtin =
   let e = env_empty in
   let e = env_add_tconstr e (tconstr "*") mk_special in
   let e = env_add_tconstr e (tconstr "->") mk_special in
-  let e = env_add_tconstr e (tconstr "option") mk_special in
+  let e = env_add_tconstr e (tconstr "option") mk_special in (* TODO: could not find a better solution, test this further *)
   let e = env_add_tconstr e (tconstr "int") (mk_base the_typ_int) in
   let e = env_add_tconstr e (tconstr "bool") (mk_base the_typ_bool) in
   let e = env_add_tconstr e (tconstr "float") (mk_base the_typ_float) in
@@ -768,6 +768,16 @@ let env_builtin =
     env_add_var e (var "^")
       (mk_sch []
         (typ_arrow [the_typ_string; the_typ_string] the_typ_string)) in
+  let e =
+    let tv = tvar_rigid "'a" in
+    let t = typ_rigid tv in
+    env_add_var e (var "Some")
+      (mk_sch [tv]
+        (typ_arrow [t] (typ_option t))) in
+  let e =
+    let tv = tvar_rigid "'a" in
+    let t = typ_rigid tv in
+    env_add_var e (var "None") (mk_sch [tv] (typ_option t)) in
   e
 
 (* let env_builtin_with_tuples =
@@ -1006,8 +1016,8 @@ let typ_option_inv_opt ty : typ option =
   | Typ_constr (c, [typ]) when c = tconstr "option" -> Some typ
   | _ -> None
 
-let typ_option_inv (ty: typ) : typ list * typ =
-  match typ_arrow_inv_opt ty with
+let typ_option_inv (ty: typ) : typ =
+  match typ_option_inv_opt ty with
   | Some res -> res
   | None -> failwith "typ_option_inv: the argument is not an option type"
 

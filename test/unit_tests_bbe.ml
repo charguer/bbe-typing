@@ -44,10 +44,10 @@ let[@type_error "unable to unify"]  bbe_or_bind_fail2 = if false @_is ??x || 2 @
 
 (* About inversors : *)
 
+(*
+
 external some : 'a -> 'a option
 
-(*
-external Some : 'a -> 'a option ?
 
 
 *)
