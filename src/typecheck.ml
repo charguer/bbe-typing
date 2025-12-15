@@ -730,11 +730,7 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
     let typ = typ_constant cst in
     return typ (Trm_cst cst) env_empty
 
-<<<<<<< HEAD
   | Trm_tuple pl -> (* Implementation is not very clean. TODO : review code and factorize if needed *)
-=======
-  | Trm_tuple pl ->
->>>>>>> e52cb19d4a3499880e1ea73cd42b96faa1f5aafd
     (* Invert expected type, if it is a tuple of the correct size feed it to pl, otherwise there is an error. *)
     let unfolded_exp_typ = (* This is a temporary solution. I am convinced that the argument should not be optional, but this is not a hard fix anyway. *)
       match expected_typ with
@@ -742,19 +738,37 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
       | None -> assert false
     in
 
+    (*
+    No expected type
+    1. map aux_pat with no expected typ on pl
+      -> gives to new pl
+    2.     let tys = List.map (fun p -> p.trm_typ) pl in
+    3.     return (typ_tuple tys) (Trm_tuple pl) (env_merge_binds ~loc binds)
+
+
+    technically no need for this; trivial is good enough.
+    if Expected type :
+    1. call typ_tuple_inv_opt
+      -> Some tys -> do the checks from below;
+            let pl =
+      if (List.length tys) <> (List.length pl) then
+        raise (Error (Mismatch_pattern_size ((List.length tys), (List.length pl)), loc))
+      else List.map2 (fun exp_ty p -> aux_pat ~expected_typ:exp_ty ~env:e p) tys pl
+    in
+      -> None -> same as above.
+
+    Say expected type but unknown it was a type
+    *)
+
     let tys =
       match typ_tuple_inv_opt (Repr.get_repr unfolded_exp_typ) with (* Hack : used get_repr to destruct deep in the unification tree, I don't know if this is good practice. TODO: think about this later.*)
       | Some tys -> tys
       | _ -> raise (Error (Wrong_pattern_constructor "tuple", loc))
 
-<<<<<<< HEAD
    in
-=======
-  in
->>>>>>> e52cb19d4a3499880e1ea73cd42b96faa1f5aafd
     let pl =
       if (List.length tys) <> (List.length pl) then
-        raise (Error (Mismatch_pattern_size ((List.length tys), (List.length pl)), loc)) (* TODO: blabla error for List.map2 raise (Error (  ,loc)) *)
+        raise (Error (Mismatch_pattern_size ((List.length tys), (List.length pl)), loc))
       else List.map2 (fun exp_ty p -> aux_pat ~expected_typ:exp_ty ~env:e p) tys pl
     in
     let tys = List.map (fun p -> p.trm_typ) pl in
@@ -762,10 +776,11 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
     (* merge all binds  *)
     return (typ_tuple tys) (Trm_tuple pl) (env_merge_binds ~loc binds)
 
-<<<<<<< HEAD
    (* Predicate pattern *)
    (* | Trm_apps (t0, []) -> *) (* Impossible case, there is no function that can be applied to no argument. This is simply a variable *) (* It is a term with no arguments, so necessarly it is a predicate *)
     | Trm_var x ->
+      (* code d'en dessous avec expected typ qui donne "typ -> bool" bool à la place d'un option
+      "doit être le même code qu'en dessous avec juste le type bool quoi" *)
       let x_name = Ast_print.varid_to_string_slim x in
 
       if !Flags.verbose then Printf.printf "checking variable \"%s\" in pattern position\n" x_name;
@@ -780,7 +795,11 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
 
       Printf.printf "tell me if there is one that has a Pattern__ in it : %B\n" (Env.exists e.env_var (fun k _ -> find_pattern_version k));
 
+        (* Factorize the "pattern__" priorization function   *)
+
       (* 1. Verify if there exists a "Pattern__" version in context. *)
+      (* use fold instead. No need for anything complicated *)
+      (* Trm_var of string ?? Why not.  *)
         let v =
         match Env.find_first_opt e.env_var find_pattern_version with
         | Some (v, _) -> (if !Flags.verbose then Printf.printf "found something"); v
@@ -804,18 +823,17 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
       (* let t0 = typecheck_trm ~expected_typ:(typ_arrow [typ] the_typ_bool) e t0 in (* "(typ_arrow [typ] the_typ_bool)" represents a "shape" for the term to fit. Still unsure whether it works as expected. *)
       return typ (Trm_apps (t0,[])) env_empty *)
    (* Inversor pattern *)
-   (* | Trm_apps (t0, ps) -> (* where ts <> [] *)
+(*    | Trm_apps (t0, ps) -> (* where ts <> [] *)
       (* Kind of the same idea, give a "shape to fit", and do the typing. *)
       let typ = match expected_typ with Some ty -> ty | None -> typ_nameless() in
       let typ_args = List.map (fun ti -> typ_nameless()) ps in
+      (* e with pattern_priority = 1 ? Meaning that every occurence would  *)
       let t0 = typecheck_trm ~expected_typ:(typ_arrow [typ] (typ_option (typ_tuple typ_args))) e t0 in
+
       let ps = List.map2 (fun pi typ_arg_i -> typecheck_pattern e ~expected_typ:typ_arg_i pi) ps typ_args in
       return typ (Trm_apps (t0,ps)) (env_merge_binds (List.map bindsof ps)) *)
 
 
-=======
-    (* Tuples : specific kind of constructors, for later *)
->>>>>>> e52cb19d4a3499880e1ea73cd42b96faa1f5aafd
 
    (* Conjunction *)
    (* TODO : add expected_typ to pat *)
