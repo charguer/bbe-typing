@@ -24,7 +24,7 @@ let _ =
   Js.export "typer"
     (object%js
 
-      method compile str continue_on_error remove_failing instantiate readable =
+      method compile str continue_on_error remove_failing (* instantiate *) readable =
         (* Parse *)
         let ast = parse str in
         let res =
@@ -32,7 +32,7 @@ let _ =
             ~exact_error_messages:false
             ~continue_on_error:(Js.to_bool continue_on_error)
             ~remove_failing:(Js.to_bool remove_failing)
-            ~instantiate:(Js.to_bool instantiate)
+            (* ~instantiate:(Js.to_bool instantiate) *)
             ~readable:(Js.to_bool readable)
             ~printing_styles:Ast_print.{
               style_types = !Flags.style_types ;

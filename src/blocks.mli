@@ -15,9 +15,9 @@ val varid_is_resolved : varid -> bool
    remains. If not, produces an error message mentioning the name [x].
    It always checks in depth that all varids are fully resolved.
    If in_depth is true, it also checks in depths that no flexible is present. *)
-val check_fully_typed : in_depth:bool -> test_acylic:bool-> trm -> symbol -> unit
+(* val check_fully_typed : in_depth:bool -> test_acylic:bool-> trm -> symbol -> unit
 
-
+ *)
 (*#########################################################################*)
 (* ** Instantiation of polymorphic types *)
 
@@ -38,8 +38,8 @@ val replace_rigids_with : typ RigidMap.t -> typ -> typ
 (** Assuming that the type [ty] corresponds to a record type in the environment [e],
    return the instantiated types for each of the record fields (that is, the rigid variables
    will be replaced by the associated type in argument of the record type. *)
-val get_record_types : ?loc:loc -> env -> typ -> string -> (field * typ) list
-
+(* val get_record_types : ?loc:loc -> env -> typ -> string -> (field * typ) list
+ *)
 
 (*#########################################################################*)
 (* ** Unification of two types *)

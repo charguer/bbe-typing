@@ -7,7 +7,7 @@ open Ast_print
 module SSet = Set.Make (String)
 module SMap = Map.Make (String)
 
-module SySet = Set.Make (struct type t = symbol let compare = compare end)
+(* module SySet = Set.Make (struct type t = symbol let compare = compare end)
 
 module LMap =
   Map.Make (struct
@@ -30,17 +30,17 @@ module LMap =
         | true, false -> 1
         | true, true -> compare_inst ()
         | false, false -> compare loc1 loc2 --> compare_inst
-  end)
+  end) *)
 
 
 (* Suggest a variable name from a symbol. *)
-let symbol_to_var =
+(* let symbol_to_var =
   let open Var in function
   | SymbolName x -> x
-  | sym -> var (symbol_to_string sym)
+  | sym -> var (symbol_to_string sym) *)
 
 (* Collect all variable names from a program. *)
-let collect_all_var_and_symbol_names p =
+(* let collect_all_var_and_symbol_names p =
   let vars = ref SSet.empty in
   let symbols = ref SySet.empty in
   let add n = vars := SSet.add n !vars in
@@ -77,27 +77,27 @@ let collect_all_var_and_symbol_names p =
         | Ptype_record rs -> List.iter (fun r -> add r.pld_name.txt) rs
         | _ -> ()) tds
     | Topdef_external { external_def_var = v ; _ } -> add (Var.print_var v)) p ;
-  (!vars, !symbols)
+  (!vars, !symbols) *)
 
-let merge_collected_names vars symbols =
+(* let merge_collected_names vars symbols =
   SySet.fold (fun sym vars -> SSet.add (symbol_to_string sym) vars) symbols vars
-
-let collect_all_names p =
+ *)
+(* let collect_all_names p =
   let (vars, symbols) = collect_all_var_and_symbol_names p in
-  merge_collected_names vars symbols
+  merge_collected_names vars symbols *)
 
 (* Create a fresh identifier from a set of names and seed, then add this name into the set. *)
-let fresh names seed =
+(* let fresh names seed =
   let ok n = not (SSet.mem n !names) in
   let n = Var.new_name_from_seed seed ok in
   names := SSet.add n !names ;
   n
-
+ *)
 
 (* * Instantiation *)
 
 (* Provide a fresh name for an instance. *)
-let name_of_instance already_taken n =
+(* let name_of_instance already_taken n =
   (* Filtering on letters and numbers. *)
   let n =
     String.concat "" (List.map (String.make 1) (List.map (fun c ->
@@ -105,7 +105,7 @@ let name_of_instance already_taken n =
       then c else '_')
       (List.init (String.length n) (String.get n)))) in
   let n = "__instance_" ^ n in
-  fresh already_taken n
+  fresh already_taken n *)
 
 (* Term corresponding to an overloaded symbol declaration. *)
 (* let overload_new ?loc ignore_var (modes : symbol_modes) =
@@ -128,7 +128,7 @@ let name_of_instance already_taken n =
 
 (* An term equivalent to its argument, but eta-expansing all its arguments (typically to
   avoid errors on constructors). *)
-let rec term_declaration names t t_ty =
+(* let rec term_declaration names t t_ty =
   match t.trm_desc with
   | Trm_forall (a, t') -> trm_forall ~loc:t.trm_loc ~typ:t_ty a (term_declaration names t' t_ty)
   | _ ->
@@ -159,9 +159,9 @@ let rec term_declaration names t t_ty =
           | Some subs ->
             let p = pat_tuple ~loc (List.map (fun (x, ty) -> pat_var ~loc x) subs) in
             trm_match ~loc (trm_var ~loc ~typ:ty x) [(p, t)]) t_a tyxs in
-      trm_funs ~loc ~typ:t_ty (List.map (fun (_ty, av, _sub) -> av) tyxs) t_body
+      trm_funs ~loc ~typ:t_ty (List.map (fun (_ty, av, _sub) -> av) tyxs) t_body *)
 
-let instantiate p =
+(* let instantiate p =
   let names = ref (collect_all_names p) in
   (** New identifiers used globally. *)
   let ignore_var = Var.var (fresh names "ignore") in
@@ -387,17 +387,18 @@ let instantiate p =
            trm_var (Var.var (Printf.sprintf "(%s)" (String.concat "," vs)))) in
       topdef_val Asttypes.Nonrecursive (Bind_var (var, None)) t) (all_seen_tuple_arity ()) in
   ignore :: tuples @ built_in @ p
-
+ *)
 
 (* * Removing of failing terms *)
 
+(* YL : necessary. No effort. *)
 let remove_failing (p : program) =
   List.filter (fun td -> td.topdef_expected_error = None) p
 
 
 (* * Removing of type annotations *)
 
-let remove_unnecessary_type_annotations_term =
+(* let remove_unnecessary_type_annotations_term =
   let rec aux t =
     let skip = trm_map aux in
     let typ = t.trm_typ in
@@ -416,9 +417,9 @@ let remove_unnecessary_type_annotations_term =
     | _ ->
       (* t.trm_typ <- None ; *)
       trm_map aux t in
-  aux
+  aux *)
 
-let remove_unnecessary_type_annotations (p : program) =
+(* let remove_unnecessary_type_annotations (p : program) =
   List.map (fun td ->
     match td.topdef_desc with
     | Topdef_val_def ld ->
@@ -426,17 +427,17 @@ let remove_unnecessary_type_annotations (p : program) =
         Topdef_val_def { ld with let_def_body =
           remove_unnecessary_type_annotations_term (trm_clone ld.let_def_body) } }
     | _ -> td) p
-
+ *)
 (* * Inlining *)
 
 (* To inline, we keep the following information about each *)
-type inline_info =
+(* type inline_info =
   | Inline_no                         (* No information on this term. *)
   | Inline_trm of symbol list * trm   (* A function to inline: here are its variables and resulting term. *)
   | Inline_cst of (symbol list * trm) * (cst -> cst)  (* The operation of this function to constants is furthermore known. *)
-
+ *)
 (* Try to recognise external definitions and their actions over constants. *)
-let get_action_from_external def =
+(* let get_action_from_external def =
   let on_int f =
     Some (function
       | Cst_int i -> f i
@@ -468,16 +469,16 @@ let get_action_from_external def =
 
   | ["%string_length"] -> on_string (fun s -> Cst_int (String.length s))
 
-  | _ -> None
+  | _ -> None *)
 
 (* For each variable, we store some inline information as well as a set of dependencies:
   if this variable is shadowed, here are all the variables whose inline information must
   be reset. *)
-type inline_env = (symbol, inline_info * SySet.t) Env.t
-
+(* type inline_env = (symbol, inline_info * SySet.t) Env.t
+ *)
 (* Adding a variable into the environment.
   This function clears the shadowed dependencies. *)
-let env_add (env : inline_env) x info dependencies =
+(* let env_add (env : inline_env) x info dependencies =
   match Env.read_option env x with
   | None ->
     let env = Env.add env x (info, SySet.empty) in
@@ -491,9 +492,9 @@ let env_add (env : inline_env) x info dependencies =
       match Env.read_option env y with
       | None -> assert false
       | Some (_, deps) -> Env.add env y (Inline_no, deps)) invalidated_deps env
-
+ *)
 (* Variables appearing within a pattern. *)
-let variables_of_pat p =
+(* let variables_of_pat p =
   let r = ref SySet.empty in
   let add x = r := SySet.add x !r in
   let rec aux p =
@@ -502,12 +503,12 @@ let variables_of_pat p =
     | Pat_alias (p, x) -> add (SymbolName x) ; aux p
     | _ -> pat_iter aux p in
   aux p ;
-  !r
+  !r *)
 
 (* Recursively calls a function on all subterms (not on just the current ones like [trm_map]),
   with an environnment passed along.
   The [remove] function is called on this environnment whenever a local identifier is found. *)
-let rec trm_map_env local env f t =
+(* let rec trm_map_env local env f t =
   let aux env = trm_map_env local env f in
   let typ = t.trm_typ in
   let loc = t.trm_loc in
@@ -527,11 +528,11 @@ let rec trm_map_env local env f t =
       let xs = variables_of_pat p in
       let env = SySet.fold (fun v env -> local env v) xs env in
       (p, aux env t)) pts)) *)
-  | _ -> f env (trm_map (aux env) t)
+  | _ -> f env (trm_map (aux env) t) *)
 
 (* Called when finding a term [x args] where [x] is associated to the function [fun vs -> t]
   in the current environment. *)
-let beta_reduce vs t args =
+(* let beta_reduce vs t args =
   let module M = Map.Make (struct type t = Var.var let compare = compare end) in
   assert (List.length vs = List.length args) ;
   let env : trm M.t =
@@ -544,7 +545,7 @@ let beta_reduce vs t args =
       | Some t' -> t'
       end
     | _ -> t in
-  trm_map_env (fun env v -> M.remove v env) env aux t
+  trm_map_env (fun env v -> M.remove v env) env aux t *)
 
 (* Unused for the moment *)
 (* Given an environment and a term, inline all its subterms that can be inlined according to
@@ -566,15 +567,15 @@ let beta_reduce vs t args =
   trm_map_env Env.remove env aux *)
 
 (* Check whether a type constructor appears within a type. *)
-let rec tcons_in_typ tc ty =
+(* let rec tcons_in_typ tc ty =
   let aux = tcons_in_typ tc in
   match ty.typ_desc with
   | Typ_constr (tc', _) when tc' = tc -> true
-  | _ -> typ_exists aux ty
+  | _ -> typ_exists aux ty *)
 
 (* Remove all the occurences of a type constructor within a term. *)
 (* FIXME: Does it still make sense now that we put type everywhere? *)
-let remove_tcons_in_term tc t =
+(* let remove_tcons_in_term tc t =
   let rec aux t =
     match t.trm_desc with
     | Trm_annot (t', aty) ->
@@ -582,7 +583,7 @@ let remove_tcons_in_term tc t =
       if tcons_in_typ tc ty then t'
       else t
     | _ -> trm_map aux t in
-  Some (aux t)
+  Some (aux t) *)
 
 (* Given a let-binding (rf being the recflag and t its definition), decide whether it should
   be inlined or not (according to an ad-hoc heuristic).
@@ -733,7 +734,7 @@ let remove_tcons_in_term tc t =
 
 (* * Adding explicit type on pattern-matching. *)
 
-let add_type_on_match_in_term ?(always = false) =
+(* let add_type_on_match_in_term ?(always = false) =
   let rec aux t =
     let typ = t.trm_typ in
     match t.trm_desc with
@@ -757,17 +758,17 @@ let add_type_on_match_in_term ?(always = false) =
         trm_match ~typ (trm_annot ~typ:typm tm annot) (List.map (fun (p, t) -> (p, aux t)) pts)
       ) else trm_match ~typ tm (List.map (fun (p, t) -> (p, aux t)) pts)
     | _ -> trm_map aux t in
-  aux
+  aux *)
 
-let add_type_on_match ?always =
+(* let add_type_on_match ?always =
   List.map (fun td ->
     match td.topdef_desc with
     | Topdef_val_def ld ->
       { td with topdef_desc =
                   Topdef_val_def { ld with let_def_body =
                     add_type_on_match_in_term ?always ld.let_def_body } }
-    | _ -> td)
-
+    | _ -> td) *)
+(*
 let unfold_ocaml_external =
   List.concat_map (fun td ->
     let loc = td.topdef_loc in
@@ -789,4 +790,4 @@ let unfold_ocaml_external =
       if d = [] then []
       else [{ td with topdef_desc = Topdef_typ_def { tyd with typ_def_td = d } }]
     | _ -> [td])
-
+ *)

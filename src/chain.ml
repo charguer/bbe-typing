@@ -3,7 +3,7 @@ let chain
   ~exact_error_messages
   ~continue_on_error
   ~remove_failing
-  ~instantiate
+  (* ~instantiate *)
   ~readable
   ~printing_styles
   ast =
@@ -29,9 +29,9 @@ let chain
     else ast in
 
   (* Instantiate *)
-  let ast =
+  (* let ast =
     if instantiate then Small_compile.instantiate ast
-    else ast in
+    else ast in *)
 
   (* Making things readable. *)
   let ast =
@@ -42,20 +42,20 @@ let chain
     ) else ast in
 
   (* Making things compile by pluggin the external symbols into OCaml's internals. *)
-  let ast =
+  (* let ast =
     if instantiate then Small_compile.unfold_ocaml_external ast
-    else ast in
+    else ast in *)
 
   (* Avoid issues with overloaded constructors in OCaml by enforcing the type on pattern-matching. *)
-  let ast = Small_compile.add_type_on_match ~always:(not readable) ast in
-
+(*   let ast = Small_compile.add_type_on_match ~always:(not readable) ast in
+ *)
   ast
 
 let full
   ~exact_error_messages
   ~continue_on_error
   ~remove_failing
-  ~instantiate
+  (* ~instantiate *)
   ~readable
   ~printing_styles
   ?(input_name = "-")
@@ -79,7 +79,7 @@ let full
         ~exact_error_messages
         ~continue_on_error
         ~remove_failing
-        ~instantiate
+        (* ~instantiate *)
         ~readable
         ~printing_styles)
         ast in

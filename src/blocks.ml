@@ -63,7 +63,7 @@ let all_varid_in_trm_are_resolved (t : trm) : bool =
     true
   with Contains_unresolved _ -> false
 
-let check_fully_typed ~in_depth ~test_acylic (t : trm) (s : symbol) : unit =
+(* let check_fully_typed ~in_depth ~test_acylic (t : trm) (s : symbol) : unit =
   let debug () =
     let style_debug = { style_debug with style_types = TypesSubterms } in
     Debug.log "++Here is the currently typed term:\n%s\n"
@@ -113,7 +113,7 @@ let check_fully_typed ~in_depth ~test_acylic (t : trm) (s : symbol) : unit =
         (symbol_to_string_message x.varid_symbol) (symbol_to_string_message s),
       x.varid_typ), x.varid_loc)) *)
     raise (Error (Unsupported_term "Unresolved inside \"check_fully_typed\". Temporary error message. modify [Blocks.check_full_typed] to remove this", x.varid_loc))
-  (* TODO: handle a specific message for cycle detection at the very end? *)
+ *)  (* TODO: handle a specific message for cycle detection at the very end? *)
 
 
 (*#########################################################################*)
@@ -500,7 +500,7 @@ let typecheck_annot env (ty : typ) (aty : syntyp) (msg_head : string) : unit =
 
 (** [check_arity env x sch insts] -- LATER: will change to support multiple arities *)
 
-let check_arity env (x : symbol) (sch : sch) (insts : candidates_and_modes) : unit =
+(* let check_arity env (x : symbol) (sch : sch) (insts : candidates_and_modes) : unit =
   match insts.candidates_and_modes_modes with
   | None -> ()
   | Some (modes, _return_mode) ->
@@ -510,7 +510,7 @@ let check_arity env (x : symbol) (sch : sch) (insts : candidates_and_modes) : un
         List.fold_left (fun e x -> env_add_tvar e x (mktyp (Typ_constr (x, []))))
           env sch.sch_tvars in
       unify_or_error env sch.sch_body
-        (typ_arrow_flexible flexibles (typ_nameless ())) (Bad_arity (x, arity_exp))
+        (typ_arrow_flexible flexibles (typ_nameless ())) (Bad_arity (x, arity_exp)) *)
 
 
 (*#########################################################################*)

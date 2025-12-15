@@ -36,7 +36,7 @@ let output = ref true
 let print_parsed = ref true
 
 (* Replace overloaded variables by the corresponding instance. *)
-let instantiate = ref true
+let instantiate = ref false
 
 (* Remove terms marked as failing in the output. *)
 let remove_failing = ref true

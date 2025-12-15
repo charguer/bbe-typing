@@ -49,7 +49,7 @@ let spec =
     ("-no-output", Arg.Clear Flags.output, "Disable all output except for debugging and error.") ;
     ("-not-readable", Arg.Clear Flags.readable, "Do not try to produce code that is as readable as possible.") ;
     ("-o", Arg.String (fun s -> output_filename := Some s), "Set the output file name.") ;
-    ("-only-type", Arg.Clear Flags.instantiate, "Disable replacing instance by their implementation.") ;
+    (* ("-only-type", Arg.Clear Flags.instantiate, "Disable replacing instance by their implementation.") ; *)
     ("-print-parsed", Arg.Set Flags.print_parsed, "Print raw parsing information in special *_parsed.ml and *_translated.ml files.") ;
     ("-print-raw-symbols", Arg.Set Flags.print_raw_symbols, "Print internal symbols encoding for records and constants.") ;
     ("-print-types", Arg.Symbol (types_symbols, fun s -> Flags.style_types := style_types s), "Specify where to print inferred types in the output.") ;
@@ -229,7 +229,7 @@ let _ =
         ~exact_error_messages:!Flags.exact_error_messages
         ~continue_on_error:!Flags.continue_on_error
         ~remove_failing:!Flags.remove_failing
-        ~instantiate:!Flags.instantiate
+        (* ~instantiate:!Flags.instantiate *)
         ~readable:!Flags.readable
         ~printing_styles:Ast_print.{
           style_types = !Flags.style_types ;

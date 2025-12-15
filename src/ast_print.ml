@@ -121,8 +121,8 @@ let infix_type t =
 
 (* A heuristic to check whether a symbol is a constructor (in such case, one can't
   print-out its type without OCaml complaining). *)
-let is_constructor = function
-  | SymbolName x ->
+let is_constructor x = (* = function
+  | SymbolName x -> *)
     let x = print_var x in
     if x = "" then true (* Looks like the Rocq-trick to print tuples. *)
     else (
@@ -133,10 +133,10 @@ let is_constructor = function
         match x with
         | "::" | "[]" -> true
         | _ -> false
-    )
+    )(*
   | SymbolTuple _ -> true
   | SymbolMakeRecord _ -> true
-  | _ -> false
+  | _ -> false *)
 
 (* Print a variable, adding parentheses on non-letter identifiers. *)
 let print_var_parens x =
@@ -152,7 +152,7 @@ let print_constr_parens x =
     sprintf "( %s )" x
   else x
 
-let symbol_to_attr_doc = function
+(* let symbol_to_attr_doc = function
   | SymbolName x -> blank 1 ^^ string (print_var_parens x)
   | SymbolTuple 0 -> string ":" ^^ blank 1 ^^ string "unit"
   | SymbolTuple i -> blank 1 ^^ string (string_of_int i)
@@ -174,7 +174,7 @@ let symbol_to_attr_doc = function
   | SymbolRecordWith f ->
        string "?" ^^ blank 1 ^^ string "With" ^^ blank 1
     ^^ string "{" ^^ blank 1 ^^ string (print_field f) ^^ blank 1 ^^ string "}"
-
+ *)
 
 (*#########################################################################*)
 (* ** Print types *)
@@ -216,16 +216,16 @@ let cst_to_doc c =
   | Cst_unit () -> string "()"
   | Cst_string s -> dquotes (string (String.escaped s))
 
-let mode_to_string = function
+(* let mode_to_string = function
   | Mode_in -> "true"
   | Mode_out -> "false"
-
-let modes_to_string ms =
+ *)
+(* let modes_to_string ms =
   sprintf "~input:[%s]" (String.concat "; " (List.map mode_to_string ms))
-
-let modes_io_to_string (ms, mr) =
+ *)
+(* let modes_io_to_string (ms, mr) =
   sprintf "%s ~output:[%s]" (modes_to_string ms) (mode_to_string mr)
-
+ *)
 let var_to_string (x : var) = print_var_parens x
 
 let var_to_doc (x : var) : doc =
@@ -238,7 +238,7 @@ let put_parens_trm (t : trm) (d : doc) : doc =
   | Trm_annot _ -> d
   | _ -> parens d
 
-let symbol_to_string = function
+(* let symbol_to_string = function
   | SymbolName x -> var_to_string x
   | SymbolTuple i -> sprintf "(*internal: tuple*)__tuple_%i" i
   | SymbolNumericInt -> "(*internal: int*)__numeric_without_dot"
@@ -251,8 +251,8 @@ let symbol_to_string = function
     "(*internal: record building*)__make_"
     ^ String.concat "_" (List.sort compare (List.map print_field fs))
   | SymbolRecordWith f -> "(*internal: record with*)__with_" ^ print_field f
-
-let symbol_to_string_message = function
+ *)
+(* let symbol_to_string_message = function
   | SymbolName x -> var_to_string x
   | SymbolTuple i -> sprintf "(%s)" (String.concat "," (List.init i (fun _ -> ".")))
   | SymbolNumericInt -> "<int>"
@@ -264,9 +264,9 @@ let symbol_to_string_message = function
   | SymbolMakeRecord fs ->
     "make:" ^ String.concat "," (List.sort compare (List.map print_field fs))
   | SymbolRecordWith f -> "with:" ^ print_field f
-
-let print_symbol sym = string (symbol_to_string sym)
-
+ *)
+(* let print_symbol sym = string (symbol_to_string sym)
+ *)
 let rec typ_to_doc (t : typ) : doc =
   match t.typ_desc with
   | Flexible v -> string (print_tvar v)
@@ -304,7 +304,7 @@ and put_parens (t : typ) : doc =
   | Typ_constr (_, []) -> d
   | _ -> parens d
 
-and instance_to_doc ~style (i : instance) : doc =
+(* and instance_to_doc ~style (i : instance) : doc =
      parens (trm_to_doc ~style i.instance_value)
      ^^
        if contains_flexible i.instance_sig.instance_typ then empty
@@ -314,16 +314,16 @@ and instance_to_doc ~style (i : instance) : doc =
            sch_tvars = i.instance_sig.instance_tvars ;
            sch_body = i.instance_sig.instance_typ }
        )
-
-and overload_to_doc ~style (is : candidates_and_modes) : doc =
+ *)
+(* and overload_to_doc ~style (is : candidates_and_modes) : doc =
   candidates_to_doc ~style is.candidates_and_modes_candidates
-
-and candidates_to_doc ~style (is : candidates) : doc =
+ *)
+(* and candidates_to_doc ~style (is : candidates) : doc =
      string "overloaded["
   ^^ hardline ^^ blank 4
   ^^ separate (hardline ^^ blank 2 ^^ string "|" ^^ blank 1) (List.map (instance_to_doc ~style) is)
   ^^ blank 1 ^^ string "]"
-
+ *)
 and sch_to_doc (sch : sch) : doc =
   let sch =
     let (typ, vars) =
@@ -659,7 +659,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
       ^^ hardline
       ^^ aux t2
 
-  | Trm_let ({ let_def_bind = Bind_register_instance (sym, inst); let_def_body = t1; _ }, t2) ->
+  (* | Trm_let ({ let_def_bind = Bind_register_instance (sym, inst); let_def_body = t1; _ }, t2) ->
           string "let"
       ^^ string "[@register"
       ^^ symbol_to_attr_doc sym
@@ -689,7 +689,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
       ^^ blank 1
       ^^ string "in"
       ^^ hardline
-      ^^ aux t2
+      ^^ aux t2 *)
 
   | Trm_apps (t0, ts) ->
       let d0 = aux t0 in
@@ -872,7 +872,7 @@ and wrap_typ_of_trm ~style ?(is_binder=false) (t : trm) =
     parens (d ^^ show_typ_of_trm ~style ~is_binder t)
   else d
 
-and print_assumptions_arg assumptions =
+(* and print_assumptions_arg assumptions =
    separate (blank 1) (List.map (fun asmpt ->
      parens (
        string "_"
@@ -883,7 +883,7 @@ and print_assumptions_arg assumptions =
     ^^ string ":"
     ^^ blank 1
     ^^ syntyp_to_doc asmpt.assumption_typ
-  )) assumptions)
+  )) assumptions) *)
 
 and show_sch_or d = function
   | None -> d
@@ -987,7 +987,7 @@ let topdef_to_doc ~style (td : topdef) : doc =
       ^^ string "="
       ^^ blank 1
       ^^ wrap_typ_of_trm ~style ~is_binder:true t
-  | Topdef_val_def { let_def_bind = Bind_register_instance (sym, inst) ; let_def_body = t } ->
+(*   | Topdef_val_def { let_def_bind = Bind_register_instance (sym, inst) ; let_def_body = t } ->
          string "let"
       ^^ string "[@register"
       ^^ symbol_to_attr_doc sym
@@ -1014,7 +1014,7 @@ let topdef_to_doc ~style (td : topdef) : doc =
         ^^ blank 1
         ^^ wrap_typ_of_trm ~style ~is_binder:true t
         )
-      )
+      ) *)
 
   | Topdef_val_def { let_def_rec = rf ; let_def_bind = Bind_var (x, schopt) ; let_def_body = t } ->
       let isrec =
@@ -1161,11 +1161,11 @@ let print_trm ~style ppf (t : trm) : unit =
 let print_item ~style ppf (s : sch) : unit =
   doc_to_out ppf (sch_to_doc s)
 
-let insts_to_string ~style (insts : candidates_and_modes) : string =
-  doc_to_string (overload_to_doc ~style insts)
+(* let insts_to_string ~style (insts : candidates_and_modes) : string =
+  doc_to_string (overload_to_doc ~style insts) *)
 
-let instance_to_string ~style (i : instance) : string =
-  doc_to_string (instance_to_doc ~style i)
+(* let instance_to_string ~style (i : instance) : string =
+  doc_to_string (instance_to_doc ~style i) *)
 
 (* LATER: if needed a vector
    https://www.lri.fr/~filliatr/ftp/ocaml/ds/vector.mli.html *)

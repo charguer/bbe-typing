@@ -87,7 +87,7 @@ let varsyntyp_of_var ?loc (x : var) : varsyntyp =
    (x, mk_syntyp_none ?loc ())
 
 (* Translate a pattern in a place in which we only accept variables, or return [None]. *)
-let tr_pat_to_var (p : pattern) : varsyntyp option =
+(* let tr_pat_to_var (p : pattern) : varsyntyp option =
   let loc = p.ppat_loc in
   match p.ppat_desc with
   | Ppat_var var_loc -> Some (varsyntyp_of_var ~loc (var var_loc.txt))
@@ -99,7 +99,7 @@ let tr_pat_to_var (p : pattern) : varsyntyp option =
   | Ppat_construct ({txt = Lident "()"; _}, _) ->
     let cty = mk_syntyp_unit () in
     Some (no_name_var (), { cty with syntyp_typ = the_typ_unit })
-  | _ -> None
+  | _ -> None *)
 
 let rec tr_pat (p : pattern) : pat =
   (* The set of variables appearing in the pattern is also returned. *)

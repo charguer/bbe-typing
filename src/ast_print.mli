@@ -57,7 +57,8 @@ val print_loc : loc -> string
 
 val typ_to_doc : typ -> doc
 val put_parens : typ -> doc
-val overload_to_doc : style:style -> candidates_and_modes -> doc
+(* val overload_to_doc : style:style -> candidates_and_modes -> doc
+ *)
 val sch_to_doc : sch -> doc
 val sch_to_string : sch -> string
 val varid_to_string : style:style -> varid -> string
@@ -70,7 +71,8 @@ val print_tvar_rigid : tvar_rigid -> string
 
 val typ_to_string : typ -> string
 val syntyp_to_string : syntyp -> string
-val symbol_to_string : symbol -> string
+(* val symbol_to_string : symbol -> string
+ *)
 val print_typ : out_channel -> typ -> unit
 val print_typ_option : out_channel -> typ option -> unit
 val cst_to_doc : cst -> doc
@@ -87,14 +89,14 @@ val print_styp : styp -> string
 val trm_to_stdout : style:style -> trm -> unit
 val print_trm : style:style -> out_channel -> trm -> unit
 val print_item : style:style -> out_channel -> sch -> unit
-val mode_to_string : mode -> string
+(* val mode_to_string : mode -> string
 val modes_to_string : mode list -> string
-val modes_io_to_string : mode list * mode -> string
+val modes_io_to_string : mode list * mode -> string *)
 val trm_to_string : style:style -> trm -> string
 val pat_to_string : pat -> string
-val insts_to_string : style:style -> candidates_and_modes -> string
-val instance_to_string : style:style -> instance -> string
+(* val insts_to_string : style:style -> candidates_and_modes -> string
+val instance_to_string : style:style -> instance -> string *)
 
 (* Like [symbol_to_string], but better suited for displaying error messages. *)
-val symbol_to_string_message : symbol -> string
+(* val symbol_to_string_message : symbol -> string *)
 

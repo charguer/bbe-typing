@@ -23,7 +23,7 @@ type loc = Location.t
 
 (*Yanni: Unnecessary*)
 (** An overloaded variable, e.g. [(+)]. *)
-type symbol =
+(* type symbol =
 
   | SymbolName of var (* A simple variable. *)
 
@@ -38,7 +38,7 @@ type symbol =
   | SymbolSetField of field
   | SymbolMakeRecord of field list (* Invariant: ordered. *)
   | SymbolRecordWith of field
-
+ *)
 
 (** A [styp] (syntactic type) describes the piece of syntax that corresponds
     to a user-provided type annotation. Not to be confused with a [typ],
@@ -54,15 +54,15 @@ type styp = Parsetree.core_type (* FIXME: rename to parsetyp *)
    For an overloaded function, we have a mode to every argument.
    The resolution is guided by the type of the 'input' arguments only. *)
 (*Yanni: Unnecessary*)
-type mode =
+(* type mode =
   | Mode_in (* true: input parameter (default) *)
   | Mode_out (* false: output parameter (mainly used for iterators) *)
-
+ *)
 (** An [symbol_modes] gives the modes associated with an overloaded function.
   The list of modes corresponds to the inputs, and the second mode to the context-unification
   of the output. *)
 (* LATER: change this to a [(mode list * mode) list], with a list of modes for every possible arity? *)
-type symbol_modes = (mode list * mode) option
+(* type symbol_modes = (mode list * mode) option *)
 
 (* Every [typ] may carry a mark, used internally for detecting cycles in [get_repr]. *)
 type mark = int
@@ -117,7 +117,6 @@ and typs = typ list
 
 (** A [sch] denotes a ML type scheme, that is, a type of the form [forall 'a 'b. t],
    with head-polymorphism (forall), and a type body without further quantifiers. *)
-(*Yanni: Probably unnecessary*)
 and sch = {
   sch_tvars : tvar_rigid list;
   sch_body : typ;
@@ -125,7 +124,7 @@ and sch = {
 
 (** A varid records information on how a variable is resolved,
     in particular in the case it is an overloaded symbol. *)
-and varid = {
+(* and varid = {
   varid_unique_int : varid_unique_int; (* Used for storing varids in sets *)
   varid_var : var; (* Needed to print assumption instantiations in the output AST. *)
   varid_loc : loc ;
@@ -139,54 +138,60 @@ and varid = {
     in Typecheck. *)
   mutable varid_marker_strong : bool;
   mutable varid_marker_weak : bool
+} *)
+
+and varid = {
+  varid_var : var;
+  varid_loc : loc;
 }
 
 (** [varid_resolution] describes the resolution status of a [varid].
     It case a symbol is resolved to an instance, the assumptions of
     this instance might not yet be fully resolved. *)
-and varid_resolution =
+(* and varid_resolution =
   | VarUnknown (* Status is unknown after parsing. *)
   | VarRegular (* Variable bound by a let or a lambda-expression. *)
                (* LATER of loc (* Location of the binding point *) *)
-
+ *)
 (** [assumptions] describes a list of varids that corresponds to the
     assumptions of a instance. E.g. addition on type ['a matrix] has
     for assumption addition on type ['a]. *)
-and assumptions = varid list
-
+(* and assumptions = varid list
+ *)
 (** [candidates] describes a list of instances to which a symbol could resolve.
     [candidates] is used as synoynmous for [instance list] in environments
     and in [VarUnresolved] for clarity. *)
-and candidates = instance list
-
+(* and candidates = instance list
+ *)
 (** A [candidates_and_modes] record denotes the list of instances registered
    with a given overloaded symbol.
    It also records the input-output modes that should be used when resolving
    that overloaded symbol. *)
-and candidates_and_modes = {
+(* and candidates_and_modes = {
   candidates_and_modes_candidates : candidates;
   candidates_and_modes_modes : symbol_modes; (* LATER: remove modes? *)
 }
+ *)
 
-(** [instance_sig] describes the type scheme and the assumptions of an instance.
+ (** [instance_sig] describes the type scheme and the assumptions of an instance.
    Example for addition on [a matrix]:
    - tvars : the list [a]
    - assumptions : a list of assumption_desc [add[@instance (+)] : a -> a -> a]
    - typ : the type of the matrix addition [a matrix -> a matrix -> a matrix]. *)
-and instance_sig = {
+(* and instance_sig = {
   instance_tvars : tvar_rigid list;
   instance_assumptions : assumption_desc list;
   instance_typ : typ;
-}
+} *)
 
 (** An assumption can take two forms as part of the arguments of an instance declaration:
   - [(op[@implicit (+)] : a -> a -> a)].  In this case, the [op] is irrelevant for the typing context (it will be seen in the instance value).
   - [(_[@implicit (+)] : a -> a -> a)]. *)
 (*Yanni: Unnecessary*)
-and assumption_desc = {
+(* and assumption_desc = {
   assumption_symbol : symbol;
   assumption_typ : syntyp0;
-}
+} *)
 
 (** An [instance] denotes a possibility of resolution for an overloaded symbol,
     e.g. [let[@instance (+)] int_add : int -> int -> int = ..]
@@ -216,15 +221,14 @@ and assumption_desc = {
     Syntactially, we use the convention that within instance declarations, type arguments
     come first, then implicit arguments, then normal arguments.
 *)
-(*Yanni: useful for overloading, probably unnecessary for us*)
-and instance = {
+(* and instance = {
   (** Term to be extracted at the place of the instance use.
     It takes the instance's arguments as parameters. *)
   instance_value : instance_value;
   instance_sig : instance_sig;
   instance_loc : loc; (* Where the instance was declared. *)
   instance_symbol : symbol
-}
+} *)
 
 
 (* ** Syntactic types *)
@@ -245,7 +249,6 @@ type syntyp = {
 (** A [synsch] is similar to a [syntyp] for a type scheme, with
     a list of quantified variables. Variables in the syntactic
     list and in the [sch] object must appear in the same order. *)
-(*Yanni: probably unnecessary*)
 and synsch = {
   synsch_syntax : tvar_rigid list * styp;
   synsch_sch : sch; (* possibly dummy after parsing *)
@@ -297,8 +300,9 @@ type varsynschopt = var * synsch option
 type bind =
   | Bind_anon                                       (* From sequences and [let _ =]. *)
   | Bind_var of varsynschopt                        (* [let x : (type a. a -> a) = ...] *)
-  | Bind_register_instance of symbol * instance_sig (* [let[@register (+)] _ (type a) (op[@implicit (+)]) = ...] *)
+(*   | Bind_register_instance of symbol * instance_sig (* [let[@register (+)] _ (type a) (op[@implicit (+)]) = ...] *)
 
+ *)
 type cst =
   | Cst_bool of bool
   | Cst_int of int

@@ -15,7 +15,7 @@ and VaridSet : Set.S with type elt = Ast_Fix.varid =
   Set.Make (struct
     type t = Ast_Fix.varid
     let compare v1 v2 =
-      compare v1.Ast_Fix.varid_unique_int v2.Ast_Fix.varid_unique_int
+      compare v1 v2 (* TODO: ??? *)
   end)
 
 include Ast_Fix

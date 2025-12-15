@@ -8,9 +8,11 @@ type tconstr = string
 
 type constr = string
 
-type var =
+(* type var =
   | VarNormal of string
-  | VarNoName of int
+  | VarNoName of int *)
+
+type var = string
 
 type vars = var list
 
@@ -39,7 +41,7 @@ let set_new_name n =
 let tconstr = set_new_name
 let constr = set_new_name
 let field = set_new_name
-let var n = VarNormal (set_new_name n)
+let var n = (* VarNormal (set_new_name n) *) (set_new_name n)
 
 let tvar_name ?raw n = Either.Left (raw, tconstr n)
 let no_tvar_name =
@@ -52,19 +54,19 @@ let no_tvar_name =
 let tvar = tvar_name
 let no_name_tvar = no_tvar_name
 
-let no_name_var =
+(* let no_name_var =
   let current = ref 0 in
   fun () -> (
     incr current ;
     VarNoName !current
-  )
+  ) *)
 
-let new_varid_unique_int =
+(* let new_varid_unique_int =
   let id = ref 0 in
   fun () -> (
     incr id ;
     !id
-  )
+  ) *)
 
 let print_varid_unique_int = string_of_int
 
@@ -121,17 +123,16 @@ let print_tconstr n = n
 let print_constr n = n
 let print_field n = n
 
-let print_var = function
+let print_var (v : var) = v
+(* function
   | VarNormal n -> n
   | VarNoName i -> Printf.sprintf "__local_var_%i" i
+ *)
 
-let string_to_tconstr (s : string) : tconstr = s
-
-let instance_id x loc = {
+(* let instance_id x loc = {
   instance_name = set_new_name (print_var x) ;
   instance_loc = loc
-}
-
+} *)
 
 module IMap = Map.Make (struct type t = int let compare = compare end)
 

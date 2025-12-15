@@ -7,7 +7,7 @@
   variable name. *)
 
 (** A [var] denotes a variable name *)
-type var
+type var = string
 
 (** [vars] is a shorthand for a list of variables *)
 type vars = var list
@@ -29,7 +29,7 @@ type field
 type tvar
 
 (** An instance identifier. *)
-type instance_id
+(* type instance_id *)
 
 (** A unique integer for each varid as a key for maps. *)
 type varid_unique_int
@@ -51,36 +51,34 @@ val field : string -> field
 val tvar : ?raw:string -> string -> tvar
 
 (** Allocate a new anonymous variable. *)
-val no_name_var : unit -> var
-
+(* val no_name_var : unit -> var
+ *)
 (** Allocate a new anonymous type variable.
  This is typically used from within the typechecker. *)
 val no_name_tvar : unit -> tvar
 
 (** Create a new type variable, making best effort to preserve a meaningful name. *)
 val merge_tvar : tvar -> tvar -> tvar
-
+(*
 val instance_id : var -> Location.t -> instance_id
-
-val new_varid_unique_int : unit -> varid_unique_int
-
+ *)
+(* val new_varid_unique_int : unit -> varid_unique_int
+ *)
 
 (** * Printer *)
 
-val print_var : var -> string
+val print_var : var -> var
 val print_tconstr : tconstr -> string
 val print_constr : constr -> string
 val print_field : field -> string
-
-val string_to_tconstr : string -> tconstr (* ?????? I need this for some reason, but I would expect ocaml to recognize type aliases... *)
 
 val print_tvar : tvar -> string
 
 (* Return the raw name of the (flexible) type variable. *)
 val tvar_raw : tvar -> string option
-
+(*
 val print_instance_id : instance_id -> string
-
+ *)
 val print_varid_unique_int : varid_unique_int -> string
 
 

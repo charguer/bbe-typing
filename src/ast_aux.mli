@@ -62,7 +62,7 @@ val trm_desc_int : int -> trm_desc
 val trm_desc_float : float -> trm_desc
 val trm_desc_string : string -> trm_desc
 val trm_desc_unit : unit -> trm_desc
-val trm_desc_var : ?typ:typ0 -> ?resolution:varid_resolution -> var -> trm_desc
+val trm_desc_var : var -> trm_desc
 (* val trm_desc_var_symbol : ?typ:typ0 -> ?resolution:varid_resolution -> symbol -> trm_desc
  *)
 val trm_desc_funs : varsyntyps -> trm -> trm_desc
@@ -80,7 +80,7 @@ val trm_desc_and : trm -> trm -> trm_desc
 val trm_desc_or : trm -> trm -> trm_desc
 
 val trm_desc_bbe_is : trm -> trm_pat -> trm_desc
-val trm_desc_pat_var : ?typ:typ0 -> ?resolution:varid_resolution -> var -> trm_desc
+val trm_desc_pat_var : var -> trm_desc
 val trm_desc_pat_var_varid : varid -> trm_desc
 val trm_desc_pat_wild : unit -> trm_desc
 val trm_desc_assert_false : unit -> trm_desc
@@ -96,7 +96,7 @@ val trm_float : ?loc:loc -> ?typ:typ -> ?annot:annot -> float -> trm
 val trm_string : ?loc:loc -> ?typ:typ -> ?annot:annot -> string -> trm
 val trm_unit : ?loc:loc -> ?typ:typ -> ?annot:annot -> unit -> trm
 
-val trm_var : ?loc:loc -> ?typ:typ -> ?annot:annot -> ?resolution:varid_resolution -> var -> trm
+val trm_var : ?loc:loc -> ?typ:typ -> ?annot:annot -> var -> trm
 (* val trm_var_symbol : ?loc:loc -> ?typ:typ -> ?annot:annot -> ?resolution:varid_resolution -> symbol -> trm
  *)
 val trm_var_varid : ?loc:loc -> ?typ:typ -> ?annot:annot -> varid -> trm
@@ -126,7 +126,7 @@ val trm_record_with : ?loc:loc -> ?typ:typ -> trm -> field -> trm -> trm
  *)
 val trm_bbe_is : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> trm_pat -> trm
 
-val trm_pat_var : ?loc:loc -> ?typ:typ -> ?annot:annot -> ?resolution:varid_resolution -> var -> trm
+val trm_pat_var : ?loc:loc -> ?typ:typ -> ?annot:annot -> var -> trm
 val trm_pat_var_varid : ?loc:loc -> ?typ:typ -> ?annot:annot -> varid -> trm
 val trm_pat_wild : ?loc:loc -> ?typ:typ -> ?annot:annot -> unit -> trm
 
@@ -204,14 +204,14 @@ val typ_arrow_flexible : typ list -> typ -> typ
 val replace_rigid_with : tvar_rigid -> typ -> typ -> typ
 
 (** Build the type scheme associated to an instance. *)
-val instance_sch : instance_sig -> sch
-
+(* val instance_sch : instance_sig -> sch
+ *)
 (** Build an instance signature without assumption from a type scheme. *)
-val instance_sig_from_sch : sch -> instance_sig
-
+(* val instance_sig_from_sch : sch -> instance_sig
+ *)
 (** ** For Varid *)
 
-val create_varid : ?loc:loc -> ?env:env -> ?typ:typ -> ?resolution:varid_resolution -> ?depth:int -> ?context:symbol -> var -> varid
+val create_varid : ?loc:loc (* -> ?env:env -> ?typ:typ -> ?resolution:varid_resolution -> ?depth:int -> ?context:symbol *) -> var -> varid
 
 (** * Environment Initialisation *)
 

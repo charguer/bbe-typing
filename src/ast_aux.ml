@@ -370,20 +370,20 @@ let synsch_of_nonpolymorphic_typ (ty : syntyp) = {
   synsch_sch = sch_of_nonpolymorphic_typ ty.syntyp_typ
 }
 
-let instance_sch i =
+(* let instance_sch i =
   mk_sch i.instance_tvars i.instance_typ
-
-let instance_sig_from_sch sch = {
+ *)
+(* let instance_sig_from_sch sch = {
     instance_tvars = sch.sch_tvars ;
     instance_assumptions = [] ;
     instance_typ = sch.sch_body
-  }
+  } *)
 
 
 (*#########################################################################*)
 (* ** Smart constructors for varids *)
 
-let create_varid ?(loc = loc_none) ?(env = env_dummy) ?(typ:typ option) ?(resolution = VarUnknown) ?(depth = 0) ?context v : varid =
+(* let create_varid ?(loc = loc_none) ?(env = env_dummy) ?(typ:typ option) ?(resolution = VarUnknown) ?(depth = 0) ?context v : varid =
   incr Counters.counter_varid ; {
     varid_unique_int = new_varid_unique_int () ;
     varid_var = v ;
@@ -399,6 +399,12 @@ let create_varid ?(loc = loc_none) ?(env = env_dummy) ?(typ:typ option) ?(resolu
     varid_context = context ;
     varid_marker_strong = false ;
     varid_marker_weak = false
+  } *)
+
+let create_varid ?(loc = loc_none) (v : var) : varid =
+  incr Counters.counter_varid ; {
+    varid_var = v ;
+    varid_loc = loc ;
   }
 
 
@@ -462,8 +468,8 @@ let trm_desc_var_varid varid : trm_desc =
 (* let trm_desc_var_symbol ?typ ?resolution (x : symbol) : trm_desc =
   trm_desc_var_varid (create_varid ?typ ?resolution x)
  *)
-let trm_desc_var ?typ ?resolution (x : var) : trm_desc =
-  trm_desc_var_varid (create_varid ?typ ?resolution x)
+let trm_desc_var (x : var) : trm_desc =
+  trm_desc_var_varid (create_varid x)
 
 let trm_desc_funs (xs : varsyntyps) (t : trm) : trm_desc =
   assert (xs <> []) ;
@@ -515,8 +521,8 @@ let trm_desc_bbe_is (t : trm) (p : trm_pat) : trm_desc =
 let trm_desc_pat_var_varid varid : trm_desc =
   Trm_pat_var varid
 
-let trm_desc_pat_var ?typ ?resolution (x : var) : trm_desc =
-  trm_desc_pat_var_varid (create_varid ?typ ?resolution x)
+let trm_desc_pat_var (x : var) : trm_desc =
+  trm_desc_pat_var_varid (create_varid x)
 
 let trm_desc_pat_wild () : trm_desc =
   Trm_pat_wild
@@ -548,8 +554,8 @@ let trm_string ?loc ?typ ?annot (s : string) : trm =
 let trm_unit ?loc ?typ ?annot () : trm =
   mktrm ?loc ?typ ?annot (trm_desc_unit ())
 
-let trm_var ?loc ?typ ?annot ?resolution (x : var) : trm =
-  mktrm ?loc ?typ ?annot (trm_desc_var ?typ ?resolution x)
+let trm_var ?loc ?typ ?annot (x : var) : trm =
+  mktrm ?loc ?typ ?annot (trm_desc_var x)
 
 (* let trm_var_symbol ?loc ?typ ?annot ?resolution (x : symbol) : trm =
   mktrm ?loc ?typ ?annot (trm_desc_var_symbol ?typ ?resolution x)
@@ -641,14 +647,14 @@ let trm_tuple_flex ?loc ?typ ?annot (ts : trms) : trm =
 let trm_desc_constr ?loc ?typ (c : constr) (ts : trms) : trm_desc =
   let c = constr_to_var c in
   match ts with
-  | [] -> trm_desc_var ?typ c
+  | [] -> trm_desc_var c
 (*   | [t] ->
     let typ_fun = Option.map (fun typ -> typ_arrow [t.trm_typ] typ) typ in
     trm_desc_apps (mktrm ?loc (trm_desc_var ?typ:typ_fun c)) [t] *)
   | _ ->
     let typ_fun =
       Option.map (fun typ -> typ_arrow [typ_tuple (List.map (fun t -> t.trm_typ) ts)] typ) typ in
-    trm_desc_apps (mktrm ?loc (trm_desc_var ?typ:typ_fun c)) ts
+    trm_desc_apps (mktrm ?loc ?typ:typ_fun (trm_desc_var c)) ts
 
 let trm_constr ?loc ?typ ?annot (c : constr) (ts : trms) : trm =
   mktrm ?loc ?typ ?annot (trm_desc_constr ?loc ?typ c ts)
@@ -660,8 +666,8 @@ let trm_bbe_is ?loc ?typ ?annot (t : trm) (p : trm_pat) : trm =
 
 (* ** Smart constructors for trm_patterns *)
 
-let trm_pat_var ?loc ?typ ?annot ?resolution (x : var) : trm =
-  mktrm ?loc ?typ ?annot (trm_desc_pat_var ?typ ?resolution x)
+let trm_pat_var ?loc ?typ ?annot (x : var) : trm =
+  mktrm ?loc ?typ ?annot (trm_desc_pat_var x)
 
 let trm_pat_var_varid ?loc ?typ ?annot varid : trm =
   mktrm ?loc ?typ ?annot (trm_desc_pat_var_varid varid)
@@ -1095,7 +1101,7 @@ let trm_map (f : trm -> trm) (t : trm) : trm =
     else
       begin match ld.let_def_bind with
       | Bind_anon -> trm_seq ~loc ~typ ~annot t1' t2'
-      | Bind_var _ | Bind_register_instance (_, _) ->
+      | Bind_var _ (* | Bind_register_instance (_, _) *) ->
         mktrm ~loc ~typ ~annot (Trm_let ({ ld with let_def_body = t1' }, t2'))
       end
   | Trm_apps (tf, ts) ->
@@ -1206,7 +1212,7 @@ let rec trm_clone t =
   let typ = t.trm_typ in
   match t.trm_desc with
   | Trm_var x ->
-    mktrm ~loc ~typ (Trm_var { x with varid_env = x.varid_env ; varid_resolution = x.varid_resolution })
+    mktrm ~loc ~typ (Trm_var x (* { x with varid_env = x.varid_env ; varid_resolution = x.varid_resolution } *))
   | Trm_cst c -> trm_cst ~loc ~typ c
   | Trm_match (t, pts) ->
     trm_match ~loc ~typ (trm_clone t) (List.map (fun (p, t) -> (pat_clone p, trm_clone t)) pts)
@@ -1230,7 +1236,7 @@ let rec trm_map_typ f t =
   let loc = t.trm_loc in
   let typ = t.trm_typ in
   match t.trm_desc with
-  | Trm_var varid -> trm_var_varid ~loc ~typ { varid with varid_typ = f varid.varid_typ }
+  | Trm_var varid -> trm_var_varid ~loc ~typ varid (*  { varid with varid_typ = f varid.varid_typ } *)
   | Trm_funs (vs, t) -> trm_funs ~loc ~typ (List.map (fun (x, sty) -> (x, f_syntyp sty)) vs) (aux t)
   | Trm_annot (t, sty) -> trm_annot ~loc ~typ (aux t) (f_syntyp sty)
   | Trm_match (t, pts) ->
@@ -1244,7 +1250,7 @@ let rec trm_map_typ f t =
         (* FIXME: One should probably check that no nasty shadowing is taking place here. *)
         { synsch with synsch_sch = f_sch synsch.synsch_sch }) synschopt in
     trm_let ~loc ~typ rf (x, synschopt) t1 t2
-  | Trm_let ({ let_def_rec = rf ; let_def_bind = Bind_register_instance (sym, inst) ; let_def_body = t1 }, t2) ->
+  (* | Trm_let ({ let_def_rec = rf ; let_def_bind = Bind_register_instance (sym, inst) ; let_def_body = t1 }, t2) ->
     let t1 = aux t1 in
     let t2 = aux t2 in
     let inst =
@@ -1257,7 +1263,7 @@ let rec trm_map_typ f t =
       let_def_rec = rf ;
       let_def_bind = Bind_register_instance (sym, inst) ;
       let_def_body = t1
-    } t2
+    } t2 *)
   | _ -> trm_map aux t
 
 let program_iter (f : topdef -> unit) (p : program) : unit =

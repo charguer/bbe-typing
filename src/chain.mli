@@ -4,7 +4,7 @@ val chain :
   exact_error_messages:bool ->
   continue_on_error:bool ->
   remove_failing:bool ->
-  instantiate:bool ->
+  (* instantiate:bool -> *)
   readable:bool ->
   printing_styles:Ast_print.style ->
   Ast_fix.program ->
@@ -18,7 +18,7 @@ val full :
   exact_error_messages:bool ->
   continue_on_error:bool ->
   remove_failing:bool ->
-  instantiate:bool ->
+  (* instantiate:bool -> *)
   readable:bool ->
   printing_styles:Ast_print.style ->
   ?input_name:string ->
