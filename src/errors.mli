@@ -50,6 +50,10 @@ type error =
   | Expected_bindings
   | Unsupported_term of string
   | Trying_to_unifying_bbe
+  | Wrong_pattern_constructor of string (* Temporary. TODO: use Error_constr_mismatch later. *)
+  (* |  of string (* Temporary. TODO: use Error_constr_mismatch later. *) *) (* TODO for right now : add an error for the List.map2 *)
+  | Mismatch_pattern_size of int * int
+
 
 
 

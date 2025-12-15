@@ -286,7 +286,7 @@ let rec typ_to_doc (t : typ) : doc =
           parens (separate (string "," ^^ blank 1) (List.map typ_to_doc ts))
           ^^ blank 1
           ^^ string x
-      | t0 :: t1 :: [] ->
+      | t0 :: t1 :: [] -> (* so x is infix *)
              put_parens t0
           ^^ blank 1
           ^^ string x
@@ -421,6 +421,9 @@ and varid_to_doc ~style ?(is_arg = false) varid : doc =
   else d *)
   var_to_doc varid.varid_var
 
+and varid_to_doc_slim varid : doc = var_to_doc varid.varid_var
+
+and varid_to_string_slim v = doc_to_string (varid_to_doc_slim v)
 
 (* This is a hack because of the order of definition. TODO (low priority) : clean this in a better order, and especially out of the mutual recursion *)
 and sch_to_string ty = doc_to_string (sch_to_doc ty)
@@ -744,7 +747,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
         ^^ string "end"
 
   | Trm_tuple ts -> (* TODO: check if this is the correct result. *)
-    parens (separate hardline
+    parens (separate comma
       (List.map aux ts))
   | Trm_not t0 ->
       let d =

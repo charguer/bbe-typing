@@ -63,6 +63,9 @@ val sch_to_string : sch -> string
 val varid_to_string : style:style -> varid -> string
 val var_to_string : var -> string
 
+val varid_to_doc_slim : varid -> doc
+val varid_to_string_slim : varid -> string
+
 val print_tvar_rigid : tvar_rigid -> string
 
 val typ_to_string : typ -> string

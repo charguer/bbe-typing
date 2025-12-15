@@ -33,3 +33,7 @@ val print : ('a -> string) -> ('b -> string) -> ('a, 'b) t -> string
 val is_empty : ('a, 'b) t -> bool
 
 val to_list : ('a, 'b) t -> ('a * 'b) list
+
+val find_first_opt: ('a, 'b) t -> ('a -> bool) -> ('a * 'b) option
+
+val exists: ('a, 'b) t -> ('a -> 'b -> bool) -> bool

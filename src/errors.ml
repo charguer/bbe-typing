@@ -50,6 +50,8 @@ type error =
   | Expected_bindings
   | Unsupported_term of string
   | Trying_to_unifying_bbe
+  | Wrong_pattern_constructor of string
+  | Mismatch_pattern_size of int * int
 
 exception Error of (error * loc)
 

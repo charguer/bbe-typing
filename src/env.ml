@@ -56,3 +56,11 @@ let is_empty (type a) (type b) (module O : T with type key = a and type value = 
 
 let to_list (type a) (type b) (module O : T with type key = a and type value = b) : (a * b) list =
   O.Map.bindings O.env
+
+let find_first_opt (type a) (type b) (module O : T with type key = a and type value = b) (f : a -> bool) : (a * b) option =
+  O.Map.find_first_opt f O.env
+
+let exists (type a) (type b) (module O : T with type key = a and type value = b) f : bool =
+  O.Map.exists f O.env
+
+  (* val find_first_opt: (key -> bool) -> 'a t -> (key * 'a) option *)
