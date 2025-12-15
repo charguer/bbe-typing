@@ -342,6 +342,7 @@ let rec split_fun_args t =
   | _ -> ([], t)
 
 
+(* Custom useful functions *)
 let atsign_inv (e : expression) : bool =
   match e.pexp_desc with
     | Pexp_ident {txt= Longident.Lident "@"} -> true
@@ -388,6 +389,10 @@ let bool_op_inv_opt (e : expression) : string option =
     | Pexp_ident {txt= Longident.Lident s} -> Some s
     | _ -> None
 
+let false_inv (e : expression) : bool =
+  match e.pexp_desc with
+  | Pexp_construct ({txt=Longident.Lident "false"},_) -> true
+  | _ -> false
 
 let rec tr_exp (e : expression) : trm =
   let loc = e.pexp_loc in
@@ -583,8 +588,12 @@ let rec tr_exp (e : expression) : trm =
         [tr_exp t1; tr_exp t2])
 
  *)
-   | Pexp_match (e, cs) ->
-      return (trm_desc_match (tr_exp e) (List.map tr_case cs))
+  | Pexp_match (e, cs) ->
+    return (trm_desc_match (tr_exp e) (List.map tr_case cs))
+
+  | Pexp_assert e when false_inv e ->
+    return (trm_desc_assert_false ())
+
 
   (* TODO *)
   (* | Pexp_array

@@ -521,6 +521,9 @@ let trm_desc_pat_var ?typ ?resolution (x : var) : trm_desc =
 let trm_desc_pat_wild () : trm_desc =
   Trm_pat_wild
 
+let trm_desc_assert_false () : trm_desc =
+  trm_desc_var (var "__assert_false")
+
 (*#########################################################################*)
 (* ** Smart constructors for terms *)
 
@@ -792,6 +795,10 @@ let env_builtin =
     let tv = tvar_rigid "'a" in
     let t = typ_rigid tv in
     env_add_var e (var "Pattern__None") (mk_sch [tv] (typ_arrow [typ_option t] (the_typ_bool))) in
+  let e = (* Define [assert false] that is made to have type "'a. 'a". "for any a, type a" useful for typing useless branches *)
+    let tv = tvar_rigid "'a" in
+    let t = typ_rigid tv in
+    env_add_var e (var "__assert_false") (mk_sch [tv] t) in
   e
 
 (* let env_builtin_with_tuples =

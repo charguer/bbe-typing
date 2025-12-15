@@ -83,7 +83,7 @@ val trm_desc_bbe_is : trm -> trm_pat -> trm_desc
 val trm_desc_pat_var : ?typ:typ0 -> ?resolution:varid_resolution -> var -> trm_desc
 val trm_desc_pat_var_varid : varid -> trm_desc
 val trm_desc_pat_wild : unit -> trm_desc
-
+val trm_desc_assert_false : unit -> trm_desc
 (** ** For Terms *)
 
 (* Warning: there are two ways to implement constants in the programs. One is the “low-level”
