@@ -730,7 +730,11 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
     let typ = typ_constant cst in
     return typ (Trm_cst cst) env_empty
 
+<<<<<<< HEAD
   | Trm_tuple pl -> (* Implementation is not very clean. TODO : review code and factorize if needed *)
+=======
+  | Trm_tuple pl ->
+>>>>>>> e52cb19d4a3499880e1ea73cd42b96faa1f5aafd
     (* Invert expected type, if it is a tuple of the correct size feed it to pl, otherwise there is an error. *)
     let unfolded_exp_typ = (* This is a temporary solution. I am convinced that the argument should not be optional, but this is not a hard fix anyway. *)
       match expected_typ with
@@ -743,7 +747,11 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
       | Some tys -> tys
       | _ -> raise (Error (Wrong_pattern_constructor "tuple", loc))
 
+<<<<<<< HEAD
    in
+=======
+  in
+>>>>>>> e52cb19d4a3499880e1ea73cd42b96faa1f5aafd
     let pl =
       if (List.length tys) <> (List.length pl) then
         raise (Error (Mismatch_pattern_size ((List.length tys), (List.length pl)), loc)) (* TODO: blabla error for List.map2 raise (Error (  ,loc)) *)
@@ -754,6 +762,7 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
     (* merge all binds  *)
     return (typ_tuple tys) (Trm_tuple pl) (env_merge_binds ~loc binds)
 
+<<<<<<< HEAD
    (* Predicate pattern *)
    (* | Trm_apps (t0, []) -> *) (* Impossible case, there is no function that can be applied to no argument. This is simply a variable *) (* It is a term with no arguments, so necessarly it is a predicate *)
     | Trm_var x ->
@@ -804,6 +813,9 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
       return typ (Trm_apps (t0,ps)) (env_merge_binds (List.map bindsof ps)) *)
 
 
+=======
+    (* Tuples : specific kind of constructors, for later *)
+>>>>>>> e52cb19d4a3499880e1ea73cd42b96faa1f5aafd
 
    (* Conjunction *)
    (* TODO : add expected_typ to pat *)
