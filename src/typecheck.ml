@@ -656,7 +656,7 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
 
     | Trm_bbe_is (t, p) ->
       let t = aux_ml t in
-      if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s\n" (trm_to_string t)(Ast_print.typ_to_string t.trm_typ) (trm_to_string p) (Ast_print.typ_to_string p.trm_typ);
+      if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s\n" (trm_to_string t)(Ast_print.typ_to_string (typeof t)) (trm_to_string p) (Ast_print.typ_to_string p.trm_typ);
       let p = aux_pat ~expected_typ:(typeof t) (t.trm_typ) p in (* TODO "expected type for pat" : add the type of t as expected for p *)
       unify_or_error ~loc e (typeof t) (typeof p) (Mismatch_type_is (typeof t, typeof p)); (* In theory this is not useful anymore. Remove when all of the modifications are made *)
 
@@ -704,7 +704,13 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
       trm_binds = Some binds;
       trm_annot = annot } in (* LATER: factorizable return functions? *)
 
-  if !Flags.verbose then Printf.printf "Entering typecheck_pattern with :\n t = %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e) *) (trm_to_string p);
+  let exp_typ =
+    match expected_typ with
+    | Some ty -> ty
+    | None -> assert false
+  in
+
+  if !Flags.verbose then Printf.printf "Entering typecheck_pattern with :\n p = %s\n expecting type : %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e) *) (trm_to_string p) (Ast_print.typ_to_string exp_typ);
 
   match p.trm_desc with
   | Trm_pat_wild ->
@@ -726,7 +732,31 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
     let typ = typ_constant cst in
     return typ (Trm_cst cst) env_empty
 
-   (* Tuples : specific kind of constructors, for later *)
+  | Trm_tuple pl ->
+    (* Invert expected type, if it is a tuple of the correct size feed it to pl, otherwise there is an error. *)
+    let unfolded_exp_typ = (* This is a temporary solution. I am convinced that the argument should not be optional, but this is not a hard fix anyway. *)
+      match expected_typ with
+      | Some ty -> ty
+      | None -> assert false
+    in
+
+    let tys =
+      match typ_tuple_inv_opt (Repr.get_repr unfolded_exp_typ) with (* Hack : used get_repr to destruct deep in the unification tree, I don't know if this is good practice. TODO: think about this later.*)
+      | Some tys -> tys
+      | _ -> raise (Error (Wrong_pattern_constructor "tuple", loc))
+
+  in
+    let pl =
+      if (List.length tys) <> (List.length pl) then
+        raise (Error (Mismatch_pattern_size ((List.length tys), (List.length pl)), loc)) (* TODO: blabla error for List.map2 raise (Error (  ,loc)) *)
+      else List.map2 (fun exp_ty p -> aux_pat ~expected_typ:exp_ty ~env:e p) tys pl
+    in
+    let tys = List.map (fun p -> p.trm_typ) pl in
+    let binds = List.map bindsof pl in
+    (* merge all binds  *)
+    return (typ_tuple tys) (Trm_tuple pl) (env_merge_binds ~loc binds)
+
+    (* Tuples : specific kind of constructors, for later *)
 
    (* Conjunction *)
    (* TODO : add expected_typ to pat *)

@@ -117,6 +117,9 @@ let string_of_error ~style (e : error) : string =
   | Expected_bindings -> "expected bindingss"
   | Unsupported_term s -> sprintf "The term %s is not supported." s
   | Trying_to_unifying_bbe -> "trying to unify a bbe"
+  | Wrong_pattern_constructor s ->
+    sprintf "Expected to match against a %s" s
+  | Mismatch_pattern_size (i1,i2) -> sprintf "Expected a pattern of size %n but got a pattern of size %n\n" i1 i2
 
 let string_of_error_short (e : error) : string =
   match e with
@@ -178,5 +181,7 @@ let string_of_error_short (e : error) : string =
   | Expected_bindings -> "expected bindings"
   | Unsupported_term _s -> "unsupported term"
   | Trying_to_unifying_bbe -> "trying to unify a bbe"
-
+  | Wrong_pattern_constructor s ->
+    sprintf "Expected to match against a %s" s
+  | Mismatch_pattern_size (i1,i2) -> sprintf "Expected a pattern of size %n but got a pattern of size %n\n" i1 i2
 

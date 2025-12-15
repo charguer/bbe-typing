@@ -286,7 +286,7 @@ let rec typ_to_doc (t : typ) : doc =
           parens (separate (string "," ^^ blank 1) (List.map typ_to_doc ts))
           ^^ blank 1
           ^^ string x
-      | t0 :: t1 :: [] ->
+      | t0 :: t1 :: [] -> (* so x is infix *)
              put_parens t0
           ^^ blank 1
           ^^ string x
@@ -744,7 +744,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
         ^^ string "end"
 
   | Trm_tuple ts -> (* TODO: check if this is the correct result. *)
-    parens (separate hardline
+    parens (separate comma
       (List.map aux ts))
   | Trm_not t0 ->
       let d =

@@ -43,16 +43,56 @@ let simple_option1 = Some 2
 let simple_option2 : bool option = None
 
 (* Observation : maybe this works ever since we removed all of the instance resolution.*)
-let[@type_error ""] simple_option2_fail = None
+let simple_option2_fail = None
 
 let unify_options = if true then Some 2 else Some 3
 
-
 let[@type_error ""] unify_options_fail = if true then Some 2 else Some false
+
+external (+) : int -> int -> int = "%addint"
+let tuple_bind1 = if tuple2 @_is (??x, ??y) then x + y else -1
+let tuple_bind2 = if tuple3 @_is (??x1, ??x2, ??x3) then x1 + x3 else -1
+let tuple_bind_fail = if tuple3 @_is (??x1, ??x2, ??x3) then x1 + x3 else x2
+
+(* write an inversion of the option, should be enough for the moment. *)
+
+(* external bool_inv : bool -> int option = "%blabla"
+let tuple_bind1 = if (bool_inv true) @_is (Some ??x) then x else -1 *)
 
 
 (* Writing tests for the shape of it, not expected to be working for the moment *)
-let trm_if_inv =
+(* let trm_if_inv = *)
+
+let even n = n mod 2 = 0
+let even_opt n = if even n then Some n/2 else None
+
+let f (x : int) : int = x
+
+let testing_sudo_inv_and (t : int option) =
+  if (t @_is Some ??k) && even_opt k @_is Some ??v then f v else f 0
+
+
+
+
+
+  (*
+  if (o is Some ??n) && (even n) then f() else g()
+
+  let r = (o is Some ??n) && (even n) in
+  if r then f() else g()
+
+  if (o is Some ??n) && (even n) then f' n else g ()
+
+   let r = (o is Some ??n) && (even n) in
+   if r then (* n not in scope *) else g()
+
+   let r () = if (o is Some ??n) && (even n) then Some ?n else None in
+   if () is r(??n) then f' n else g()
+*)
+
+
+
+
 
 
 (* TODO: write a unit-test where the typer tries to unify BBEs *)
