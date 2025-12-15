@@ -702,14 +702,6 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
       trm_binds = Some binds;
       trm_annot = annot } in (* LATER: factorizable return functions? *)
 
-  let exp_typ =
-    match expected_typ with
-    | Some ty -> ty
-    | None -> assert false
-  in
-
-  if !Flags.verbose then Printf.printf "Entering typecheck_pattern with :\n p = %s\n expecting type : %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e) *) (trm_to_string p) (Ast_print.typ_to_string exp_typ);
-
   match p.trm_desc with
   | Trm_pat_wild ->
       let typ = typ_nameless () in
@@ -732,19 +724,17 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
 
   | Trm_tuple pl -> (* Implementation is not very clean. TODO : review code and factorize if needed *)
     (* Invert expected type, if it is a tuple of the correct size feed it to pl, otherwise there is an error. *)
-    let unfolded_exp_typ = (* This is a temporary solution. I am convinced that the argument should not be optional, but this is not a hard fix anyway. *)
+   (*  let unfolded_exp_typ = (* This is a temporary solution. I am convinced that the argument should not be optional, but this is not a hard fix anyway. *)
       match expected_typ with
       | Some ty -> ty
       | None -> assert false
-    in
-
+    in *)
     (*
     No expected type
     1. map aux_pat with no expected typ on pl
       -> gives to new pl
     2.     let tys = List.map (fun p -> p.trm_typ) pl in
     3.     return (typ_tuple tys) (Trm_tuple pl) (env_merge_binds ~loc binds)
-
 
     technically no need for this; trivial is good enough.
     if Expected type :
@@ -760,17 +750,20 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
     Say expected type but unknown it was a type
     *)
 
-    let tys =
+    (* let tys =
       match typ_tuple_inv_opt (Repr.get_repr unfolded_exp_typ) with (* Hack : used get_repr to destruct deep in the unification tree, I don't know if this is good practice. TODO: think about this later.*)
       | Some tys -> tys
       | _ -> raise (Error (Wrong_pattern_constructor "tuple", loc))
 
    in
-    let pl =
+   *)
+(*     let pl =
       if (List.length tys) <> (List.length pl) then
         raise (Error (Mismatch_pattern_size ((List.length tys), (List.length pl)), loc))
       else List.map2 (fun exp_ty p -> aux_pat ~expected_typ:exp_ty ~env:e p) tys pl
     in
+*)
+    let pl = List.map (aux_pat ~env:e) pl in
     let tys = List.map (fun p -> p.trm_typ) pl in
     let binds = List.map bindsof pl in
     (* merge all binds  *)
