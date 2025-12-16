@@ -181,6 +181,7 @@ val typ_float : unit -> typ
 val typ_bool : unit -> typ
 val typ_arrow : typ list -> typ -> typ (* Doesn't work if the list is empty: use [typ_arrow_flexible] in such cases. *)
 val typ_tuple : typ list -> typ (* Works even if the list is empty. *)
+val typ_tuple_flex : typ list -> typ (* Works only if the list is not empty. *)
 val typ_option : typ -> typ
 val the_typ_bool : typ
 val the_typ_int : typ

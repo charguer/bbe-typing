@@ -65,13 +65,14 @@ let tuple_bind1 = if (bool_inv true) @_is (Some ??x) then x else -1 *)
 (* Writing tests for the shape of it, not expected to be working for the moment *)
 (* let trm_if_inv = *)
 
+let option_pat = if simple_option1 @_is None then 1 else 0
 
 external (=) : int -> int -> bool = ""
 external (mod) : int -> int -> int = ""
 external (/) : int -> int -> int = ""
-let even n = ((n mod 2) (=) 0)
+let even n = ((n mod 2) = 0)
 
-let even_opt n = if (even n) then (Some n/2) else None
+let even_opt n = if (even n) then (Some (n/2)) else None
 
 let f (x : int) : int = x
 

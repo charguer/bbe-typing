@@ -1,4 +1,6 @@
 
+(* TODO : abstract this into a simple list. Use AI for easier work. Do when the minimal configuration is done. basically. *)
+
 (** Association objects, mapping objects of type 'a to objects of type 'b. *)
 type ('a, 'b) t
 

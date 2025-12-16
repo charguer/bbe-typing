@@ -435,6 +435,8 @@ let false_inv (e : expression) : bool =
   | Pexp_construct ({txt=Longident.Lident "false"},_) -> true
   | _ -> false
 
+(** End of custom functions  *)
+
 let rec tr_exp (e : expression) : trm =
   let loc = e.pexp_loc in
   let return (* ?(annot=AnnotNone) *) (e':trm_desc) : trm =

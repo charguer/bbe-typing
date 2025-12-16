@@ -2,8 +2,8 @@
 (** Global flags to change the behavior of the program.
   They are only modified in Typer. **)
 
-let debug = ref true
-let verbose = ref true
+let debug = ref false
+let verbose = ref false
 
 let quiet = ref false
 
@@ -33,7 +33,7 @@ let disable_check_cycle_on_resolution_attempts = ref false
 (* If disabled, do not write any output. *)
 let output = ref true
 
-let print_parsed = ref true
+let print_parsed = ref false
 
 (* Replace overloaded variables by the corresponding instance. *)
 let instantiate = ref false

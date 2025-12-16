@@ -312,6 +312,11 @@ let typ_tuple (args: typ list) : typ =
   if args = [] then the_typ_unit
   else typ_constr (tconstr "*") args
 
+let typ_tuple_flex (args: typ list) : typ =
+  assert (args <> []);
+  match args with
+  | [ty] -> ty
+  | _ -> typ_constr (tconstr "*") args
 
 (* Design choices:
   Option types are heavily used for pattern matching on inversor functions.
@@ -649,9 +654,9 @@ let trm_desc_constr ?loc ?typ (c : constr) (ts : trms) : trm_desc =
   let c = constr_to_var c in
   match ts with
   | [] -> trm_desc_var c
-(*   | [t] ->
+  | [t] ->
     let typ_fun = Option.map (fun typ -> typ_arrow [t.trm_typ] typ) typ in
-    trm_desc_apps (mktrm ?loc (trm_desc_var ?typ:typ_fun c)) [t] *)
+    trm_desc_apps (mktrm ?loc ?typ:typ_fun (trm_desc_var c)) [t]
   | _ ->
     let typ_fun =
       Option.map (fun typ -> typ_arrow [typ_tuple (List.map (fun t -> t.trm_typ) ts)] typ) typ in
