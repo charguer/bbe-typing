@@ -87,7 +87,7 @@ let varsyntyp_of_var ?loc (x : var) : varsyntyp =
    (x, mk_syntyp_none ?loc ())
 
 (* Translate a pattern in a place in which we only accept variables, or return [None]. *)
-(* let tr_pat_to_var (p : pattern) : varsyntyp option =
+let tr_pat_to_var (p : pattern) : varsyntyp option =
   let loc = p.ppat_loc in
   match p.ppat_desc with
   | Ppat_var var_loc -> Some (varsyntyp_of_var ~loc (var var_loc.txt))
@@ -99,7 +99,7 @@ let varsyntyp_of_var ?loc (x : var) : varsyntyp =
   | Ppat_construct ({txt = Lident "()"; _}, _) ->
     let cty = mk_syntyp_unit () in
     Some (no_name_var (), { cty with syntyp_typ = the_typ_unit })
-  | _ -> None *)
+  | _ -> None
 
 let rec tr_pat (p : pattern) : pat =
   (* The set of variables appearing in the pattern is also returned. *)
@@ -145,8 +145,12 @@ let rec tr_pat (p : pattern) : pat =
 |	Ppat_open of Longident.t Asttypes.loc * pattern
 *)
 
+(* YL: Simplify this function by understanding the use... *)
 (* Add instance declarations at the beginning of a function body. *)
-let add_local_instances local_instances body =
+
+(* This function takes a list of "local instances", and add them to the body.
+That is:  local_instance : (var * syntyp) * symbol(why?) * loc(why?) *)
+(* let add_local_instances local_instances body =
   List.fold_left (fun body ((x, ty), symbol, loc) ->
     trm_let_def ~loc {
         let_def_rec = Nonrecursive ;
@@ -157,9 +161,9 @@ let add_local_instances local_instances body =
             instance_assumptions = [] ;
             instance_typ = typ_nameless ()
           })
-      } body) body (List.rev local_instances)
+      } body) body (List.rev local_instances) *)
 
-let payload_to_symbol loc = function
+(* let payload_to_symbol loc = function
   | PStr [{ pstr_desc =
       Pstr_eval ({ pexp_desc = Pexp_ident { txt = Lident x ; _ } ; _ }, _) ; _ }] ->
     SymbolName (var x)
@@ -183,11 +187,11 @@ let payload_to_symbol loc = function
     SymbolMakeRecord fs
   | PPat ([%pat? With [%p? { ppat_desc = Ppat_record ([(id, _)], Closed) }]], None) ->
     SymbolRecordWith (field (tr_longident id.txt))
-  | _ -> unsupported ~loc "Invalid payload for an instance."
+  | _ -> unsupported ~loc "Invalid payload for an instance." *)
 
 (* Given a list of attributes, extract the [@instance (symbol)] ones and return the
   list of corresponding symbols. *)
-let filter_attributes_binding =
+(* let filter_attributes_binding =
   List.filter_map (fun attr ->
     match attr.attr_name.txt with
     | "instance" | "register" ->
@@ -197,11 +201,11 @@ let filter_attributes_binding =
       Some (payload_to_symbol attr.attr_loc attr.attr_payload)
     | str ->
       prerr_endline (Printf.sprintf "Warning: ignored attribute %s." str) ;
-      None)
+      None) *)
 
-type argument_attribute =
+(* type argument_attribute =
   | Arg_Implicit of symbol
-  | Arg_Instance of symbol
+  | Arg_Instance of symbol *)
 
 let rec pat_attributes p =
   p.ppat_attributes
@@ -210,7 +214,7 @@ let rec pat_attributes p =
     | _ -> []
 
 (* Process the argument attributes. *)
-let filter_attributes_argument =
+(* let filter_attributes_argument =
   List.concat_map (fun attr ->
     let loc = attr.attr_loc in
     match attr.attr_name.txt with
@@ -221,11 +225,11 @@ let filter_attributes_argument =
       [(Arg_Implicit symbol, loc) ; (Arg_Instance symbol, loc)]
     | str ->
       prerr_endline (Printf.sprintf "Warning: ignored attribute %s." str) ;
-      [])
+      []) *)
 
 (* Given a list of processed argument attribute, return either [None] if no [Arg_Implicit]
   is provided, or [Some] with the associated symbol if any. *)
-let get_implicit_symbol attrs =
+(* let get_implicit_symbol attrs =
   List.fold_left (fun ret (attr, loc) ->
     match attr with
     | Arg_Implicit symbol ->
@@ -234,14 +238,14 @@ let get_implicit_symbol attrs =
       | Some _ -> unsupported ~loc "implicit argument associated to two separate symbols."
       end
     | Arg_Instance _ -> ret) None attrs
-
+ *)
 (* Given a list of processed argument attribute, return the list of local instances it associates
   with. *)
-let get_all_local_instances attrs =
+(* let get_all_local_instances attrs =
   List.filter_map (fun (attr, loc) ->
     match attr with
     | Arg_Implicit _ -> None
-    | Arg_Instance sym -> Some (sym, loc)) attrs
+    | Arg_Instance sym -> Some (sym, loc)) attrs *)
 
 let build_match_on_var ~loc (x : var) (cs : case list) : expression = {
     pexp_desc = Pexp_match ({
@@ -256,7 +260,7 @@ let build_match_on_var ~loc (x : var) (cs : case list) : expression = {
   }
 
 (* Extract from an expression its list of argument, of local instances, and the remaining expression. *)
-let rec pexp_fun_get_annotated_args_body (e : expression)
+(* let rec pexp_fun_get_annotated_args_body (e : expression)
     : (varsyntyps * (varsyntyp * symbol * loc) list * expression) option =
   let loc = e.pexp_loc in
   match e.pexp_desc with
@@ -288,24 +292,58 @@ let rec pexp_fun_get_annotated_args_body (e : expression)
     let e = build_match_on_var ~loc x cs in
     let x = varsyntyp_of_var ~loc x in
     Some ([x], [], e)
+  | _ -> None *)
+
+(* Extract from an expression its list of argument, of local instances, and the remaining expression. *)
+let rec pexp_fun_get_annotated_args_body (e : expression)
+    : (varsyntyps * expression) option =
+  let loc = e.pexp_loc in
+  match e.pexp_desc with
+  | Pexp_fun (Nolabel, None, p, e1) ->
+    begin match tr_pat_to_var p with
+    | Some x ->
+      (* Here x and xs are annotated variables. *)
+      (* let attributes = pat_attributes p in *)
+      (* let attrs = filter_attributes_argument attributes in
+      if get_implicit_symbol attrs <> None then
+        unsupported ~loc "implicit argument can only be defined in an explicit instance declaration." ; *)
+      begin match pexp_fun_get_annotated_args_body e1 with
+      | None -> Some ([x], e1)
+      | Some (xs, ei) -> Some (x :: xs, ei)
+      end
+    | None ->
+      (* We need to compile this function into a match expression. *)
+      let x = new_local_variable () in
+      let e = build_match_on_var ~loc x [{ pc_lhs = p ; pc_guard = None ; pc_rhs = e1}] in
+      let x = varsyntyp_of_var ~loc x in
+      Some ([x], e)
+    end
+  | Pexp_fun (_lbl, _eo, _p, _e1) -> unsupported ~loc "labeled arguments"
+  | Pexp_function cs ->
+    (* We compile it on the fly to a match expression. *)
+    let x = new_local_variable () in
+    let e = build_match_on_var ~loc x cs in
+    let x = varsyntyp_of_var ~loc x in
+    Some ([x], e)
   | _ -> None
 
+
 (* FIXME: Do we still need them? *)
-let ocaml_to_mode (e : expression) =
+(* let ocaml_to_mode (e : expression) =
   match e.pexp_desc with
   | Pexp_construct ({txt = Lident b; _ }, _) ->
       if b = "true" then Mode_in
       else if b = "false" then Mode_out
       else invalid_arg "modes must be booleans litterals."
   | _ -> invalid_arg "modes must be booleans."
-
-let rec ocaml_list_to_modes (e : expression) : mode list =
+ *)
+(* let rec ocaml_list_to_modes (e : expression) : mode list =
   match e.pexp_desc with
   | Pexp_construct ({ txt = Lident "[]"; _ }, _) -> []
   | Pexp_construct ({ txt = Lident "::"; _ }, Some {pexp_desc = Pexp_tuple [e1; e2]; _ }) ->
       ocaml_to_mode e1 :: ocaml_list_to_modes e2
   | _ -> invalid_arg "the input must be a boolean list."
-
+ *)
 (* Given a term of the form [fun (type a b) -> t], return the list [a; b] and t. *)
 let rec extract_leading_type_parameters t =
   match t.pexp_desc with
@@ -315,21 +353,24 @@ let rec extract_leading_type_parameters t =
     (ty :: tys, t)
   | _ -> ([], t)
 
+(* Removed the attributes in this function *)
 (* Split a term representing a (non-polymorph) function into its arguments and its body. *)
 let rec split_fun_args t =
   match t.pexp_desc with
   | Pexp_fun (Nolabel, None, p, t0) ->
-    let loc = p.ppat_loc in
+    (* let loc = p.ppat_loc in *)
     begin match tr_pat_to_var p with
     | Some local_name ->
       let (args, t') = split_fun_args t0 in
-      ((local_name, filter_attributes_argument (pat_attributes p)) :: args, t')
+      ((local_name(* , filter_attributes_argument (pat_attributes p) *)) :: args, t')
     | None ->
-      (* We compile it on the fly to a match expression. *)
+      (* We assume that for the moment we only give variables as input. *)
+      assert false
+      (* (* We compile it on the fly to a match expression. *)
       let x = new_local_variable () in
       let e = build_match_on_var ~loc x [{ pc_lhs = p ; pc_guard = None ; pc_rhs = t0}] in
       let x = varsyntyp_of_var ~loc x in
-      ([(x, [])], e)
+      ([(x(* , [] *))], e) *)
     end
   | Pexp_fun (_lbl, _opt, _p, _t) -> unsupported ~loc:t.pexp_loc "labelled arguments." ;
   | Pexp_function cs ->
@@ -338,7 +379,7 @@ let rec split_fun_args t =
     let x = new_local_variable () in
     let e = build_match_on_var ~loc x cs in
     let x = varsyntyp_of_var ~loc x in
-    ([(x, [])], e)
+    ([(x(* , [] *))], e)
   | _ -> ([], t)
 
 
@@ -396,13 +437,13 @@ let false_inv (e : expression) : bool =
 
 let rec tr_exp (e : expression) : trm =
   let loc = e.pexp_loc in
-  let return ?(annot=AnnotNone) (e':trm_desc) : trm =
+  let return (* ?(annot=AnnotNone) *) (e':trm_desc) : trm =
     { trm_desc = e';
       trm_loc = e.pexp_loc;
       trm_typ = typ_nameless ();
       trm_binds = None;
-      trm_env = env_empty;
-      trm_annot = annot } in
+      trm_env = env_empty(* ;
+      trm_annot = annot  *)} in
   match e.pexp_desc with
   | Pexp_ident lid_loc ->
     (*Goal : look at the identifier, and write different variables -> either the ident is optional, and give a pattern var, or it is a specific ident (here __ -> Trm_pat_wild) *)
@@ -426,13 +467,14 @@ let rec tr_exp (e : expression) : trm =
         trm_let_def ~loc l t) t2 (List.rev lets)
   | Pexp_let (rf, vbs, e) -> unsupported ~loc "mutual let defs"
   | Pexp_fun _ | Pexp_function _ ->
-      let (xs, local_instances, e1) =
+
+      let (xs,(*  local_instances, *) e1) =
          match pexp_fun_get_annotated_args_body e with
          | None -> assert false
          | Some res -> res in
       let t1 = tr_exp e1 in
-      let t2 = add_local_instances local_instances t1 in
-      return (trm_desc_funs xs t2)
+      (* let t2 = add_local_instances local_instances t1 in  *)
+      return (trm_desc_funs xs t1) (* YL: Note : if something broke it is probably here... *)
   | Pexp_ifthenelse (e1, e2, Some e3) ->
       let t1 = tr_exp e1 in
       let t2 = tr_exp e2 in
@@ -614,12 +656,27 @@ let rec tr_exp (e : expression) : trm =
 (* The let bindings can be normal declarations or instance declarations.
   In the case of a normal declarations, the returned list is a singleton.
   In the case where the let pattern-matches, it is compiled on the fly to a match-expression. *)
+
+(*
+Trying to debug for
+Pstr_value [pattern Ppat_var "f" = pexpfun (pattern ppatvar "x" -> pexp_ident "x") ]
+*)
 and tr_let (rf : rec_flag) (attrs : attributes) (vb : value_binding) : let_def list =
   let loc = vb.pvb_loc in
-  let _symbols = filter_attributes_binding (attrs @ vb.pvb_attributes) in (*TODO : handling @pattern*)
+  (* let _symbols = filter_attributes_binding (attrs @ vb.pvb_attributes) in (*TODO : handling @pattern*) *)
   let (tvars, t) = extract_leading_type_parameters vb.pvb_expr in
   let (args, body) = split_fun_args t in
-  let (implicits, non_implicits) =
+
+  (* args is the names of all of the variables. Generate a let_def in which we put the args? Or the body ? how does it work exactly?  *)
+
+
+  (* What does this function do?
+    aux [] args. Give the args, and parse which is implicit and which is not? Ok...
+    - if all args are handled reverse acc and return it with empty non_implicit
+    - if args is not empty : (x, ty), attrs
+
+  *)
+  (* let (implicits, non_implicits) =
     let rec aux acc = function
       | ([] : (varsyntyp * (argument_attribute * Ast_fix.loc) list) list) -> (List.rev acc, [])
       | ((x, ty), attrs) :: args ->
@@ -632,40 +689,57 @@ and tr_let (rf : rec_flag) (attrs : attributes) (vb : value_binding) : let_def l
               unsupported ~loc "implicit argument after a non-implicit argument."
             | None -> ()) args ;
           (List.rev acc, (x, ty) :: List.map (fst : _ -> varsyntyp) args) in
-    aux [] args in
-  let local_instances =
+    aux [] args in *)
+
+    (* all variables are assumed to be non_implicit, no guessing whatsoever. *)
+
+    let non_implicits = args in
+
+
+
+
+
+(*   let local_instances =
     List.concat_map (fun (x, attrs) ->
-      List.map (fun (sym, loc) -> (x, sym, loc)) (get_all_local_instances attrs)) args in
+      List.map (fun (sym, loc) -> (x, sym, loc)) (get_all_local_instances attrs)) args in *)
   let body = tr_exp body in
-  let body = add_local_instances local_instances body in
+(*   let body = add_local_instances local_instances body in *)
   (* The variable [full_body] includes all parameters (including the implicit ones). *)
   let fun_body = trm_funs_if_non_empty ~loc non_implicits body in
-  let full_body =
-    trm_funs_if_non_empty ~loc (List.map (fun (x, _sym, ty) -> (x, ty)) implicits) fun_body in
+(*   let full_body =
+    trm_funs_if_non_empty ~loc (List.map (fun (x, _sym, ty) -> (x, ty)) implicits) fun_body in *)
   (* The variable [full_def] also includes the for-alls quantifiers. *)
-  let full_def = trm_foralls ~loc tvars full_body in
-  if _symbols = [] then ( (* TODO: remove symbols, and handle the attributes themselves. Without needing to filter anything basically. *)
+  let full_def = trm_foralls ~loc tvars fun_body in
+  (* if _symbols = [] then (* TODO: remove symbols, and handle the attributes themselves. Without needing to filter anything basically. *)
     if implicits <> [] then
-      unsupported ~loc "[@implicit] can only be used within an instance declaration." ;
-    let bind =
-      match vb.pvb_pat with
-      | { ppat_desc = Ppat_var { txt = x ; _ } ; _ } ->
-        Some (Bind_var (var x, None))
-      | { ppat_desc = Ppat_constraint ({ ppat_desc = Ppat_var { txt = x ; _ } }, ty) ; _ } ->
-        Some (Bind_var (var x, Some (coretype_to_synsch ty)))
-      | [%pat? (_ : unit)] | [%pat? ()] -> Some (Bind_anon)
-      | _ -> None in
-    match bind with
-    | Some bind -> [{
-        (* This is a normal let-binding declaration. *)
-        let_def_rec = rf ;
-        let_def_body = full_def ;
-        let_def_bind = bind
-      }]
-    | None ->
-      (* This is a let-binding declaration with no instance, but compiled on the fly into a sequence
-        of pattern-matching. *)
-      let p = tr_pat vb.pvb_pat in
+      unsupported ~loc "[@implicit] can only be used within an instance declaration." ; *)
+  let bind =
+    match vb.pvb_pat with
+    (* let x = t *)
+    | { ppat_desc = Ppat_var { txt = x ; _ } ; _ } ->
+      Some (Bind_var (var x, None))
+    (* let x : ty = t *)
+    | { ppat_desc = Ppat_constraint ({ ppat_desc = Ppat_var { txt = x ; _ } }, ty) ; _ } ->
+      Some (Bind_var (var x, Some (coretype_to_synsch ty)))
+    (* let _ = t *)
+    | [%pat? (_ : unit)] | [%pat? ()] -> Some (Bind_anon)
+    | _ -> None in
+  match bind with
+  | Some bind -> [{
+      (* This is a normal let-binding declaration. *)
+      let_def_rec = rf ;
+      let_def_body = full_def ;
+      let_def_bind = bind
+    }]
+  | None ->
+      (* We are in the [let p = t1 in t2] case, with an arbitrarly deep pattern. *)
+      (** We plan on compiling this on the fly into a pattern matching :
+        [let p = t1 in t2] -> [if t1 @_is p then t2 else "assert false" /"match failure"']*)
+    (* This is a let-binding declaration with no instance, but compiled on the fly into a sequence
+      of pattern-matching. *)
+      (* YL: This is important code for later. *)
+      assert false
+      (* let p = tr_pat vb.pvb_pat in
       let x = new_local_variable () in
       let xs = pat_vars p in
       let main_bind = {
@@ -690,8 +764,8 @@ and tr_let (rf : rec_flag) (attrs : attributes) (vb : value_binding) : let_def l
         let_def_body = trm_match ~loc (trm_var ~loc x) [(p', trm_var ~loc x')] ;
         let_def_bind = Bind_var (x', None)
       } in
-      main_bind :: List.map later_bind xs
-  ) else ( assert false;
+      main_bind :: List.map later_bind xs *)
+(*   ) else ( assert false; *)
     (* This let-binding is an instance declaration. *)
     (* let instance_typ = fun_body.trm_typ in
     let instance_sig = {
@@ -739,8 +813,8 @@ and tr_let (rf : rec_flag) (attrs : attributes) (vb : value_binding) : let_def l
         let_def_body = full_body ;
         let_def_bind = Bind_register_instance (symbol, instance_sig)
       }) symbols
-    | _ -> unsupported ~loc "Only variable and wildcard pattern are accepted here." *)
-  )
+    | _ -> unsupported ~loc "Only variable and wildcard pattern are accepted here."
+  ) *)
 
 and tr_case c =
   match c.pc_guard with

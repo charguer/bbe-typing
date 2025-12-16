@@ -47,12 +47,14 @@ let simple_option2_fail = None
 
 let unify_options = if true then Some 2 else Some 3
 
+let f x = x
+
 let[@type_error ""] unify_options_fail = if true then Some 2 else Some false
 
 external (+) : int -> int -> int = "%addint"
 let tuple_bind1 = if tuple2 @_is (??x, ??y) then x + y else -1
 let tuple_bind2 = if tuple3 @_is (??x1, ??x2, ??x3) then x1 + x3 else -1
-let tuple_bind_fail = if tuple3 @_is (??x1, ??x2, ??x3) then x1 + x3 else x2
+let[@type_error ""] tuple_bind_fail = if tuple3 @_is (??x1, ??x2, ??x3) then x1 + x3 else x2
 
 (* write an inversion of the option, should be enough for the moment. *)
 
@@ -63,13 +65,18 @@ let tuple_bind1 = if (bool_inv true) @_is (Some ??x) then x else -1 *)
 (* Writing tests for the shape of it, not expected to be working for the moment *)
 (* let trm_if_inv = *)
 
-let even n = n mod 2 = 0
-let even_opt n = if even n then Some n/2 else None
+
+external (=) : int -> int -> bool = ""
+external (mod) : int -> int -> int = ""
+external (/) : int -> int -> int = ""
+let even n = ((n mod 2) (=) 0)
+
+let even_opt n = if (even n) then (Some n/2) else None
 
 let f (x : int) : int = x
 
 let testing_sudo_inv_and (t : int option) =
-  if (t @_is Some ??k) && even_opt k @_is Some ??v then f v else f 0
+  if (t @_is (Some ??k)) && ((even_opt k) @_is (Some ??v)) then f v else f 0
 
 
 

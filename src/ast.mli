@@ -20,26 +20,6 @@ type instance_value = trm0
 (** A [loc] denotes a location in the source code *)
 type loc = Location.t
 
-
-(*Yanni: Unnecessary*)
-(** An overloaded variable, e.g. [(+)]. *)
-(* type symbol =
-
-  | SymbolName of var (* A simple variable. *)
-
-  | SymbolTuple of int (* >= 0 and <> 1 as there is no syntax for unary tuple. [__Tuple0] is [()]. *)
-  | SymbolNumericInt (* [42] in the source is encoded as [Trm_apps (Trm_var SymbolNumericInt) (Trm_cst (Cst_int 42))]
-                        with annotation on the Trm_apps *)
-  | SymbolNumericFloat
-  | SymbolString
-  | SymbolBool
-
-  | SymbolGetField of field
-  | SymbolSetField of field
-  | SymbolMakeRecord of field list (* Invariant: ordered. *)
-  | SymbolRecordWith of field
- *)
-
 (** A [styp] (syntactic type) describes the piece of syntax that corresponds
     to a user-provided type annotation. Not to be confused with a [typ],
     which describes a type internally in the type-checker. *)
@@ -47,22 +27,6 @@ type styp = Parsetree.core_type (* FIXME: rename to parsetyp *)
 
 
 (** * Types *)
-
-(* ARTHUR: retirer tous les modes *)
-(** Mode for instance arguments.
-   The [mode] can be 'input' or 'output'.
-   For an overloaded function, we have a mode to every argument.
-   The resolution is guided by the type of the 'input' arguments only. *)
-(*Yanni: Unnecessary*)
-(* type mode =
-  | Mode_in (* true: input parameter (default) *)
-  | Mode_out (* false: output parameter (mainly used for iterators) *)
- *)
-(** An [symbol_modes] gives the modes associated with an overloaded function.
-  The list of modes corresponds to the inputs, and the second mode to the context-unification
-  of the output. *)
-(* LATER: change this to a [(mode list * mode) list], with a list of modes for every possible arity? *)
-(* type symbol_modes = (mode list * mode) option *)
 
 (* Every [typ] may carry a mark, used internally for detecting cycles in [get_repr]. *)
 type mark = int
@@ -122,114 +86,7 @@ and sch = {
   sch_body : typ;
 }
 
-(** A varid records information on how a variable is resolved,
-    in particular in the case it is an overloaded symbol. *)
-(* and varid = {
-  varid_unique_int : varid_unique_int; (* Used for storing varids in sets *)
-  varid_var : var; (* Needed to print assumption instantiations in the output AST. *)
-  varid_loc : loc ;
-  mutable varid_env : env0 ; (* Needed to resolve the assumptions that may be associated with instances *)
-  mutable varid_resolution : varid_resolution; (* Describes how the symbol is resolved *)
-  varid_depth : int; (* The dependency depth at which this symbol has been created. *)
-  varid_typ : typ; (* Type of the overloaded symbol, as seen by its context *)
-  varid_context : symbol option; (* To ease bug reporting: when this varid is an instance assumption, it carries its parent symbol. *)
-
-  (* The following booleans are markers, for internal use only (see the StackUnique submodule
-    in Typecheck. *)
-  mutable varid_marker_strong : bool;
-  mutable varid_marker_weak : bool
-} *)
-
-and varid = {
-  varid_var : var;
-  varid_loc : loc;
-}
-
-(** [varid_resolution] describes the resolution status of a [varid].
-    It case a symbol is resolved to an instance, the assumptions of
-    this instance might not yet be fully resolved. *)
-(* and varid_resolution =
-  | VarUnknown (* Status is unknown after parsing. *)
-  | VarRegular (* Variable bound by a let or a lambda-expression. *)
-               (* LATER of loc (* Location of the binding point *) *)
- *)
-(** [assumptions] describes a list of varids that corresponds to the
-    assumptions of a instance. E.g. addition on type ['a matrix] has
-    for assumption addition on type ['a]. *)
-(* and assumptions = varid list
- *)
-(** [candidates] describes a list of instances to which a symbol could resolve.
-    [candidates] is used as synoynmous for [instance list] in environments
-    and in [VarUnresolved] for clarity. *)
-(* and candidates = instance list
- *)
-(** A [candidates_and_modes] record denotes the list of instances registered
-   with a given overloaded symbol.
-   It also records the input-output modes that should be used when resolving
-   that overloaded symbol. *)
-(* and candidates_and_modes = {
-  candidates_and_modes_candidates : candidates;
-  candidates_and_modes_modes : symbol_modes; (* LATER: remove modes? *)
-}
- *)
-
- (** [instance_sig] describes the type scheme and the assumptions of an instance.
-   Example for addition on [a matrix]:
-   - tvars : the list [a]
-   - assumptions : a list of assumption_desc [add[@instance (+)] : a -> a -> a]
-   - typ : the type of the matrix addition [a matrix -> a matrix -> a matrix]. *)
-(* and instance_sig = {
-  instance_tvars : tvar_rigid list;
-  instance_assumptions : assumption_desc list;
-  instance_typ : typ;
-} *)
-
-(** An assumption can take two forms as part of the arguments of an instance declaration:
-  - [(op[@implicit (+)] : a -> a -> a)].  In this case, the [op] is irrelevant for the typing context (it will be seen in the instance value).
-  - [(_[@implicit (+)] : a -> a -> a)]. *)
-(*Yanni: Unnecessary*)
-(* and assumption_desc = {
-  assumption_symbol : symbol;
-  assumption_typ : syntyp0;
-} *)
-
-(** An [instance] denotes a possibility of resolution for an overloaded symbol,
-    e.g. [let[@instance (+)] int_add : int -> int -> int = ..]
-    or [let[@instance (+)] _ = int_add].
-    Each instance has a name (e.g. [int_add]), not to be confused with its
-    symbol (e.g. [+]).
-    Each instance has a signature, e.g. [int -> int -> int] for a simple
-    addition on [int], or a more complex signature, see the example
-    given for matrix in the definition of [instance_sig].
-
-    Instance arguments can have some special arguments, for instance:
-    [[
-      let[@instance (+)] matrix_add (type a) (op[@implicit_instance (+)] : a -> a -> a)
-        (m1 m2 : matrix a) : matrix a = ...
-    ]]
-    Here is what these attributes on instance arguments mean:
-    - [op[@instance (+)]] means that [op] is a normal argument from the outside point of vue.
-      Inside the body of the function, however, it behaves as a local instance.
-      It is equivalent to taking [op] as a normal argument, then declaring
-      [let[@register (+)] _ = op] in the beginning of the function.
-    - [op[@implicit (+)] means that from the outside point of vue, callers won't provide
-      this argument [op] when calling the instance.
-      It is a bit like the [`{ typeclass }] notation in Rocq for arguments.
-      Formally, this means that [op] is an [assumption_desc] for the instance.
-      Within the instance body, however, [op] behaves like a normal argument.
-    - [op[@implicit_instance (+)] is syntactic sugar for [op[@implicit (+)][@instance (+)]].
-    Syntactially, we use the convention that within instance declarations, type arguments
-    come first, then implicit arguments, then normal arguments.
-*)
-(* and instance = {
-  (** Term to be extracted at the place of the instance use.
-    It takes the instance's arguments as parameters. *)
-  instance_value : instance_value;
-  instance_sig : instance_sig;
-  instance_loc : loc; (* Where the instance was declared. *)
-  instance_symbol : symbol
-} *)
-
+and varid = string
 
 (* ** Syntactic types *)
 
@@ -271,38 +128,12 @@ type varsynschopt = var * synsch option
 
 (** The different kinds of let-bindings:
   - normal let-bindings (including sequences).
-  - let[@register <sig>]. This command isn't really directly available to the user.
-    It takes as an argument an instance signature.
-  - let[@instance (+) foo = ...] is compiled by Ocaml_to_ast into:
-    [[
-      let foo = ...
-      let[@register (+)] _ = foo
-    ]]
-    A more complex example: the line
-    [[
-      let[@instance (+)] foo (type a) (bar[@implicit (-)] : a -> a) : a -> a = ... in t'
-    ]]
-    is compiled by Ocaml_to_ast into
-    [[
-      let foo bar = ... in
-      let[@register ((+) : type a. ((-) : a -> a) -> (a -> a) __result)] _ = foo in
-      t'
-    ]]
-  Syntactially, we take the convention that within instance declarations, type arguments
-  come first, then implicit arguments, then normal arguments.
-
-  Remark: the two lines below are equivalent.
-  [[
-    let[@instance (+)] x = t in t'
-    (fun x[@instance (+)] -> t') t
-  ]]
  *)
 type bind =
   | Bind_anon                                       (* From sequences and [let _ =]. *)
   | Bind_var of varsynschopt                        (* [let x : (type a. a -> a) = ...] *)
-(*   | Bind_register_instance of symbol * instance_sig (* [let[@register (+)] _ (type a) (op[@implicit (+)]) = ...] *)
+  (*   | Bind_register_instance of symbol * instance_sig (* [let[@register (+)] _ (type a) (op[@implicit (+)]) = ...] *) *)
 
- *)
 type cst =
   | Cst_bool of bool
   | Cst_int of int
@@ -330,33 +161,11 @@ and pats = pat list
 
 type rec_flag = Asttypes.rec_flag
 
-(** Annotations to recognise special terms generated by the parser that the printer should know about. => LATER: rename to decoration *)
-type annot =
-  | AnnotNone
-
-  (* The term was a literal that has been encoded as [__class literal].
-    Note that this annotation comes in the function call, not in the literal. *)
-  | AnnotLiteralUnit
-  | AnnotLiteralBool
-  | AnnotLiteralInt
-  | AnnotLiteralFloat
-  | AnnotLiteralString
-
-  (* The term was a record operation encoded as a function call. *)
-  | AnnotRecordGet
-  | AnnotRecordSet
-  | AnnotRecordMake
-  | AnnotRecordWith
-
-  | AnnotTuple of int
-
 type let_def = {
   let_def_rec : rec_flag;
   let_def_bind : bind;
   let_def_body : trm0;
 }
-
-(* Records are compiled as stated in the article. *) (* YL : unnecessary now *)
 
 (* List of functions to modify/list of dependencies when changing trm_desc:
   - src/debug.ml: [print_low_level_trm] function
@@ -385,6 +194,30 @@ type trm_desc =
   | Trm_cst of cst
   | Trm_funs of varsyntyps * trm          (* fun (x1 : tyn) ... (xn : tyn) -> trm_body *)
   | Trm_if of trm * trm * trm             (* if t1 then t2 else t3 *)
+  (* Comments from last meeting, should be put somewhere better later *)
+  (* Trm_seq trm trm
+  Trm_let pat trm trm  plus tard
+  Trm_let let_def trm
+
+  let_def = { recflag varsynschopt trm }
+
+
+  let_def = { recflag bind trm }   --existe déjà pour l'instant
+   bind = Bind_var varsynschopt  | Bind_anon qu'on peut garder pou Trm_seq comme actuellement
+
+
+  plus tard
+    let_def = recflag binds trm
+    bind = pat * synschopt
+    binds = bind list
+
+  pour l'instant
+  Trm_let (var option) trm trm
+
+ plus tard:
+  fun p -> t
+  fun x -> if x is p then t
+  *)
   | Trm_let of let_def * trm              (* [t1 ; t2], [let rec x = t1 in t2], [let[@register (+) _ = t1 in t2]] *)
   | Trm_apps of trm * trms                (* Application. Partial application is not allowed. *)
   | Trm_annot of trm * syntyp             (* (t : ty) *)
@@ -408,7 +241,7 @@ and trm = {
     And then for patterns, the type would be the input, and "binds" would be the output... *)
   trm_binds : env0 option; (* An option used both to easily get result bindings, and notify if the term actually has result bindings *)
   trm_env : env0; (* a dummy environment after parsing *)
-  trm_annot : annot (* to help printing back of encoded terms *)
+  (* trm_annot : annot (* to help printing back of encoded terms *) *)
 }
 
 and trms = trm list
@@ -416,7 +249,7 @@ and trms = trm list
 and bbe = trm
 and trm_pat = trm (*temporary solution, hoping to remove the "pat" type and change "pattern" to pat later on.*)
 
-
+(* TODO: reread this later *)
 (*
   The current goal is to support polymorphic algebraic data types
   (of the form [type 'a t = A | B of 'a * int * 'a t])
@@ -463,8 +296,6 @@ and trm_pat = trm (*temporary solution, hoping to remove the "pat" type and chan
 
   About arrow ("->"): The arrow type is part of the builtin type constructors. It takes a list of types as arguments (of size n), and represents an n-ary type [(T1, ..., T(n-1)) -> Tn].
   *)
-
-
 (* Definition of a type. *)
 type tconstr_def =
   | Tconstr_special_nary
@@ -578,4 +409,200 @@ type env = {
 }
 
 end
+
+
+(** YL: Currently working on cleaning up the code. The code below was moved for clarity. *)
+
+(*Yanni: Unnecessary*)
+(** An overloaded variable, e.g. [(+)]. *)
+(* type symbol =
+
+  | SymbolName of var (* A simple variable. *)
+
+  | SymbolTuple of int (* >= 0 and <> 1 as there is no syntax for unary tuple. [__Tuple0] is [()]. *)
+  | SymbolNumericInt (* [42] in the source is encoded as [Trm_apps (Trm_var SymbolNumericInt) (Trm_cst (Cst_int 42))]
+                        with annotation on the Trm_apps *)
+  | SymbolNumericFloat
+  | SymbolString
+  | SymbolBool
+
+  | SymbolGetField of field
+  | SymbolSetField of field
+  | SymbolMakeRecord of field list (* Invariant: ordered. *)
+  | SymbolRecordWith of field
+ *)
+
+
+(* ARTHUR: retirer tous les modes *)
+(** Mode for instance arguments.
+   The [mode] can be 'input' or 'output'.
+   For an overloaded function, we have a mode to every argument.
+   The resolution is guided by the type of the 'input' arguments only. *)
+(*Yanni: Unnecessary*)
+(* type mode =
+  | Mode_in (* true: input parameter (default) *)
+  | Mode_out (* false: output parameter (mainly used for iterators) *)
+ *)
+(** An [symbol_modes] gives the modes associated with an overloaded function.
+  The list of modes corresponds to the inputs, and the second mode to the context-unification
+  of the output. *)
+(* LATER: change this to a [(mode list * mode) list], with a list of modes for every possible arity? *)
+(* type symbol_modes = (mode list * mode) option *)
+
+
+(** A varid records information on how a variable is resolved,
+    in particular in the case it is an overloaded symbol. *)
+(* and varid = {
+  varid_unique_int : varid_unique_int; (* Used for storing varids in sets *)
+  varid_var : var; (* Needed to print assumption instantiations in the output AST. *)
+  varid_loc : loc ;
+  mutable varid_env : env0 ; (* Needed to resolve the assumptions that may be associated with instances *)
+  mutable varid_resolution : varid_resolution; (* Describes how the symbol is resolved *)
+  varid_depth : int; (* The dependency depth at which this symbol has been created. *)
+  varid_typ : typ; (* Type of the overloaded symbol, as seen by its context *)
+  varid_context : symbol option; (* To ease bug reporting: when this varid is an instance assumption, it carries its parent symbol. *)
+
+  (* The following booleans are markers, for internal use only (see the StackUnique submodule
+    in Typecheck. *)
+  mutable varid_marker_strong : bool;
+  mutable varid_marker_weak : bool
+} *)
+
+
+(** [varid_resolution] describes the resolution status of a [varid].
+    It case a symbol is resolved to an instance, the assumptions of
+    this instance might not yet be fully resolved. *)
+(* and varid_resolution =
+  | VarUnknown (* Status is unknown after parsing. *)
+  | VarRegular (* Variable bound by a let or a lambda-expression. *)
+               (* LATER of loc (* Location of the binding point *) *)
+ *)
+(** [assumptions] describes a list of varids that corresponds to the
+    assumptions of a instance. E.g. addition on type ['a matrix] has
+    for assumption addition on type ['a]. *)
+(* and assumptions = varid list
+ *)
+(** [candidates] describes a list of instances to which a symbol could resolve.
+    [candidates] is used as synoynmous for [instance list] in environments
+    and in [VarUnresolved] for clarity. *)
+(* and candidates = instance list
+ *)
+(** A [candidates_and_modes] record denotes the list of instances registered
+   with a given overloaded symbol.
+   It also records the input-output modes that should be used when resolving
+   that overloaded symbol. *)
+(* and candidates_and_modes = {
+  candidates_and_modes_candidates : candidates;
+  candidates_and_modes_modes : symbol_modes; (* LATER: remove modes? *)
+}
+ *)
+
+ (** [instance_sig] describes the type scheme and the assumptions of an instance.
+   Example for addition on [a matrix]:
+   - tvars : the list [a]
+   - assumptions : a list of assumption_desc [add[@instance (+)] : a -> a -> a]
+   - typ : the type of the matrix addition [a matrix -> a matrix -> a matrix]. *)
+(* and instance_sig = {
+  instance_tvars : tvar_rigid list;
+  instance_assumptions : assumption_desc list;
+  instance_typ : typ;
+} *)
+
+(** An assumption can take two forms as part of the arguments of an instance declaration:
+  - [(op[@implicit (+)] : a -> a -> a)].  In this case, the [op] is irrelevant for the typing context (it will be seen in the instance value).
+  - [(_[@implicit (+)] : a -> a -> a)]. *)
+(*Yanni: Unnecessary*)
+(* and assumption_desc = {
+  assumption_symbol : symbol;
+  assumption_typ : syntyp0;
+} *)
+
+(** An [instance] denotes a possibility of resolution for an overloaded symbol,
+    e.g. [let[@instance (+)] int_add : int -> int -> int = ..]
+    or [let[@instance (+)] _ = int_add].
+    Each instance has a name (e.g. [int_add]), not to be confused with its
+    symbol (e.g. [+]).
+    Each instance has a signature, e.g. [int -> int -> int] for a simple
+    addition on [int], or a more complex signature, see the example
+    given for matrix in the definition of [instance_sig].
+
+    Instance arguments can have some special arguments, for instance:
+    [[
+      let[@instance (+)] matrix_add (type a) (op[@implicit_instance (+)] : a -> a -> a)
+        (m1 m2 : matrix a) : matrix a = ...
+    ]]
+    Here is what these attributes on instance arguments mean:
+    - [op[@instance (+)]] means that [op] is a normal argument from the outside point of vue.
+      Inside the body of the function, however, it behaves as a local instance.
+      It is equivalent to taking [op] as a normal argument, then declaring
+      [let[@register (+)] _ = op] in the beginning of the function.
+    - [op[@implicit (+)] means that from the outside point of vue, callers won't provide
+      this argument [op] when calling the instance.
+      It is a bit like the [`{ typeclass }] notation in Rocq for arguments.
+      Formally, this means that [op] is an [assumption_desc] for the instance.
+      Within the instance body, however, [op] behaves like a normal argument.
+    - [op[@implicit_instance (+)] is syntactic sugar for [op[@implicit (+)][@instance (+)]].
+    Syntactially, we use the convention that within instance declarations, type arguments
+    come first, then implicit arguments, then normal arguments.
+*)
+(* and instance = {
+  (** Term to be extracted at the place of the instance use.
+    It takes the instance's arguments as parameters. *)
+  instance_value : instance_value;
+  instance_sig : instance_sig;
+  instance_loc : loc; (* Where the instance was declared. *)
+  instance_symbol : symbol
+} *)
+
+(** The different kinds of let-bindings:
+  - let[@register <sig>]. This command isn't really directly available to the user.
+    It takes as an argument an instance signature.
+  - let[@instance (+) foo = ...] is compiled by Ocaml_to_ast into:
+    [[
+      let foo = ...
+      let[@register (+)] _ = foo
+    ]]
+    A more complex example: the line
+    [[
+      let[@instance (+)] foo (type a) (bar[@implicit (-)] : a -> a) : a -> a = ... in t'
+    ]]
+    is compiled by Ocaml_to_ast into
+    [[
+      let foo bar = ... in
+      let[@register ((+) : type a. ((-) : a -> a) -> (a -> a) __result)] _ = foo in
+      t'
+    ]]
+  Syntactially, we take the convention that within instance declarations, type arguments
+  come first, then implicit arguments, then normal arguments.
+
+  Remark: the two lines below are equivalent.
+  [[
+    let[@instance (+)] x = t in t'
+    (fun x[@instance (+)] -> t') t
+  ]]
+*)
+
+(** Annotations to recognise special terms generated by the parser that the printer should know about. => LATER: rename to decoration *)
+(* type annot =
+  | AnnotNone
+
+  (* The term was a literal that has been encoded as [__class literal].
+    Note that this annotation comes in the function call, not in the literal. *)
+  | AnnotLiteralUnit
+  | AnnotLiteralBool
+  | AnnotLiteralInt
+  | AnnotLiteralFloat
+  | AnnotLiteralString
+
+  (* The term was a record operation encoded as a function call. *)
+  | AnnotRecordGet
+  | AnnotRecordSet
+  | AnnotRecordMake
+  | AnnotRecordWith
+
+  | AnnotTuple of int
+ *)
+
+(* Records are compiled as stated in the article. *) (* YL : unnecessary now *)
+
 

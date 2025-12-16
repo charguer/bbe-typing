@@ -2,7 +2,7 @@
 (** Global flags to change the behavior of the program.
   They are only modified in Typer. **)
 
-let debug = ref false
+let debug = ref true
 let verbose = ref true
 
 let quiet = ref false

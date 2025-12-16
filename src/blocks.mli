@@ -8,8 +8,8 @@ open Ast_fix
 (* ** Testing for cycles, and testing for partially/fully resolved types *)
 
 (** Check whether a varid is already resolved. *)
-val varid_is_resolved : varid -> bool
-
+(* val varid_is_resolved : varid -> bool
+ *)
 (* [check_fully_typed t x] checks that the term [t] is fully typed, in
    the sense that all overloading is resolved and no flexible variable
    remains. If not, produces an error message mentioning the name [x].

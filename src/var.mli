@@ -35,6 +35,8 @@ type tvar
 type varid_unique_int
 
 
+val string_to_tconstr : string -> tconstr
+
 (** * Constructors *)
 
 val var : string -> var
@@ -51,8 +53,8 @@ val field : string -> field
 val tvar : ?raw:string -> string -> tvar
 
 (** Allocate a new anonymous variable. *)
-(* val no_name_var : unit -> var
- *)
+val no_name_var : unit -> var
+
 (** Allocate a new anonymous type variable.
  This is typically used from within the typechecker. *)
 val no_name_tvar : unit -> tvar

@@ -38,6 +38,8 @@ let set_new_name n =
   names := SSet.add n !names ;
   n
 
+let string_to_tconstr (v : string) : tconstr = v
+
 let tconstr = set_new_name
 let constr = set_new_name
 let field = set_new_name
@@ -52,21 +54,22 @@ let no_tvar_name =
   )
 
 let tvar = tvar_name
-let no_name_tvar = no_tvar_name
 
-(* let no_name_var =
+let no_name_var =
   let current = ref 0 in
   fun () -> (
     incr current ;
-    VarNoName !current
-  ) *)
+    var ("__" ^ (Int.to_string !current))
+  )
 
-(* let new_varid_unique_int =
+let no_name_tvar = no_tvar_name
+
+let new_varid_unique_int =
   let id = ref 0 in
   fun () -> (
     incr id ;
     !id
-  ) *)
+  )
 
 let print_varid_unique_int = string_of_int
 

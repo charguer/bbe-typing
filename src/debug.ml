@@ -35,7 +35,7 @@ let print_low_level_trm =
   let open Printf in
   let rec pr_desc i =
     let aux = aux (i + 2) in function
-    | Trm_var varid -> sprintf "Var %s" (var_to_string varid.varid_var)
+    | Trm_var varid -> sprintf "Var %s" varid
     | Trm_cst c ->
       let c =
         match c with
@@ -73,7 +73,7 @@ let print_low_level_trm =
     | Trm_and (t1, t2) -> sprintf "And (%s, %s)" (aux t1) (aux t2)
     | Trm_or (t1, t2) -> sprintf "Or (%s, %s)" (aux t1) (aux t2)
     | Trm_bbe_is (t, p) -> sprintf "Is (%s, %s)" (aux t) (aux p)
-    | Trm_pat_var varid -> sprintf "PVar %s" (var_to_string varid.varid_var)
+    | Trm_pat_var varid -> sprintf "PVar %s" varid
     | Trm_pat_wild -> sprintf "Wildcard"
   and aux i t =
     let space = String.make i ' ' in
@@ -88,12 +88,12 @@ let print_low_level_bind (b : bind) =
   match b with
   | Bind_anon -> " _"
   | Bind_var (x, _) -> sprintf "Var %s" (print_var x)
-  | Bind_register_instance _ -> "unsupported Binder for the moment"
+(*   | Bind_register_instance _ -> "unsupported Binder for the moment"
+ *)
 
-
-let print_low_level_reginst insts =
+(* let print_low_level_reginst insts =
   Printf.sprintf "registered instances <%i>" (List.length insts.candidates_and_modes_candidates)
-
+ *)
 (*wip : write a small printer of a program [typdef list] for debugging*)
 let print_low_level_topdef (td : topdef) : string =
   let open Printf in
@@ -164,14 +164,14 @@ let print_env_debug env =
         (fun l x s -> let x = var_to_string x in Printf.sprintf "%s: %s" x (sch_to_string s) :: l)
         [])))
 
-let print_current_top_level_resolving varid =
+(* let print_current_top_level_resolving varid =
   if_debug (fun () ->
     Printf.printf "Resolving varid: %s(%s) : %s.\n"
       (var_to_string varid.varid_var)
       (Var.print_varid_unique_int varid.varid_unique_int)
-      (typ_to_string varid.varid_typ))
+      (typ_to_string varid.varid_typ)) *)
 
-let print_current_top_level_resolved varid assumptions =
+(* let print_current_top_level_resolved varid assumptions =
   if_debug (fun () ->
     Printf.printf "Resolved varid: %s(%s) : %s.\n"
       (var_to_string varid.varid_var)
@@ -185,4 +185,4 @@ let print_current_top_level_resolved varid assumptions =
         (Var.print_varid_unique_int vi.varid_unique_int)
         (typ_to_string vi.varid_typ)) assumptions
     ))
-
+ *)

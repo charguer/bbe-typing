@@ -38,31 +38,31 @@ let check_flexible_not_occuring_typ (tflexible : typ) (ty : typ) : unit =
     in
     visit ty
 
-let varid_is_resolved (varid:varid) : bool =
+(* let varid_is_resolved (varid:varid) : bool =
   match varid.varid_resolution with
   | VarRegular (* | VarResolved _ *) -> true
-  | _ -> false
+  | _ -> false *)
 
-exception Contains_unresolved of varid
+(* exception Contains_unresolved of varid *)
 
-let (* rec *) all_varid_in_varid_are_resolved_exn (x : varid) : unit =
+(* let (* rec *) all_varid_in_varid_are_resolved_exn (x : varid) : unit =
   match x.varid_resolution with
   | VarRegular -> ()
   (* | VarResolved (_, xs) -> List.iter all_varid_in_varid_are_resolved_exn xs
    *)
-   | _ -> raise (Contains_unresolved x)
+   | _ -> raise (Contains_unresolved x) *)
 
-let rec all_varid_in_trm_are_resolved_exn (t : trm) : unit =
+(* let rec all_varid_in_trm_are_resolved_exn (t : trm) : unit =
   match t.trm_desc with
   | Trm_var x -> all_varid_in_varid_are_resolved_exn x
   | _ -> trm_iter all_varid_in_trm_are_resolved_exn t
-
-let all_varid_in_trm_are_resolved (t : trm) : bool =
+ *)
+(* let all_varid_in_trm_are_resolved (t : trm) : bool =
   try
     all_varid_in_trm_are_resolved_exn t ;
     true
   with Contains_unresolved _ -> false
-
+ *)
 (* let check_fully_typed ~in_depth ~test_acylic (t : trm) (s : symbol) : unit =
   let debug () =
     let style_debug = { style_debug with style_types = TypesSubterms } in

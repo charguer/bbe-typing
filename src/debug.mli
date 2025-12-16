@@ -26,6 +26,6 @@ val print_low_level_program : program -> string
 (** Print the types defined in the current environment. *)
 val print_env_debug : env -> string
 
-(** Print varid identifiers, to help debugging. *)
+(** Print varid identifiers, to help debugging. *)(*
 val print_current_top_level_resolving : varid -> unit
-val print_current_top_level_resolved : varid -> varid list -> unit
+val print_current_top_level_resolved : varid -> varid list -> unit *)

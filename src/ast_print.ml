@@ -419,9 +419,9 @@ and varid_to_doc ~style ?(is_arg = false) varid : doc =
       ^^ blank 1
       ^^ typ_to_doc varid.varid_typ)
   else d *)
-  var_to_doc varid.varid_var
+  var_to_doc varid
 
-and varid_to_doc_slim varid : doc = var_to_doc varid.varid_var
+and varid_to_doc_slim varid : doc = var_to_doc varid
 
 and varid_to_string_slim v = doc_to_string (varid_to_doc_slim v)
 

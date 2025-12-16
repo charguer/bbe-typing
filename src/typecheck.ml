@@ -105,7 +105,7 @@ let env_intersect ~loc (curr_env : env) (b1 : env) (b2 : env) : env =
   mk_env_binds (env_intersect_vars ~loc curr_env b1.env_var b2.env_var)
 
 let env_singleton (v : varid) (ty : typ) : env =
-  env_add_var (env_empty) v.varid_var (sch_of_nonpolymorphic_typ ty)
+  env_add_var (env_empty) v (sch_of_nonpolymorphic_typ ty)
 
 let typ_constant = function
   | Cst_bool _ -> the_typ_bool
@@ -115,7 +115,7 @@ let typ_constant = function
   | Cst_unit _ -> the_typ_unit
 
 let tconstr_inv (e : env_tconstr) (v : var) : bool =
-  Env.mem e (string_to_tconstr (print_var v))
+  Env.mem e (string_to_tconstr v)
 
 let tconstr_inv_bind (e : env_tconstr) (v : var) : tconstr_desc option =
   Env.read_option e (string_to_tconstr (print_var v))
@@ -137,11 +137,11 @@ let check_same_domains_in_pattern  (e : env) ~loc (e1 : (var, typ) Env.t) (e2 : 
         (Conflict_with_context (trm_var ~loc ~typ:ty1 x, ty1, ty2))
   ) ()
 
-let typecheck_variable loc (e : env) (v : var) : varid =
+let typecheck_variable loc (e : env) (v : var) : varid * typ  =
       (* if env_is_in_pattern  chercher d'abord "Pattern__" ^ v TODO *) (* AC *)
   let s =
     match Env.read_option e.env_var v with
-    | None -> raise (Error (Unbound_variable (SymbolName v), loc)) (* SymbolName is a temporary solution. Later replace the type of Unbound_variable to var, or even string. *)
+    | None -> raise (Error (Unbound_variable v, loc)) (* SymbolName is a temporary solution. Later replace the type of Unbound_variable to var, or even string. *)
     | Some s -> s in
   (* We compute the type of the variable, based on the item associated
     with [sym] in the environment.
@@ -149,8 +149,8 @@ let typecheck_variable loc (e : env) (v : var) : varid =
       is obtained as the instantiation of this type scheme on fresh variables.
     *)
   let typ = apply_to_fresh_flexibles s in
-  let varid = create_varid ~loc ~env:e v ~typ ~resolution:VarRegular in
-  varid
+  let varid = create_varid v in
+  (varid, typ)
 
 
 (* For each pattern, we returned the typed pattern and the environment it introduces. *)
@@ -214,11 +214,11 @@ let rec typecheck_pat  ?(expected_typ:typ option) (e : env) (p : pat) : pat * (v
       List.fold_left (fun e1 (_p, e2) ->
         Env.fold e2 Env.add e1) (Env.empty ()) pes in
     let ps = List.map fst pes in
-    let x = typecheck_variable  loc e (Var.constr_to_var c) in
+    let (x, tyx) = typecheck_variable loc e (Var.constr_to_var c) in
     let tyr = typ_nameless () in
     let ty = typ_arrow_flexible (List.map (fun p -> p.pat_typ) ps) tyr in
-    unify_or_error ~loc e ty x.varid_typ
-      (Conflict_with_context (trm_var_varid ~loc ~typ:x.varid_typ x, ty, x.varid_typ)) ;
+    unify_or_error ~loc e ty tyx
+      (Conflict_with_context (trm_var_varid ~loc ~typ:tyx x, ty, tyx)) ;
     return tyr (Pat_construct (c, ps)) e'
 
   | Pat_constraint (p, sty) ->
@@ -442,7 +442,7 @@ and typecheck_let  ~loc (e : env) (b : let_def) : let_def * env * sch =
       (* Preparing the environment after the registering of the instance. *)
       let e' = env_add_instance ~loc e x inst in
       return (Bind_register_instance (x, inst_sig)) e' t1 (instance_sch inst_sig) *)
-    | _ -> failwith "Unexpected register/instance in a let binding."
+    (* | _ -> failwith "Unexpected register/instance in a let binding." *)
 
 
 (** [typecheck_ml e t] typechecks [t] in [e] and returns [t] with the correct type.
@@ -460,7 +460,7 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
     typecheck_ml ?expected_typ env t in
   let aux_bbe ?(env : env = e) (b : bbe) : bbe =
     typecheck_bbe env b in
-  let return ?(annot = t.trm_annot) (typ : typ) (u : trm_desc) : trm =
+  let return (* ?(annot = t.trm_annot) *) (typ : typ) (u : trm_desc) : trm =
     (* Unify typ with expected type if provided *)
     Option.iter (fun typ' ->
       unify_or_error ~loc e typ typ'
@@ -474,15 +474,14 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       trm_loc = loc;
       trm_typ = typ;
       trm_env = e;
-      trm_binds = None;
-      trm_annot = annot } in
+      trm_binds = None(* ;
+      trm_annot = annot  *)} in
 
   let result =
   match t.trm_desc with
   | Trm_var x ->
-      let varid = typecheck_variable loc e x.varid_var in
-      let ty = varid.varid_typ in
-      return ty (Trm_var varid)
+      let (varid, tyx) = typecheck_variable loc e x in
+      return tyx (Trm_var varid)
 
   | Trm_cst c ->
       (* At this stage, the syntactic constants have already been translated as an application
@@ -622,7 +621,7 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
     typecheck_bbe env t in
   let aux_pat ?(env : env = e) ?(expected_typ:typ option) (typ : typ) (p : trm_pat) : trm_pat =
     typecheck_pattern ?expected_typ env p in
-  let return ?(annot = b.trm_annot) (u : trm_desc) (binds : env) : trm =
+  let return (* ?(annot = b.trm_annot) *) (u : trm_desc) (binds : env) : trm =
     (* We also unify with the previously stored type in place, for the rare cases in which the parser
       shares types between terms. *)
     (* FIXME TODO: This fails when an instance take parameters as arguments: maybe the parser isn't
@@ -631,8 +630,8 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
       trm_loc = loc;
       trm_typ = the_typ_bbe; (* TODO: binder ça, et unify doit interdir d'unifier typ_bbe avec lui meme *) (* TODO mid efforts/high prority "specific type for bbe" : forbidding unification. Asks for going a little deep in the unification function. As soon as we see a "the_type_bbe", we stop and return an error. All good *)
       trm_env = e;
-      trm_binds = Some binds;
-      trm_annot = annot } in (* LATER: factorizable return functions? *)
+      trm_binds = Some binds(* ;
+      trm_annot = annot  *)} in (* LATER: factorizable return functions? *)
 
   match b.trm_desc with
     (* Handling boolean operators *)
@@ -690,7 +689,7 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
     typecheck_bbe env t in
   let aux_pat ?(expected_typ:typ option) ?(env : env = e) (p : trm_pat) : trm_pat =
     typecheck_pattern ?expected_typ env p in
-  let return ?(annot = p.trm_annot) (typ : typ) (u : trm_desc) (binds : env) : trm =
+  let return(*  ?(annot = p.trm_annot)  *)(typ : typ) (u : trm_desc) (binds : env) : trm =
     (* TODO: remove the option on expected_typ? I don't think we should be able to call this function without expecting anything *)
     Option.iter (fun typ' ->
       unify_or_error ~loc e typ typ'
@@ -699,8 +698,8 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
       trm_loc = loc;
       trm_typ = typ;
       trm_env = e;
-      trm_binds = Some binds;
-      trm_annot = annot } in (* LATER: factorizable return functions? *)
+      trm_binds = Some binds(* ;
+      trm_annot = annot  *)} in (* LATER: factorizable return functions? *)
 
   match p.trm_desc with
   | Trm_pat_wild ->
@@ -774,6 +773,8 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
     | Trm_var x ->
       (* code d'en dessous avec expected typ qui donne "typ -> bool" bool à la place d'un option
       "doit être le même code qu'en dessous avec juste le type bool quoi" *)
+
+      (* Write this again later *)
       let x_name = Ast_print.varid_to_string_slim x in
 
       if !Flags.verbose then Printf.printf "checking variable \"%s\" in pattern position\n" x_name;
@@ -796,7 +797,7 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
         let v =
         match Env.find_first_opt e.env_var find_pattern_version with
         | Some (v, _) -> (if !Flags.verbose then Printf.printf "found something"); v
-        | _ -> x.varid_var
+        | _ -> x
       in
 
       (* I could simply use "find", but I need somehow to unify the scheme I get? find would give me a scheme, but I want to typecheck the variable ? The [typecheck_variable] instantiates the scheme, which is important for us here...
@@ -806,9 +807,9 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
 
       (* 2. Typecheck this to "expected_typ -> bool" *)
       let exp_typ = match expected_typ with Some ty -> ty | None -> assert false in (* use typ_of_some_or_nameless *)
-      let varid = typecheck_variable loc e v in
-      let typ = varid.varid_typ in
-      unify_or_error ~loc e (typ_arrow [exp_typ] the_typ_bool) typ (Unable_to_unify (exp_typ, typ));
+      let (varid, tyv) = typecheck_variable loc e v in
+      (* let typ = varid.varid_typ in *)
+      unify_or_error ~loc e (typ_arrow [exp_typ] the_typ_bool) tyv (Unable_to_unify (exp_typ, tyv));
 
       (* 3. If the unification is correct, return the input type of the variable. Question: how do I get it ? If it was unified I should be able to use exp_typ *)
       return exp_typ (Trm_var x) env_empty

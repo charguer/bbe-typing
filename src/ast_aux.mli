@@ -89,34 +89,34 @@ val trm_desc_assert_false : unit -> trm_desc
 (* Warning: there are two ways to implement constants in the programs. One is the “low-level”
   representation of constant, and one is the encoded, as a class applied to a constant.
   These functions here build the first case. *)
-val trm_cst : ?loc:loc -> ?typ:typ -> ?annot:annot -> cst -> trm
-val trm_bool : ?loc:loc -> ?typ:typ -> ?annot:annot -> bool -> trm
-val trm_int : ?loc:loc -> ?typ:typ -> ?annot:annot -> int -> trm
-val trm_float : ?loc:loc -> ?typ:typ -> ?annot:annot -> float -> trm
-val trm_string : ?loc:loc -> ?typ:typ -> ?annot:annot -> string -> trm
-val trm_unit : ?loc:loc -> ?typ:typ -> ?annot:annot -> unit -> trm
+val trm_cst : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) cst -> trm
+val trm_bool : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) bool -> trm
+val trm_int : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) int -> trm
+val trm_float : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) float -> trm
+val trm_string : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) string -> trm
+val trm_unit : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) unit -> trm
 
-val trm_var : ?loc:loc -> ?typ:typ -> ?annot:annot -> var -> trm
-(* val trm_var_symbol : ?loc:loc -> ?typ:typ -> ?annot:annot -> ?resolution:varid_resolution -> symbol -> trm
+val trm_var : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) var -> trm
+(* val trm_var_symbol : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) ?resolution:varid_resolution -> symbol -> trm
  *)
-val trm_var_varid : ?loc:loc -> ?typ:typ -> ?annot:annot -> varid -> trm
-val trm_tuple : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm list -> trm
+val trm_var_varid : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) varid -> trm
+val trm_tuple : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm list -> trm
 
-val trm_funs : ?loc:loc -> ?typ:typ -> ?annot:annot -> varsyntyps -> trm -> trm (* Doesn't work if the list is empty: use [trm_funs_if_non_empty] in such cases. *)
-val trm_constr : ?loc:loc -> ?typ:typ -> ?annot:annot -> constr -> trms -> trm
-val trm_if : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> trm -> trm -> trm
-val trm_let : ?loc:loc -> ?typ:typ -> ?annot:annot -> rec_flag -> varsynschopt -> trm -> trm -> trm
-val trm_let_def : ?loc:loc -> ?typ:typ -> ?annot:annot -> let_def -> trm -> trm
-val trm_seq : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> trm -> trm
-val trm_apps : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> trms -> trm
-val trm_annot : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> syntyp -> trm
-val trm_forall : ?loc:loc -> ?typ:typ -> ?annot:annot -> tvar_rigid -> trm -> trm
+val trm_funs : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) varsyntyps -> trm -> trm (* Doesn't work if the list is empty: use [trm_funs_if_non_empty] in such cases. *)
+val trm_constr : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) constr -> trms -> trm
+val trm_if : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm -> trm
+val trm_let : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) rec_flag -> varsynschopt -> trm -> trm -> trm
+val trm_let_def : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) let_def -> trm -> trm
+val trm_seq : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
+val trm_apps : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trms -> trm
+val trm_annot : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> syntyp -> trm
+val trm_forall : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) tvar_rigid -> trm -> trm
 val trm_foralls : ?loc:loc -> ?typ:typ -> tvar_rigid list -> trm -> trm (* Works even if the list is empty. *)
-val trm_match : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> (pat * trm) list -> trm
+val trm_match : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> (pat * trm) list -> trm
 
-val trm_not : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> trm
-val trm_and : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> trm -> trm
-val trm_or : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> trm -> trm
+val trm_not : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm
+val trm_and : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
+val trm_or : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
 
 
 (* val trm_record_get : ?loc:loc -> ?typ:typ -> trm -> field -> trm
@@ -124,17 +124,17 @@ val trm_record_set : ?loc:loc -> ?typ:typ -> trm -> field -> trm -> trm
 val trm_record_make : ?loc:loc -> ?typ:typ -> (field * trm) list -> trm
 val trm_record_with : ?loc:loc -> ?typ:typ -> trm -> field -> trm -> trm
  *)
-val trm_bbe_is : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm -> trm_pat -> trm
+val trm_bbe_is : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm_pat -> trm
 
-val trm_pat_var : ?loc:loc -> ?typ:typ -> ?annot:annot -> var -> trm
-val trm_pat_var_varid : ?loc:loc -> ?typ:typ -> ?annot:annot -> varid -> trm
-val trm_pat_wild : ?loc:loc -> ?typ:typ -> ?annot:annot -> unit -> trm
+val trm_pat_var : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) var -> trm
+val trm_pat_var_varid : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) varid -> trm
+val trm_pat_wild : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) unit -> trm
 
 (* Like [trm_funs], but simply returns the body if no arguments are provided. *)
-val trm_funs_if_non_empty : ?loc:loc -> ?typ:typ -> ?annot:annot -> varsyntyps -> trm -> trm
+val trm_funs_if_non_empty : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) varsyntyps -> trm -> trm
 (* Like [trm_tuple], but accepts any list (return the one term if there is only one, and unit
    if there are none). *)
-val trm_tuple_flex : ?loc:loc -> ?typ:typ -> ?annot:annot -> trm list -> trm
+val trm_tuple_flex : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm list -> trm
 
 (** ** For Patterns *)
 
@@ -211,7 +211,7 @@ val replace_rigid_with : tvar_rigid -> typ -> typ -> typ
  *)
 (** ** For Varid *)
 
-val create_varid : ?loc:loc (* -> ?env:env -> ?typ:typ -> ?resolution:varid_resolution -> ?depth:int -> ?context:symbol *) -> var -> varid
+val create_varid :  (* ?loc:loc -> ?env:env -> ?typ:typ -> ?resolution:varid_resolution -> ?depth:int -> ?context:symbol -> *) var -> varid
 
 (** * Environment Initialisation *)
 
