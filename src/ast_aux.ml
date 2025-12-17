@@ -7,7 +7,8 @@ open Ast_fix
 
 let env_empty : env = {
   env_var = Env.empty () ;
-  env_tconstr = Env.empty ()
+  env_tconstr = Env.empty () ;
+  env_is_in_pattern = false ;
 }
 
 let env_dummy = env_empty
@@ -412,7 +413,7 @@ let synsch_of_nonpolymorphic_typ (ty : syntyp) = {
     varid_loc = loc ;
   } *)
 
-let create_varid (v : var) : varid = v
+let create_varid (v : var) : varid = v (* TODO: remove *)
 
 (*#########################################################################*)
 (* ** Tuples *)
@@ -644,8 +645,8 @@ let trm_or ?loc ?typ (* ?annot *) (t1 : trm) (t2 : trm) : trm =
 
 let trm_tuple_flex ?loc ?typ (* ?annot *) (ts : trms) : trm =
   match ts with
-  | [] -> trm_unit ?loc ?typ (* ?annot *) ()
-  | [t] -> t
+  | [] -> trm_unit ?loc ?typ (* ?annot *) () (* not sure of this one *)
+  | [t] -> t (* I think this was the actual code *)
   | _ -> trm_tuple ?loc ?typ (* ?annot *) ts
 
 
@@ -660,7 +661,7 @@ let trm_desc_constr ?loc ?typ (c : constr) (ts : trms) : trm_desc =
   | _ ->
     let typ_fun =
       Option.map (fun typ -> typ_arrow [typ_tuple (List.map (fun t -> t.trm_typ) ts)] typ) typ in
-    trm_desc_apps (mktrm ?loc ?typ:typ_fun (trm_desc_var c)) ts
+    trm_desc_apps (mktrm ?loc ?typ:typ_fun (trm_desc_var c)) [(trm_tuple_flex ?loc ts)]
 
 let trm_constr ?loc ?typ (* ?annot *) (c : constr) (ts : trms) : trm =
   mktrm ?loc ?typ (* ?annot *) (trm_desc_constr ?loc ?typ c ts)
@@ -789,6 +790,8 @@ let env_builtin =
     env_add_var e (var "Some")
       (mk_sch [tv]
         (typ_arrow [t] (typ_option t))) in
+  (* AH. J'ai enlevé la traduction automatique en un tuple à l'entrée je crois. Voir toute la partie sur trm_tuple_flex *)
+  (* Ne sait pas unifier "typ_arrow [typ_tuple tl] (typ_option (typ_tuple tl))" avec "typ_arrow [t] (typ_option t)" *)
   let e =
     let tv = tvar_rigid "'a" in
     let t = typ_rigid tv in

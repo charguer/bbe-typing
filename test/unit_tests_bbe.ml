@@ -1,17 +1,68 @@
-let cst_bool = true
+(**************************************************************)
+(** * Typechecking traditional ML constructs *)
+
+(** ** Literals: bool, unit, int, float, string *)
+
+let cst_bool1 = true
+let cst_bool2 = false
+let cst_bool_annotated : bool = true
+
 let cst_unit = ()
 let cst_int = 1
-
 let cst_float = (2. : float)
 let cst_float_unannot : float = 2.0
 
-let vtrue : bool = true
-let vfalse : bool = false
-
-let vunit : unit = ()
-
 let str : string = "test"
 let str_unannot = ""
+
+(** ** Tuples *)
+
+let tuple2 = (2,3)
+let tuple3 = (2,3,4)
+
+(** ** Constructors *)
+
+(** ** Let-bindings *)
+
+let let_1 =
+  let x = 3 in x
+
+(* let let_poly =
+  let x : type a. a list = [] in x
+ *)
+
+
+(** ** Function definition *)
+let fun_1 (x : int) : int =
+  x
+
+let fun_2 (x : int) (y : int) : int * int =
+  (x,y)
+
+let fun_poly (type a) (x : a) : a =
+  x
+
+(** ** External fnctions *)
+
+(** ** Function call *)
+let call_1 =
+  fun_1 3
+
+let call_2 =
+  fun_2 3 4
+
+let call_poly_1 =
+  fun_poly 4
+
+let call_poly_2 (type a) (x : a) : a =
+  fun_poly x
+
+(** Custom data types *)
+
+(**************************************************************)
+(** * BBE in if-statement: is, and, or, not *)
+
+(** Typechecking traditional ML constructs *)
 
 let bbe_is = if true @_is __ then true else false
 let bbe_is_syntyp = if true @_is (__ : bool) then true else false
@@ -21,14 +72,13 @@ let[@type_error ""]  bbe_is_syntyp_fail = if true @_is (__ : int) then true else
 
 let bbe_is_bind1 : bool = if true @_is ??x then x else false
 
-let bbe_is_bind2 : bool = if (true @_is ??x) && (true @_is ??y) then x else false
+let bbe_is_bind2 : bool = if (true @_is ??x) && (true @_is ??y) then (x, y) else (true, false)
+(* to test *)
+let[@type_error "to test"] bbe_is_bind_fail = if (true @_is ??x) && (true @_is ??y) then false else x
 
 
-(* Tuple terms *)
-let tuple2 = (2,3)
-let tuple3 = (2,3,4)
 
-let bbe_and_bind = if true @_is ??x && x then true else false
+let bbe_and_bind = if (true @_is ??x) && x then true else false
 
 let bbe_or_bind = if true @_is ??x || false @_is ??x then x else false
 
@@ -51,6 +101,10 @@ let f x = x
 
 let[@type_error ""] unify_options_fail = if true then Some 2 else Some false
 
+
+(**************************************************************)
+(** * Pattern: variable, wildcard constructor/inversor, predicate, and, or, not *)
+
 external (+) : int -> int -> int = "%addint"
 let tuple_bind1 = if tuple2 @_is (??x, ??y) then x + y else -1
 let tuple_bind2 = if tuple3 @_is (??x1, ??x2, ??x3) then x1 + x3 else -1
@@ -67,6 +121,10 @@ let tuple_bind1 = if (bool_inv true) @_is (Some ??x) then x else -1 *)
 
 let option_pat = if simple_option1 @_is None then 1 else 0
 
+let difficult_option : ((int option) * (int option)) option = Some (Some 2, Some 3)
+let option_pat = if difficult_option @_is (Some (Some ??x, Some ??y)) then y else 3
+
+
 external (=) : int -> int -> bool = ""
 external (mod) : int -> int -> int = ""
 external (/) : int -> int -> int = ""
@@ -74,31 +132,35 @@ let even n = ((n mod 2) = 0)
 
 let even_opt n = if (even n) then (Some (n/2)) else None
 
-let f (x : int) : int = x
-
 let testing_sudo_inv_and (t : int option) =
   if (t @_is (Some ??k)) && ((even_opt k) @_is (Some ??v)) then f v else f 0
 
+(* if (o is Some ??n) && (even n) then f() else g()
 
+let r = (o is Some ??n) && (even n) in
+if r then f() else g()
 
-
-
-  (*
-  if (o is Some ??n) && (even n) then f() else g()
+if (o is Some ??n) && (even n) then f' n else g ()
 
   let r = (o is Some ??n) && (even n) in
-  if r then f() else g()
+  if r then (* n not in scope *) else g()
 
-  if (o is Some ??n) && (even n) then f' n else g ()
-
-   let r = (o is Some ??n) && (even n) in
-   if r then (* n not in scope *) else g()
-
-   let r () = if (o is Some ??n) && (even n) then Some ?n else None in
-   if () is r(??n) then f' n else g()
-*)
+  let r () = if (o is Some ??n) && (even n) then Some ?n else None in
+  if () is r(??n) then f' n else g() *)
 
 
+
+(**************************************************************)
+(** * Nesting of features *)
+
+
+(**************************************************************)
+(** * BBE in when-clauses, while-loops, and switch *)
+
+
+
+(**************************************************************)
+(** * Motivating examples from paper *)
 
 
 

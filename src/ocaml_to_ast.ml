@@ -442,7 +442,7 @@ let rec tr_exp (e : expression) : trm =
   let return (* ?(annot=AnnotNone) *) (e':trm_desc) : trm =
     { trm_desc = e';
       trm_loc = e.pexp_loc;
-      trm_typ = typ_nameless ();
+      trm_typ = typ_nameless (); (* TODO: devrait être typ_dummy *)
       trm_binds = None;
       trm_env = env_empty(* ;
       trm_annot = annot  *)} in

@@ -1,3 +1,19 @@
+
+(*
+
+  $t @_is $p
+  parsed by ocaml as: Pexp_app (Pexp_app (Pexp_var "@_is") $t) $p
+  in our ast: Trm_bbe_is (t, p)
+
+
+  At top level
+
+  let _ =
+  let x =
+  let x : t =
+  type a = ..
+*)
+
 open Var
 
 module type T = sig
@@ -86,7 +102,7 @@ and sch = {
   sch_body : typ;
 }
 
-and varid = string
+and varid = string (* TODO rename varid to var *)
 
 (* ** Syntactic types *)
 
@@ -141,6 +157,8 @@ type cst =
   | Cst_string of string
   | Cst_unit of unit
 
+
+  (* TODO REMOVE PAT *)
 type pat = {
   pat_desc : pat_desc;
   pat_loc : loc;
@@ -189,42 +207,21 @@ type let_def = {
    alors qu'il suffirait de déclarer "&&" comme une fonction de type
    "bool->bool->bool" dans l'environnement initial pour avoir le même effet. *)
 
+
+
 type trm_desc =
   | Trm_var of varid
   | Trm_cst of cst
   | Trm_funs of varsyntyps * trm          (* fun (x1 : tyn) ... (xn : tyn) -> trm_body *)
   | Trm_if of trm * trm * trm             (* if t1 then t2 else t3 *)
-  (* Comments from last meeting, should be put somewhere better later *)
-  (* Trm_seq trm trm
-  Trm_let pat trm trm  plus tard
-  Trm_let let_def trm
-
-  let_def = { recflag varsynschopt trm }
-
-
-  let_def = { recflag bind trm }   --existe déjà pour l'instant
-   bind = Bind_var varsynschopt  | Bind_anon qu'on peut garder pou Trm_seq comme actuellement
-
-
-  plus tard
-    let_def = recflag binds trm
-    bind = pat * synschopt
-    binds = bind list
-
-  pour l'instant
-  Trm_let (var option) trm trm
-
- plus tard:
-  fun p -> t
-  fun x -> if x is p then t
-  *)
+  (* Check lower for comments on the "trm_let" representation.  *)
   | Trm_let of let_def * trm              (* [t1 ; t2], [let rec x = t1 in t2], [let[@register (+) _ = t1 in t2]] *)
   | Trm_apps of trm * trms                (* Application. Partial application is not allowed. *)
   | Trm_annot of trm * syntyp             (* (t : ty) *)
   | Trm_forall of tvar_rigid * trm        (* fun (type a) -> t *)
   | Trm_match of trm * (pat * trm) list   (* match t with p1 -> t1 | ... | pn -> tn *)
   | Trm_tuple of trm list   (* check line 370 *)
-  | Trm_not of trm
+  | Trm_not of trm (* TODO: not, and, or could be fun *)
   | Trm_and of trm * trm
   | Trm_or of trm * trm
   (*BBE constructions*)
@@ -232,6 +229,10 @@ type trm_desc =
   (*Pattern constructions*)
   | Trm_pat_var of varid
   | Trm_pat_wild
+  (* TODO: Trm_switch of (trm * trm) list
+     Trm_while of trm * trm
+     LATER: Trm_for of dir * var * trm * trm * trm
+  *)
 
 and trm = {
   trm_desc : trm_desc;
@@ -405,12 +406,35 @@ type env_tconstr = (tconstr, tconstr_desc) Env.t
 type env = {
   env_var : env_var;
   env_tconstr : env_tconstr;
-  (* env_is_in_pattern : bool; *) (* AC *)
+  env_is_in_pattern : bool; (* Useful to recognize when to look for a "Pattern__" version. *)
 }
 
 end
 
+(* Comment about "trm_let" representation *)
+  (* Trm_seq trm trm
+  Trm_let pat trm trm  plus tard
+  Trm_let let_def trm
 
+  let_def = { recflag varsynschopt trm }
+
+
+  let_def = { recflag bind trm }   --existe déjà pour l'instant
+   bind = Bind_var varsynschopt  | Bind_anon qu'on peut garder pou Trm_seq comme actuellement
+
+
+  plus tard
+    let_def = recflag binds trm
+    bind = pat * synschopt
+    binds = bind list
+
+  pour l'instant
+  Trm_let (var option) trm trm
+
+ plus tard:
+  fun p -> t
+  fun x -> if x is p then t
+  *)
 (** YL: Currently working on cleaning up the code. The code below was moved for clarity. *)
 
 (*Yanni: Unnecessary*)

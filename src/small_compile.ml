@@ -87,12 +87,12 @@ module LMap =
   merge_collected_names vars symbols *)
 
 (* Create a fresh identifier from a set of names and seed, then add this name into the set. *)
-(* let fresh names seed =
+let fresh names seed =
   let ok n = not (SSet.mem n !names) in
   let n = Var.new_name_from_seed seed ok in
   names := SSet.add n !names ;
   n
- *)
+
 
 (* * Instantiation *)
 
@@ -128,7 +128,8 @@ module LMap =
 
 (* An term equivalent to its argument, but eta-expansing all its arguments (typically to
   avoid errors on constructors). *)
-(* let rec term_declaration names t t_ty =
+  (* a term equivalent to its arguments? What do you mean ? *)
+let rec term_declaration names t t_ty =
   match t.trm_desc with
   | Trm_forall (a, t') -> trm_forall ~loc:t.trm_loc ~typ:t_ty a (term_declaration names t' t_ty)
   | _ ->
@@ -159,7 +160,7 @@ module LMap =
           | Some subs ->
             let p = pat_tuple ~loc (List.map (fun (x, ty) -> pat_var ~loc x) subs) in
             trm_match ~loc (trm_var ~loc ~typ:ty x) [(p, t)]) t_a tyxs in
-      trm_funs ~loc ~typ:t_ty (List.map (fun (_ty, av, _sub) -> av) tyxs) t_body *)
+      trm_funs ~loc ~typ:t_ty (List.map (fun (_ty, av, _sub) -> av) tyxs) t_body
 
 (* let instantiate p =
   let names = ref (collect_all_names p) in
