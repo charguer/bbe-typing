@@ -791,6 +791,10 @@ and trm_to_doc_raw ~style (t : trm) : doc =
       ^^ blank 1
       ^^ d2
 
+  | Trm_switch cases -> failwith "TODO 'switch' printing"
+  | Trm_while (b, t) -> failwith "TODO 'while' printing "
+
+
   | Trm_bbe_is (t1, p2) ->
       let d1 = aux t1 in
       let d2 =
@@ -833,6 +837,26 @@ and trm_to_doc_raw ~style (t : trm) : doc =
     ^^ binds_to_doc ~style None
     else *)
     string "__"
+
+  | Trm_pat_when (p, b) ->
+    let d1 =
+      if style.style_binds = BindsAll then
+        with_bindings ~style p
+      else aux p
+    in
+    let d2 =
+      if style.style_binds = BindsAll then
+        with_bindings ~style b
+      else aux b
+    in
+    parens (
+          d1
+      ^^ blank 1
+      ^^ string "@_when"
+      ^^ blank 1
+      ^^ d2
+    )
+
 
 and var_and_typ_to_doc (ty : typ) (x : string) =
   parens (

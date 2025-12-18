@@ -520,6 +520,13 @@ let trm_desc_and (t1 : trm) (t2 : trm) : trm_desc =
 let trm_desc_or (t1 : trm) (t2 : trm) : trm_desc =
   Trm_or (t1, t2)
 
+let trm_desc_switch (cases : (bbe * trm) list) : trm_desc =
+  Trm_switch cases
+
+let trm_desc_while (b : bbe) (t : trm) : trm_desc =
+  Trm_while (b, t)
+
+
 (* ** Smart constructors for bbe trm descriptors*)
 let trm_desc_bbe_is (t : trm) (p : trm_pat) : trm_desc =
   Trm_bbe_is (t, p)
@@ -533,6 +540,9 @@ let trm_desc_pat_var (x : var) : trm_desc =
 
 let trm_desc_pat_wild () : trm_desc =
   Trm_pat_wild
+
+let trm_desc_pat_when (p : trm_pat) (b : bbe) : trm_desc =
+  Trm_pat_when (p, b)
 
 let trm_desc_assert_false () : trm_desc =
   trm_desc_var (var "__assert_false")
@@ -643,6 +653,7 @@ let trm_and ?loc ?typ (* ?annot *) (t1 : trm) (t2 : trm) : trm =
 let trm_or ?loc ?typ (* ?annot *) (t1 : trm) (t2 : trm) : trm =
   mktrm ?loc ?typ (trm_desc_or t1 t2)
 
+(* TODO: probably remove *)
 let trm_tuple_flex ?loc ?typ (* ?annot *) (ts : trms) : trm =
   match ts with
   | [] -> trm_unit ?loc ?typ (* ?annot *) () (* not sure of this one *)
@@ -650,7 +661,7 @@ let trm_tuple_flex ?loc ?typ (* ?annot *) (ts : trms) : trm =
   | _ -> trm_tuple ?loc ?typ (* ?annot *) ts
 
 
-(** [trm_desc_constr] Note: previously translated several arguments to a singleton of a tuple for some reason. Still unsure about why. *)
+(** [trm_desc_constr] *)
 let trm_desc_constr ?loc ?typ (c : constr) (ts : trms) : trm_desc =
   let c = constr_to_var c in
   match ts with
@@ -661,11 +672,16 @@ let trm_desc_constr ?loc ?typ (c : constr) (ts : trms) : trm_desc =
   | _ ->
     let typ_fun =
       Option.map (fun typ -> typ_arrow [typ_tuple (List.map (fun t -> t.trm_typ) ts)] typ) typ in
-    trm_desc_apps (mktrm ?loc ?typ:typ_fun (trm_desc_var c)) [(trm_tuple_flex ?loc ts)]
+    trm_desc_apps (mktrm ?loc ?typ:typ_fun (trm_desc_var c)) ts
 
 let trm_constr ?loc ?typ (* ?annot *) (c : constr) (ts : trms) : trm =
   mktrm ?loc ?typ (* ?annot *) (trm_desc_constr ?loc ?typ c ts)
 
+let trm_switch ?loc ?typ (* ?annot *) (cases : (bbe * trm) list) : trm =
+  mktrm ?loc ?typ (trm_desc_switch cases)
+
+let trm_while ?loc ?typ (* ?annot *) (b : bbe) (t : trm) : trm =
+  mktrm ?loc ?typ (trm_desc_while b t)
 
 (* ** Smart constructors for bbes *)
 let trm_bbe_is ?loc ?typ (* ?annot *) (t : trm) (p : trm_pat) : trm =
@@ -682,6 +698,8 @@ let trm_pat_var_varid ?loc ?typ (* ?annot *) varid : trm =
 let trm_pat_wild ?loc ?typ (* ?annot *) () : trm =
   mktrm ?loc ?typ (* ?annot *) (trm_desc_pat_wild ())
 
+let trm_pat_when ?loc ?typ (* ?annot *) (p : trm_pat) (b : bbe) : trm =
+  mktrm ?loc ?typ (* ?annot *) (trm_desc_pat_when p b)
 
 (*#########################################################################*)
 (* ** Smart constructors for patterns *)
@@ -790,7 +808,6 @@ let env_builtin =
     env_add_var e (var "Some")
       (mk_sch [tv]
         (typ_arrow [t] (typ_option t))) in
-  (* AH. J'ai enlevé la traduction automatique en un tuple à l'entrée je crois. Voir toute la partie sur trm_tuple_flex *)
   (* Ne sait pas unifier "typ_arrow [typ_tuple tl] (typ_option (typ_tuple tl))" avec "typ_arrow [t] (typ_option t)" *)
   let e =
     let tv = tvar_rigid "'a" in
@@ -1083,7 +1100,11 @@ let trm_iter (f : trm -> unit) (t : trm) : unit =
   | Trm_not t -> f t
   | Trm_and (t1, t2) -> List.iter f [t1; t2]
   | Trm_or (t1, t2) -> List.iter f [t1; t2]
+  | Trm_switch cases -> List.iter (fun (b, k) -> f b; f k) cases
+  | Trm_while (b, t) -> List.iter f [b; t]
   | Trm_bbe_is (t, p) -> List.iter f [t; p]
+  | Trm_pat_when (p, b) -> List.iter f [p; b]
+
 
 let trm_map (f : trm -> trm) (t : trm) : trm =
   let loc = t.trm_loc in
@@ -1146,11 +1167,25 @@ let trm_map (f : trm -> trm) (t : trm) : trm =
     let t2' = f t2 in
     if t1' == t1 && t2' == t2 then t
     else trm_or ~loc ~typ (* ~annot *) t1' t2'
+  | Trm_switch cases ->
+    let cases' = List.map (fun (b, t) -> let b = f b in let t = f t in (b, t)) cases in
+    if List.for_all2 (==) cases' cases then t
+    else trm_switch ~loc ~typ cases'
+  | Trm_while (b1, t2) ->
+    let b1' = f b1 in
+    let t2' = f t2 in
+    if b1 == b1' && t2 == t2' then t
+    else trm_while ~loc ~typ (* ~annot *) b1' t2'
   | Trm_bbe_is (t1, p1) ->
     let t1' = f t1 in
     let p1' = f p1 in
     if t1 == t1' && p1 == p1' then t
     else trm_bbe_is ~loc ~typ (* ~annot *) t1' p1'
+  | Trm_pat_when (p1, b2) ->
+    let p1' = f p1 in
+    let b2' = f b2 in
+    if p1 == p1' && b2 == b2' then t
+    else trm_pat_when ~loc ~typ (* ~annot *) p1' b2'
 
 (** * Iterators on patterns *)
 

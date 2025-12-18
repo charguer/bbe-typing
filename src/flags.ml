@@ -33,7 +33,7 @@ let disable_check_cycle_on_resolution_attempts = ref false
 (* If disabled, do not write any output. *)
 let output = ref true
 
-let print_parsed = ref false
+let print_parsed = ref true
 
 (* Replace overloaded variables by the corresponding instance. *)
 let instantiate = ref false

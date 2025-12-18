@@ -190,6 +190,8 @@ type let_def = {
   - src/ast_aux.ml: [trm_iter] and [trm_map] functions
   - src/typecheck.ml: [typecheck_ml], [typecheck_bbe] and [typecheck_pattern] functions
   - src/ast_print.ml: [trm_to_doc_raw] function
+
+  There is also a need to add smart constructors and inversors in ast_aux.ml
 *)
 
 (* Code architecture choices:
@@ -207,8 +209,6 @@ type let_def = {
    alors qu'il suffirait de déclarer "&&" comme une fonction de type
    "bool->bool->bool" dans l'environnement initial pour avoir le même effet. *)
 
-
-
 type trm_desc =
   | Trm_var of varid
   | Trm_cst of cst
@@ -224,11 +224,14 @@ type trm_desc =
   | Trm_not of trm (* TODO: not, and, or could be fun *)
   | Trm_and of trm * trm
   | Trm_or of trm * trm
+  | Trm_switch of (bbe * trm) list
+  | Trm_while of bbe * trm
   (*BBE constructions*)
   | Trm_bbe_is of trm * trm_pat
   (*Pattern constructions*)
   | Trm_pat_var of varid
   | Trm_pat_wild
+  | Trm_pat_when of trm_pat * trm
   (* TODO: Trm_switch of (trm * trm) list
      Trm_while of trm * trm
      LATER: Trm_for of dir * var * trm * trm * trm
@@ -407,7 +410,11 @@ type env = {
   env_var : env_var;
   env_tconstr : env_tconstr;
   env_is_in_pattern : bool; (* Useful to recognize when to look for a "Pattern__" version. *)
+  (* For all constr name (capitalized functions), give its arity. *)
+  (* Will include Some, None, and other builtin constructors as well *)
+  (* env_constr : (var, int) Env.t *)
 }
+
 
 end
 

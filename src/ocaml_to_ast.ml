@@ -410,6 +410,7 @@ let recognize_infix_op ~loc (op : expression) (arg1 : trm) (arg2 : trm) : trm_de
   | Pexp_ident {txt = Longident.Lident s} ->
     begin match s with
     | "_is" -> trm_desc_bbe_is arg1 arg2
+    | "_when" -> trm_desc_pat_when arg1 arg2
     | _ -> unsupported ~loc "infix operation not yet handled"
     end
   | _ -> unsupported ~loc "operator is not an ident"
@@ -576,6 +577,7 @@ let rec tr_exp (e : expression) : trm =
       (* FIXME: Isn't it with [ty = Ptyp_poly ('a, 'a list)]? *)
       let t1 = tr_exp e1 in
       return (Trm_forall (tconstr ty.txt, t1))
+  (* LATER : see (), true, false as constructors   *)
   | Pexp_construct ({txt = Lident "()"; _}, _) ->
       let cst = Cst_unit () in
       return (trm_desc_cst cst)
@@ -587,10 +589,17 @@ let rec tr_exp (e : expression) : trm =
 
   | Pexp_construct (c, None) ->
       return (trm_desc_constr (constr (tr_longident c.txt)) [])
-  | Pexp_construct (c, Some ({pexp_desc = Pexp_tuple ts; _})) ->
-      add_tuple_arity (List.length ts) ;
+  | Pexp_construct (c, Some ({pexp_desc = Pexp_tuple ts; _})) -> (* tuple is translated into several arguments *)
+      (* add_tuple_arity (List.length ts) ; *)
       return (trm_desc_constr (constr (tr_longident c.txt)) (List.map tr_exp ts))
-  | Pexp_construct (c, Some e) ->
+  (* We parse Some (__tuple (x,y)) as the application of Some to a single argment which is a tuple *)
+  | Pexp_construct (c, Some {pexp_desc =
+          Pexp_apply (
+            {pexp_desc = Pexp_ident {txt = Longident.Lident "___tuple"; _}; _},
+            [(_, {pexp_desc = Pexp_tuple ts; _})]); (* TODO: repalce "_" with no-label *)
+          _}) ->
+      return (trm_desc_constr (constr (tr_longident c.txt)) [trm_tuple (List.map tr_exp ts)])
+  | Pexp_construct (c, Some e) -> (* 1 single argument is translated into a singleton list *)
       return (trm_desc_constr (constr (tr_longident c.txt)) [tr_exp e])
 
   | Pexp_tuple ts -> (* TODO: handle Pexp_tuple properly. No need to see this as a specific constructor. We just see a constructor as a label and a list of arguments applied to it. No need to worry. *)
@@ -669,9 +678,6 @@ and tr_let (rf : rec_flag) (attrs : attributes) (vb : value_binding) : let_def l
   let (tvars, t) = extract_leading_type_parameters vb.pvb_expr in
   let (args, body) = split_fun_args t in
 
-  (* args is the names of all of the variables. Generate a let_def in which we put the args? Or the body ? how does it work exactly?  *)
-
-
   (* What does this function do?
     aux [] args. Give the args, and parse which is implicit and which is not? Ok...
     - if all args are handled reverse acc and return it with empty non_implicit
@@ -695,19 +701,13 @@ and tr_let (rf : rec_flag) (attrs : attributes) (vb : value_binding) : let_def l
 
     (* all variables are assumed to be non_implicit, no guessing whatsoever. *)
 
-    let non_implicits = args in
-
-
-
-
-
 (*   let local_instances =
     List.concat_map (fun (x, attrs) ->
       List.map (fun (sym, loc) -> (x, sym, loc)) (get_all_local_instances attrs)) args in *)
   let body = tr_exp body in
 (*   let body = add_local_instances local_instances body in *)
   (* The variable [full_body] includes all parameters (including the implicit ones). *)
-  let fun_body = trm_funs_if_non_empty ~loc non_implicits body in
+  let fun_body = trm_funs_if_non_empty ~loc args body in
 (*   let full_body =
     trm_funs_if_non_empty ~loc (List.map (fun (x, _sym, ty) -> (x, ty)) implicits) fun_body in *)
   (* The variable [full_def] also includes the for-alls quantifiers. *)

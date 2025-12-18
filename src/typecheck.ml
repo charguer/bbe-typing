@@ -123,7 +123,7 @@ let tconstr_inv_bind (e : env_tconstr) (v : var) : tconstr_desc option =
 
 (* TODO "simplification of Env" : rewrite this without the list with Env has been simplified *)
 
-(* TODO: rename
+(* "AC TODO": rename
    [interpret_pat_var ev v] looks for 'Pattern_${v}' in [ev],
    if it is found, returns 'Pattern_${v}', otherwise returns [v]. *)
 let try_read_pattern ~loc (ev : env_var) (v : varid) : varid =
@@ -146,11 +146,16 @@ let trm_var_inv_opt (t : trm) : varid option =
   | Trm_var v -> Some v
   | _ -> None
 
+let typ_of_some_or_nameless (exp_typ : typ option) : typ =
+  match exp_typ with
+  | Some ty -> ty
+  | _ -> typ_nameless ()
+
 (** End of custom functions *)
 
-(* TODO remove *)
+
 (* Checking that two environments as computed by typecheck_pat below are the same. *)
-let check_same_domains_in_pattern  (e : env) ~loc (e1 : (var, typ) Env.t) (e2 : (var, typ) Env.t) : unit =
+(* let check_same_domains_in_pattern  (e : env) ~loc (e1 : (var, typ) Env.t) (e2 : (var, typ) Env.t) : unit =
   let (e1, e2) =
     if Env.size e1 > Env.size e2 then
       (* This will return an error, but we would like to first find a variable in the domain
@@ -164,7 +169,7 @@ let check_same_domains_in_pattern  (e : env) ~loc (e1 : (var, typ) Env.t) (e2 : 
       unify_or_error  ~loc e ty1 ty2
         (Conflict_with_context (trm_var ~loc ~typ:ty1 x, ty1, ty2))
   ) ()
-
+ *)
 (* TODO   let env_lookup_or_error e v : sch *)
 
   (* [typecheck_variable e v] looks up [v] in [e] to get its type scheme [sch],
@@ -186,7 +191,7 @@ let typecheck_variable loc (e : env) (v : var) : varid * typ  =
 
 (* TODO remove *)
 (* For each pattern, we returned the typed pattern and the environment it introduces. *)
-let rec typecheck_pat  ?(expected_typ:typ option) (e : env) (p : pat) : pat * (var, typ) Env.t =
+(* let rec typecheck_pat  ?(expected_typ:typ option) (e : env) (p : pat) : pat * (var, typ) Env.t =
   let loc = p.pat_loc in
   let aux ?(env : env = e) ?(expected_typ:typ option) (p : pat) : pat * (var, typ) Env.t =
     typecheck_pat  ?expected_typ env p in
@@ -265,7 +270,7 @@ let rec typecheck_pat  ?(expected_typ:typ option) (e : env) (p : pat) : pat * (v
     unify_or_error  ~loc e p1.pat_typ p2.pat_typ
       (Conflict_with_context_pattern (p2, p1.pat_typ, p2.pat_typ)) ;
     return p1.pat_typ (Pat_or (p1, p2)) e1
-
+ *)
 (* FIXME: trm_desc should be u not t nor e *)
 
 (* ARTHUR: check this *)
@@ -503,8 +508,6 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
         (Conflict_with_context (t, typ, typ'))) expected_typ;
     (* We also unify with the previously stored type in place, for the rare cases in which the parser
       shares types between terms. *)
-    (* FIXME TODO: This fails when an instance take parameters as arguments: maybe the parser isn't generating the types the right way? *)
-    unify_or_error ~loc e t.trm_typ typ (Conflict_with_context (t, t.trm_typ, typ)) ; (* TODO: remove *)
     { trm_desc = u;
       trm_loc = loc;
       trm_typ = typ;
@@ -516,7 +519,7 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
     (* If we are in 'pattern' mode, then variables are interpreted in the
        module 'Pattern__' by default (at depth 1).
        If we see anything else than a variable, we no longer interpret
-       variables in the 'Pattern_' module. *)
+       variables in the 'Pattern__' module. *)
     if e.env_is_in_pattern then
       match t.trm_desc with
       | Trm_var v ->
@@ -543,19 +546,17 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       (* Second, we build the extended environment *)
       let env_items = List.map (fun (arg, sty) -> (arg, env_item_var_nonpolymorphic sty.syntyp_typ)) args in
       let e2 = List.fold_left (fun e (x, it) -> env_add_var e x it) e env_items in
-      (* TODO: e2 =  { e2 with env_is_in_patter = false }  *)
       (* Third, we type the body, in the extended environment *)
 
-      (* TODO: try simpler
+      (* TODO: try simpler *)
       let t1 = aux ~env:e2 t1 in
-      let typ = typ_arrow (List.map (fun (arg, sty) -> sty.syntyp_typ) args) ty_res in
+      let typ = typ_arrow (List.map (fun (arg, sty) -> sty.syntyp_typ) args) (typeof t1) in
       return typ (Trm_funs (args, t1))
-      *)
 
-      let ty_res =
+      (* let ty_res =
         let ty = (* ty is the type of the function *)
           match expected_typ with
-          | None -> t.trm_typ
+          | None -> t.trm_typ (* would be typ_nameless then *)
           | Some ty -> ty in
         match typ_arrow_inv_opt ty with
         | None -> typ_nameless ()
@@ -569,7 +570,7 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       let t1 = aux ~env:e2 ~expected_typ:ty_res t1 in
       let typ = typ_arrow (List.map (fun (arg, sty) -> sty.syntyp_typ) args) ty_res in
       (* here we avoid the creation of a flexible that is immediately unified *)
-      return typ (Trm_funs (args, t1))
+      return typ (Trm_funs (args, t1)) *)
 
   | Trm_if (b, t1, t2) ->
       let b = aux_bbe b in
@@ -607,23 +608,19 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       let ty_fun = typ_arrow ty_ts ty_ret in
       (* LATER: remove debug.
        Problem here. We expect a type construction of the form "arrow [typeof ts] ty_ret", but we have something of the form "arrow 'a ('a option)". And there is no trivial translation from arrow to tuple.
-      if !Flags.verbose then
-        begin
-        Printf.printf "Application :\n %s : %s\n Arguments : \n" (trm_to_string t0) (Ast_print.typ_to_string t0.trm_typ);
-        List.iter (fun arg -> Printf.printf "%s : %s\n" (trm_to_string arg) (Ast_print.typ_to_string arg.trm_typ)) ts;
-      end; *)
-      (* Resolving the ambiguity on [C(x,y)] which could mean
-         [trm_apps C [x;y]] or [trm_apps C (trm_tuple [x;y])] *)
+      *)
+
       (* TODO:
          match typ_arrow_inv (typeof t0) with Some ([ty_arg],_) when length ts > 1
          => insérer un tuple et faire le unify_or_error
           else truc par défaut *)
-      if try_unify ~loc e (typeof t0) ty_fun then
-        return ty_ret (Trm_apps (t0, ts))
-      else if List.length ts > 1 then begin
-        let typ_fun_one = typ_arrow (typ_tuple ty_ts) ty_ret in
+      (* Resolving ambiguity between a currified call to n terms, or a call to an n-ary tuple *)
+      if try_unify e (typeof t0) ty_fun then
+        return ty_ret (Trm_apps (t0, ts)) (* ok *)
+      else if List.length ts > 1 then begin (* why is that? maybe the arguments were passed as an nary, and then translated back? *)
+        let typ_fun_one = typ_arrow [(typ_tuple ty_ts)] ty_ret in
         unify_or_error ~loc e (typeof t0) typ_fun_one (Application_mistyped (typeof t0, ty_fun));
-        return ty_ret (Trm_apps (t0, trm_tuple ts))
+        return ty_ret (Trm_apps (t0, [trm_tuple ts]))
       end else
         raise (Error (Application_mistyped (typeof t0, ty_fun), loc))
 
@@ -637,51 +634,72 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
     (* This constructor should only appear at let-definitions. *)
     raise (Error (Unsupported_term "Trm_forall", loc))
 
-(*   | Trm_match (t0, pts) ->
-      let t0 = aux t0 in
-      let tyr = typ_nameless () in
-      let pts =
-        List.map (fun (pi, ti) ->
-          let (pi, ei) = typecheck_pat  ~expected_typ:(typeof t0) e pi in
-          let e' =
-            Env.fold ei (fun e' x ty ->
-              env_add_var e' x (Env_item_var (sch_of_nonpolymorphic_typ ty))) e in
-          let ti = aux ~env:e' ~expected_typ:tyr ti in
-          (pi, ti)) pts in
-      return tyr (Trm_match (t0, pts)) *)
-    | Trm_match _ -> raise (Error (Unsupported_term "Trm_match", loc))
+  (*| Trm_match (t0, pts) ->
+    let t0 = aux t0 in
+    let tyr = typ_nameless () in
+    let pts =
+      List.map (fun (pi, ti) ->
+        let (pi, ei) = typecheck_pat  ~expected_typ:(typeof t0) e pi in
+        let e' =
+          Env.fold ei (fun e' x ty ->
+            env_add_var e' x (Env_item_var (sch_of_nonpolymorphic_typ ty))) e in
+        let ti = aux ~env:e' ~expected_typ:tyr ti in
+        (pi, ti)) pts in
+    return tyr (Trm_match (t0, pts)) *)
+  | Trm_match _ -> raise (Error (Unsupported_term "Trm_match", loc))
 
-    | Trm_tuple ts ->
-      (* LATER: could test
-          | Trm_apps "__tuple" ts
-          before the generic Trm_apps *)
-      let ts = List.map aux ts in
-      let ty_tuple = typ_tuple (List.map typeof ts) in
-      if !Flags.verbose then (* LATER: remove this debugging stuff *)
-        begin
-        Printf.printf "Tuple :\n";
-        List.iter (fun arg -> Printf.printf "%s : %s\n" (trm_to_string arg) (Ast_print.typ_to_string arg.trm_typ)) ts;
-      end;
-      return ty_tuple (Trm_tuple ts)
+  | Trm_tuple ts ->
+    (* LATER: could test
+        | Trm_apps "__tuple" ts
+        before the generic Trm_apps *)
+    let ts = List.map aux ts in
+    let ty_tuple = typ_tuple (List.map typeof ts) in
+    if !Flags.verbose then (* LATER: remove this debugging stuff *)
+      begin
+      Printf.printf "Tuple :\n";
+      List.iter (fun arg -> Printf.printf "%s : %s\n" (trm_to_string arg) (Ast_print.typ_to_string arg.trm_typ)) ts;
+    end;
+    return ty_tuple (Trm_tuple ts)
 
-    (* Handling boolean operators. Very trivial typing for terms. *)
-    (* LATER: this might become std functions *)
-    | Trm_not t ->
-      let t = aux t in
-      return the_typ_bool (Trm_not t)
-    | Trm_and (t1, t2) ->
-      let t1 = aux t1 in
-      let t2 = aux t2 in
-      return the_typ_bool (Trm_and (t1, t2))
-    | Trm_or (t1, t2) ->
-      let t1 = aux t1 in
-      let t2 = aux t2 in
-      return the_typ_bool (Trm_or (t1, t2))
-(* failwith "unexpected bbe/pat when typechecking a term" *)
-    | Trm_bbe_is _ -> raise (Error (Unsupported_term "Trm_bbe_is", loc))
-    | Trm_pat_var _ -> raise (Error (Unsupported_term "Trm_pat_var", loc))
-    | Trm_pat_wild  -> raise (Error (Unsupported_term "Trm_pat_wild", loc))
-    end
+  (* Handling boolean operators. Very trivial typing for terms. *)
+  (* LATER: this might become std functions *)
+  | Trm_not t ->
+    let t = aux t in
+    return the_typ_bool (Trm_not t)
+  | Trm_and (t1, t2) ->
+    let t1 = aux t1 in
+    let t2 = aux t2 in
+    return the_typ_bool (Trm_and (t1, t2))
+  | Trm_or (t1, t2) ->
+    let t1 = aux t1 in
+    let t2 = aux t2 in
+    return the_typ_bool (Trm_or (t1, t2))
+(*   | Trm_switch cases ->
+    let type_case (b, t) =
+      let b = aux_bbe b in
+      let e = env_extend e (bindsof b) in
+      let t = aux ~env:e t in
+      t
+    in
+    let cases = List.map type_case cases in
+    let ty_ret = typ_of_some_or_nameless expected_typ in
+    (* let ty_ret = List.fold *)
+
+    failwith "TODO" *)
+
+    (* unify the type of a switch  *)
+
+  | Trm_while (b, t) ->
+    let b = aux_bbe b in
+    let e = env_extend ~loc e (bindsof b) in
+    let t = aux ~env:e t in
+    return the_typ_unit (Trm_while (b, t))
+
+  | _ -> failwith "unexpected construct in typecheck_ml"
+  (* | Trm_bbe_is _ -> raise (Error (Unsupported_term "Trm_bbe_is", loc))
+  | Trm_pat_var _ -> raise (Error (Unsupported_term "Trm_pat_var", loc))
+  | Trm_pat_wild  -> raise (Error (Unsupported_term "Trm_pat_wild", loc)) *)
+  end
   in
 
   if !Flags.verbose && !Flags.debug then Printf.printf "Exiting typecheck_ml with %s\n\n" (trm_to_string result);
@@ -761,8 +779,8 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
   let loc = p.trm_loc in
   let _aux_ml ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
     typecheck_ml ?expected_typ env t in
-  let _aux_bbe ?(env : env = e) (t : trm) : bbe =
-    typecheck_bbe env t in
+  let aux_bbe ?(env : env = e) (b : bbe) : bbe =
+    typecheck_bbe env b in
   let aux_pat ?(expected_typ:typ option) ?(env : env = e) (p : trm_pat) : trm_pat =
     typecheck_pattern ?expected_typ env p in
   let return(*  ?(annot = p.trm_annot)  *)(typ : typ) (u : trm_desc) (binds : env) : trm =
@@ -797,39 +815,11 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
     let typ = typ_constant cst in
     return typ (Trm_cst cst) env_empty
 
-  | Trm_tuple pl -> (* Implementation is not very clean. TODO : review code and factorize if needed *)
-    (* Invert expected type, if it is a tuple of the correct size feed it to pl, otherwise there is an error. *)
-   (*  let unfolded_exp_typ = (* This is a temporary solution. I am convinced that the argument should not be optional, but this is not a hard fix anyway. *)
-      match expected_typ with
-      | Some ty -> ty
-      | None -> assert false
-    in *)
-    (*
-    No expected type
-    1. map aux_pat with no expected typ on pl
-      -> gives to new pl
-    2.     let tys = List.map (fun p -> p.trm_typ) pl in
-    3.     return (typ_tuple tys) (Trm_tuple pl) (env_merge_binds ~loc binds)
-
-    technically no need for this; trivial is good enough.
-    if Expected type :
-    1. call typ_tuple_inv_opt
-      -> Some tys -> do the checks from below;
-            let pl =
-      if (List.length tys) <> (List.length pl) then
-        raise (Error (Mismatch_pattern_size ((List.length tys), (List.length pl)), loc))
-      else List.map2 (fun exp_ty p -> aux_pat ~expected_typ:exp_ty ~env:e p) tys pl
-    in
-      -> None -> same as above.
-
-    Say expected type but unknown it was a type
-    *)
-
+  | Trm_tuple pl ->
     (* let tys =
       match typ_tuple_inv_opt (Repr.get_repr unfolded_exp_typ) with (* Hack : used get_repr to destruct deep in the unification tree, I don't know if this is good practice. TODO: think about this later.*)
       | Some tys -> tys
       | _ -> raise (Error (Wrong_pattern_constructor "tuple", loc))
-
    in
    *)
 (*     let pl =
@@ -876,51 +866,57 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
       (* Kind of the same idea, give a "shape to fit", and do the typing. *)
       (* let typ = match expected_typ with Some ty -> ty | None -> typ_nameless() in *)
       let typ = typ_nameless () in
-      let typ_args = List.map (fun ti -> typ_nameless()) ps in
+      let typ_args = List.map (fun _ -> typ_nameless()) ps in
 
-      (* e with pattern_priority = 1 ? Meaning that every occurence would ...*)
-      (* YL: not convinced with "pattern_priority". Only t0 is typed as a term, and I don't see an example where it would be particularly clever to have a pattern version instead of term.
-      In all contexts, t0 is always just a function, so either a constructor, a variable, or some lambda abstraction (which I would guess would be quite rare) *)
-
-      (* I want to:
-        Si t0 est de la forme Trm_var v, alors chercher si v est un pattern. Si c'en est un, alors remplacer la variable, sinon... *)
-
-      (* Si c'est une variable, alors typecheck la variable. Problème avec ça ? Non parce que dans tous les cas on aurait fait cet appel, le problème est autour du fait que le terme est potentiellement pas typé... mmh
-
-      *)
-      (* Example qui pourrait nous embêter : *)
-      (* if t @_is (let x = 3 in Some(x, ??y)) then ... *)
-      (* On bind d'abord x, puis on fait l'inversion. Si on veut que ça fasse quelque chose, il faudra en profondeur pousser l'information qu'on cherche un pattern. *)
-
-
-      (* C'est forcément une variable, mais ça fait un noeud qui sera pas typé au final. Le seul noeud sur lequel je suis pas passé *)
-      (* Solution que j'ai en tête actuellement:
-      let exp_typ = if is pattern then typ_arrow typ_args typ else typ_arrow [typ] (typ_option (typ_tuple_flex typ_args)). *)
-      (* En gros: on expect un type différent si il y a un pattern ou pas. Mais on typecheck dans tous les cas pour que le noeud soit typé. *)
-
-      (* Question : est-ce que le fait que le noeud soit typé est si important ? *)
-
-      (* Cons (Some (??x), ??y)
-      Finds Pattern__Cons *)
-
-      (* Solution, ajouter à l'environnement l'information de typer en mode pattern en gros. Mais ça marche que pour les variables je pense? *)
-
-      NEW
-      let t0 = typecheck_ml {e with env_is_in_pattern = true} t0 in
-      match typ_arrow_inv (typeof t0) with
+      (* NEW *)
+(*       let t0 = typecheck_ml {e with env_is_in_pattern = true} t0 in
+      match typ_arrow_inv_opt (typeof t0) with
       |   Some (_, [typ_arg]) when length ps > 1 ->
       insert tuple on the fly
       | _ -> unify (typeof t0) (typ_arrow [typ] (typ_option (typ_tuple typ_args)))
+ *)
+ (*       let t0 = typecheck_ml {e with env_is_in_pattern = true} t0 in
+      if try_unify e (typ_arrow [typ] (typ_option (typ_tuple_flex typ_args))) (typeof t0) then
+        ret
+ *)
 
-      let t0 = typecheck_ml ~expected_typ:(typ_arrow [typ] (typ_option (typ_tuple_flex       typ_args))) {e with env_is_in_pattern = true} t0 in
+      (* Si il n'y a qu'un seul argument, c'est soit un constructeur qui prend le type tuple, soit un constructeur qui currifie/une fonction qui currifie. Pas de moyen de le savoir à l'avance, donc il faut tester les deux. Même si je sens qu'il y peut y avoir des débordements... (Some (??x) (??y)) Sera surement interprété pareil que (Some (??x, ??y))
+
+      - inv (p1, p2)
+      - (inv p1 p2)
+      - inv p
+
+      on sait pas à l'avance lequel des trois a été utilisé. Soit p est tout seul,
+
+
+      *)
+      (* let t0 = typecheck_ml {e with env_is_in_pattern = true} t0 in *)
+
+      (* typ_tuple_flex <- typ_tuple_if_several/if_multiple *)
+      let t0 = typecheck_ml ~expected_typ:(typ_arrow [typ] (typ_option ((typ_tuple_flex typ_args)(*  (typ_tuple typ_args) *)))) {e with env_is_in_pattern = true} t0 in
       let ps = List.map2 (fun pi typ_arg_i -> typecheck_pattern e ~expected_typ:typ_arg_i pi) ps typ_args in
       return typ (Trm_apps (t0,ps)) (env_merge_binds ~loc (List.map bindsof ps))
 
 
 
    (* Conjunction *)
-   (* TODO : add expected_typ to pat *)
-   (* TODO : handle builtin "and" and builtin "or" they are specific syntax constructs, so it makes sense to have specific ast syntax for them as well *)
+   | Trm_and (p1, p2) ->
+      let typ = typ_of_some_or_nameless expected_typ in
+      let p1 = aux_pat ~expected_typ:typ p1 in
+      let e1 = env_extend ~loc e (bindsof p1) in
+      let p2 = aux_pat ~expected_typ:typ ~env:e1 p2 in
+      let e1u2 = env_extend ~loc e1 (bindsof p2) in
+      return typ (Trm_and (p1, p2)) e1u2
+
+   | Trm_or (p1, p2) ->
+      let typ = typ_of_some_or_nameless expected_typ in
+      let p1 = aux_pat ~expected_typ:typ p1 in
+      let p2 = aux_pat ~expected_typ:typ p2 in
+      let e1n2 = env_intersect ~loc e (* current env *) (bindsof p1) (bindsof p2) in
+      return typ (Trm_or (p1, p2)) e1n2
+
+   (* TODO: Future improvements, no need for specific constructs *)
+   (* Conjunction *)
    (* | Trm_apps (t0, ps) when is_builtin_func_and t0 ->
       begin match ps with
        | [p1;p2] ->
@@ -944,6 +940,13 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
       | _ -> failwith "Pattern.or expects 2 arguments"
       end *)
 
+    | Trm_pat_when (p, b) ->
+      let typ = typ_of_some_or_nameless expected_typ in
+      let p = aux_pat ~expected_typ:typ p in
+      let e1 = env_extend ~loc e (bindsof p) in
+      let b = aux_bbe ~env:e1 b in
+      let e1u2 = env_extend ~loc e1 (bindsof b) in
+      return typ (Trm_pat_when (p, b)) e1u2
 
 
 

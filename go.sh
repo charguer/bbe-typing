@@ -1,6 +1,8 @@
 #!/bin/bash
 
+# clear; make typer; exit;
 clear; make typer;
+
 
 rm -f output.txt
 

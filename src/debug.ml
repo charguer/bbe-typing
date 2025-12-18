@@ -72,9 +72,17 @@ let print_low_level_trm =
     | Trm_not t -> sprintf "Not %s" (aux t)
     | Trm_and (t1, t2) -> sprintf "And (%s, %s)" (aux t1) (aux t2)
     | Trm_or (t1, t2) -> sprintf "Or (%s, %s)" (aux t1) (aux t2)
+    | Trm_while (b, t) -> sprintf "While (%s, %s)" (aux b) (aux t)
+    | Trm_switch cases ->
+      sprintf "Switch [%s]"
+        (String.concat "\n"
+          (List.map (fun (b, t) -> (sprintf "| case %s then %s" (aux b) (aux t)))
+        cases))
     | Trm_bbe_is (t, p) -> sprintf "Is (%s, %s)" (aux t) (aux p)
     | Trm_pat_var varid -> sprintf "PVar %s" varid
     | Trm_pat_wild -> sprintf "Wildcard"
+    | Trm_pat_when (p, b) -> sprintf "When(%s, %s)" (aux p) (aux b)
+
   and aux i t =
     let space = String.make i ' ' in
     sprintf "{ trm =\n%s %s ;\n%s typ =\n%s %s }"

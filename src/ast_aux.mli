@@ -83,6 +83,7 @@ val trm_desc_bbe_is : trm -> trm_pat -> trm_desc
 val trm_desc_pat_var : var -> trm_desc
 val trm_desc_pat_var_varid : varid -> trm_desc
 val trm_desc_pat_wild : unit -> trm_desc
+val trm_desc_pat_when : trm_pat -> bbe -> trm_desc
 val trm_desc_assert_false : unit -> trm_desc
 (** ** For Terms *)
 
@@ -119,6 +120,11 @@ val trm_and : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
 val trm_or : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
 
 
+(* put switch and while LATER *)
+(* val trm_or : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
+val trm_or : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
+ *)
+
 (* val trm_record_get : ?loc:loc -> ?typ:typ -> trm -> field -> trm
 val trm_record_set : ?loc:loc -> ?typ:typ -> trm -> field -> trm -> trm
 val trm_record_make : ?loc:loc -> ?typ:typ -> (field * trm) list -> trm
@@ -129,6 +135,8 @@ val trm_bbe_is : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm_pat ->
 val trm_pat_var : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) var -> trm
 val trm_pat_var_varid : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) varid -> trm
 val trm_pat_wild : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) unit -> trm
+val trm_pat_when : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm_pat -> bbe -> trm
+
 
 (* Like [trm_funs], but simply returns the body if no arguments are provided. *)
 val trm_funs_if_non_empty : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) varsyntyps -> trm -> trm
