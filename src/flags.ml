@@ -3,7 +3,7 @@
   They are only modified in Typer. **)
 
 let debug = ref false
-let verbose = ref false
+let verbose = ref true
 
 let quiet = ref false
 

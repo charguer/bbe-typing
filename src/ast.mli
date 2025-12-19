@@ -1,19 +1,4 @@
 
-(*
-
-  $t @_is $p
-  parsed by ocaml as: Pexp_app (Pexp_app (Pexp_var "@_is") $t) $p
-  in our ast: Trm_bbe_is (t, p)
-
-
-  At top level
-
-  let _ =
-  let x =
-  let x : t =
-  type a = ..
-*)
-
 open Var
 
 module type T = sig
