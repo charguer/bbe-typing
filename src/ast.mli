@@ -205,7 +205,7 @@ type trm_desc =
   | Trm_annot of trm * syntyp             (* (t : ty) *)
   | Trm_forall of tvar_rigid * trm        (* fun (type a) -> t *)
   | Trm_match of trm * (pat * trm) list   (* match t with p1 -> t1 | ... | pn -> tn *)
-  | Trm_tuple of trm list   (* check line 370 *)
+  | Trm_tuple of trm list
   | Trm_not of trm (* TODO: not, and, or could be fun *)
   | Trm_and of trm * trm
   | Trm_or of trm * trm

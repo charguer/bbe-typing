@@ -776,22 +776,45 @@ and trm_to_doc_raw ~style (t : trm) : doc =
       ^^ d2
   | Trm_or (t1 ,t2) ->
     let d1 =
-        if style.style_binds = BindsAll then
-          with_bindings ~style t1 else
-        aux t1
-      in
+      if style.style_binds = BindsAll then
+        with_bindings ~style t1 else
+      aux t1
+    in
     let d2 =
+      if style.style_binds = BindsAll then
+        with_bindings ~style t2 else
+      aux t2
+    in
+        d1
+    ^^ blank 1
+    ^^ string "||"
+    ^^ blank 1
+    ^^ d2
+  | Trm_switch cases ->
+    let case_to_doc (b1, t2) =
+      let d1 =
         if style.style_binds = BindsAll then
-          with_bindings ~style t2 else
-        aux t2
+          with_bindings ~style b1 else
+        aux b1
       in
-         d1
+      let d2 = aux t2 in
+         string "_case"
       ^^ blank 1
-      ^^ string "||"
+      ^^ d1
+      ^^ blank 1
+      ^^ string "@_then"
       ^^ blank 1
       ^^ d2
+    in
 
-  | Trm_switch cases -> failwith "TODO 'switch' printing"
+       string "switch"
+    ^^ blank 1
+    ^^ brackets (
+      separate (semi ^^ hardline)
+      (List.map case_to_doc cases)
+    )
+
+
   | Trm_while (b1, t2) ->
     (* has the form: [while "e1" do "e2" done] *)
     let d1 =

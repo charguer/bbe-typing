@@ -161,8 +161,11 @@ if (o is Some ??n) && (even n) then f' n else g ()
 (**************************************************************)
 (* BBE in when-clauses, while-loops, and switch *)
 
+(* when clauses *)
 let pat_when x : int = if x @_is (Some ??a @_when (a = 1)) then a else -1
+(* TODO: missing fail case *)
 
+(* while loops *)
 let while1 =
   while (true @_is false) do
     ()
@@ -178,6 +181,30 @@ let[@type_error "term conflicts with context"] while_bind_fail (x : int option) 
     y
   done
 
+(* switch *)
+
+(* Note on syntax : The parsing is specifically asking for "_case" to be applied to a single argument. This means that it is often necessary to add parentheses on the right. It might be interesting to change the inversion function at some point in the future *)
+
+let switch_empty =
+  __switch []
+
+let switch1 =
+  __switch [
+    _case (true @_then false)
+  ]
+
+let switch2 =
+  __switch [
+    _case (true @_then false);
+    _case ((true @_is ??x) @_then x);
+    _case (((false, true) @_is (??x, ??y)) @_then y)
+  ]
+
+let[@type_error "unbound variable x"] switch_fail =
+  __switch [
+    _case ((true @_is ??x) @_then x);
+    _case (true @_then x)
+  ]
 
 (**************************************************************)
 (* Nesting of features *)

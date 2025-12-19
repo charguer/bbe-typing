@@ -674,20 +674,21 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
     let t1 = aux t1 in
     let t2 = aux t2 in
     return the_typ_bool (Trm_or (t1, t2))
-(*   | Trm_switch cases ->
+  | Trm_switch cases ->
     let type_case (b, t) =
       let b = aux_bbe b in
-      let e = env_extend e (bindsof b) in
+      let e = env_extend ~loc e (bindsof b) in
       let t = aux ~env:e t in
-      t
+      (b, t)
     in
     let cases = List.map type_case cases in
     let ty_ret = typ_of_some_or_nameless expected_typ in
-    (* let ty_ret = List.fold *)
+    List.iter (fun (_, t) ->
+      let ty = typeof t in
+      unify_or_error ~loc e ty_ret ty (Mismatch_type_is (ty_ret, ty))) (* TODO: low efforts, create a new error for mismatching branches of a switch *)
+    cases;
 
-    failwith "TODO" *)
-
-    (* unify the type of a switch  *)
+    return ty_ret (Trm_switch cases)
 
   | Trm_while (b, t) ->
     let b = aux_bbe b in

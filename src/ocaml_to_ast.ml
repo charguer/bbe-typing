@@ -436,6 +436,28 @@ let false_inv (e : expression) : bool =
   | Pexp_construct ({txt=Longident.Lident "false"},_) -> true
   | _ -> false
 
+let list_inv_opt (e : expression) : (expression * expression) option =
+  match e.pexp_desc with
+  | Pexp_construct ({txt=Longident.Lident "::"}, Some {pexp_desc= Pexp_tuple [e1; e2]}) -> Some (e1, e2)
+  | _ -> None
+
+let accumulate_arguments_list (cases : expression) : expression list =
+  let rec aux acc e =
+    match list_inv_opt e with
+    | Some (e1, e2) -> aux (e1::acc) e2
+    | None -> List.rev acc
+  in aux [] cases
+
+let case_inv_opt ~loc (e : expression) : expression option =
+  begin match e.pexp_desc with
+  | Pexp_apply ({pexp_desc=Pexp_ident{txt=Longident.Lident "_case"; _}; _}, [(Nolabel, e)]) ->
+    Some e
+  | _ -> None
+  end
+(*  -> "_case", applied to 1 arg.
+ -> "@", applied to 2 args.
+ -> "b1", and "_then t1".
+ *)
 (** End of custom functions  *)
 
 let rec tr_exp (e : expression) : trm =
@@ -552,15 +574,34 @@ let rec tr_exp (e : expression) : trm =
       | _ -> assert false (* It should be impossible to have an operator that is not handled here *)
     end
 
-  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__switch"; _}; _}, cases) -> (* We know for sure that this case was parsed as a switch *)
-    (* Destruct "cases" to get back the list of constructions. It should be as simple as : "is it a construct '::' applied to a binary tuple? Yes? process first element and fold to the next. No? Stop if it is empty loop, assert false. " *)
-    failwith "TODO"
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__switch"; _}; _}, [cases]) ->
+    (* Folding on cases with an accumulator *)
+    (* I want to match recursively the cases. with an accumulator *)
+    let (_, cases) = cases in
+    let cases = accumulate_arguments_list cases in
+    let t_cases = List.map
+    (* fonction, qui prend une liste d'expressions, vérifie si ca a la forme case e1 then e2, si oui, traduits e1 et e2 et renvoie le couple (t1, t2) traduit   *)
+      (fun e ->
+        begin match case_inv_opt ~loc e with
+        | Some {pexp_desc=Pexp_apply (e0, aes); _} when atsign_inv e0 ->
+            begin match infix_op_inv ~loc e0 aes with
+            | Some (e1,{pexp_desc=(Pexp_ident {txt=Lident "_then"; _}); _}, e3) ->
+              let t1 = tr_exp e1 in
+              let t3 = tr_exp e3 in
+              (t1, t3)
+            | _ -> unsupported ~loc "argument in case not in '@_then' format"
+            end
+        | _ -> unsupported ~loc "argument in switch not in 'case' format"
+        end
+      ) cases in
+
+    return (trm_desc_switch t_cases)
   (* TODO: write an inversor for switches. *)
   (* Prototype :
     - __switch [
-      case b1 @_then t1;
-      case b2 @_then t2;
-      case b3 @_then t3;
+      case (b1 @_then t1);
+      case (b2 @_then t2);
+      case (b3 @_then t3);
     ]
      *)
 
