@@ -33,8 +33,12 @@ let let_1 =
   let x = 3 in x
 let let_2 =
   let x = 3 in let y = 2 in (x, y)
-let let_poly =
+(* Raises an error:
+"When a let-binding has a type annotation and a fun(type) as body it must use the same list of names on both sides. Got a and 'a."
+ *)
+(* let let_poly =
   let x : type a. a list = [] in x
+*)
 
 (* Function definition *)
 let fun_1 (x : int) : int =
@@ -43,8 +47,8 @@ let fun_1 (x : int) : int =
 let fun_2 (x : int) (y : int) : int * int =
   (x,y)
 
-let fun_poly (type a) (x : a) : a =
-  x
+let fun_poly (type a) (x : a) : a = x
+
 
 (* External functions *)
 external (+) : int -> int -> int = "%addint"
@@ -73,7 +77,7 @@ let call_poly_2 (type a) (x : a) : a =
 (* Unification of branches *)
 let unify_options = if true then Some 2 else Some 3
 
-let[@type_error "to_test"] unify_options_fail = if true then Some 2 else Some false
+let[@type_error "branch mismatch in if"] unify_options_fail = if true then Some 2 else (Some false)
 
 
 
@@ -84,7 +88,7 @@ let bbe_is = if true @_is __ then true else false
 let bbe_is_syntyp = if true @_is (__ : bool) then true else false
 
 (* Expected to fail *)
-let[@type_error "to_test"]  bbe_is_syntyp_fail = if true @_is (__ : int) then true else false
+let[@type_error "term conflicts with context"]  bbe_is_syntyp_fail = if true @_is (__ : int) then true else false
 
 let bbe_is_bind1 : bool = if true @_is ??x then x else false
 
@@ -105,7 +109,7 @@ let[@type_error "unbound variable x"]  bbe_or_bind_fail1 = if false @_is ??x || 
 let[@type_error "unable to unify"]  bbe_or_bind_fail2 = if false @_is ??x || 2 @_is ??x then x else false
 
 let bbe_not = if not ((Some 2) @_is ??x) then false else true
-let[@type_error "to_test"] bbe_not_fail = if not ((Some 2) @_is ??x) then x else (Some 1)
+let[@type_error "unbound variable x"] bbe_not_fail = if not ((Some 2) @_is ??x) then x else (Some 1)
 
 (**************************************************************)
 (* Pattern: variable, wildcard, constructor/inversor, predicate, and, or, not *)
@@ -115,32 +119,28 @@ let[@type_error "to_test"] bbe_not_fail = if not ((Some 2) @_is ??x) then x else
 (* Tuple constructor pattern *)
 let tuple_bind1 = if tuple2 @_is (??x, ??y) then x + y else -1
 let tuple_bind2 = if tuple3 @_is (??x1, ??x2, ??x3) then x1 + x3 else -1
-let[@type_error "to_test"] tuple_bind_fail = if tuple3 @_is (??x1, ??x2, ??x3) then x1 + x3 else x2
+let[@type_error "unbound variable x2"] tuple_bind_fail = if tuple3 @_is (??x1, ??x2, ??x3) then x1 + x3 else x2
 
 (* Predicates *)
 
-(* Option destruction *)
-
-(* write an inversion of the option, should be enough for the moment. *)
-
-(* external bool_inv : bool -> int option = "%blabla"
-let tuple_bind1 = if (bool_inv true) @_is (Some ??x) then x else -1 *)
-
-
-(* Writing tests for the shape of it, not expected to be working for the moment *)
-(* let trm_if_inv = *)
-
-let option_pat = if simple_option1 @_is None then 1 else 0
-
-let difficult_option : ((int option) * (int option)) option = Some (Some 2, Some 3)
-let option_pat = if difficult_option @_is (Some (Some ??x, Some ??y)) then y else 3
-
 let even n = ((n mod 2) = 0)
+let even_opt n = if n @_is even then (Some (n/2)) else None
 
-let even_opt n = if (even n) then (Some (n/2)) else None
+(* Option destruction *)
+let option_pat = if simple_option1 @_is None then 1 else 0
+let option_pat_bind = if simple_option1 @_is (Some ??x) then x else 0
 
-let testing_sudo_inv_and (t : int option) =
-  if (t @_is (Some ??k)) && ((even_opt k) @_is (Some ??v)) then f v else f 0
+let inv_add (t : int option) f =
+  if (t @_is (Some ??k)) && (k @_is (even_opt ??v)) then f v else f 0
+
+let[@type_error "unbound variable x"] option_pat_bind_fail = if simple_option1 @_is (Some ??x) then 2 else x
+
+let bbe_or_some y1 y2 : int = if (y1 @_is (Some ??c)) || (y2 @_is (Some ??c)) then c else -1
+
+(*Expected to fail*)
+let[@type_error "unbound variable c"] bbe_or_some_fail y1 y2 : int = if (y1 @_is (Some ??c)) || (y2 @_is (Some ??c)) then c else c
+(*Expected to fail*)
+
 
 (* if (o is Some ??n) && (even n) then f() else g()
 
@@ -157,41 +157,61 @@ if (o is Some ??n) && (even n) then f' n else g ()
 
 
 
-(**************************************************************)
-(* Nesting of features *)
-
 
 (**************************************************************)
 (* BBE in when-clauses, while-loops, and switch *)
 
+let pat_when x : int = if x @_is (Some ??a @_when (a = 1)) then a else -1
+
+let while1 =
+  while (true @_is false) do
+    ()
+  done
+
+let while_bind x f =
+  while (x @_is (Some ??y)) do
+    f y
+  done
+
+let[@type_error "term conflicts with context"] while_bind_fail (x : int option) f =
+  while (x @_is (Some ??y)) do
+    y
+  done
 
 
 (**************************************************************)
-(* Motivating examples from paper *)
+(* Nesting of features *)
+
+let difficult_option : ((int option) * (int option)) option = Some (Some 2, Some 3)
+let option_pat = if difficult_option @_is (Some (Some ??x, Some ??y)) then y else 3
+
+let pat_deep_when z : int = if z @_is (Some ??a @_when (a @_is (Some ??n @_when (n = 2)))) then n else -1
 
 
+(**************************************************************)
+(* Motivating examples from slides *)
 
-
-(* TODO: write a unit-test where the typer tries to unify BBEs *)
-
-(* About inversors : *)
-
-(*
-
-external some : 'a -> 'a option
-
-
-
-*)
 
 (* Feature focus 1 *)
 
+external list_pop_opt : int list -> int option = ""
 
+let queue_while_pop q f =
+  while ((list_pop_opt q) @_is (Some ??x)) do
+    f x
+  done
 
+(* With smart inversion: *)
+let queue_while_pop q f =
+  while (q @_is (list_pop_opt ??x)) do
+    f x
+  done
 (* Feature focus 2 *)
-
-
 external list_get_opt : int list -> int -> int option = ""
+let hashtable_get tbl r f g =
+  if (r @_is (Some ??k)) && ((list_get_opt tbl k) @_is (Some ??v))
+    then f v
+    else g ()
 
 (* TODO: write this with switch + when later
  switch
@@ -200,24 +220,16 @@ external list_get_opt : int list -> int -> int option = ""
  case
 *)
 
+(* About inversors : *)
+
+
+
+
 
 
 (* ^ the two cases should behave the same *)
 
-let hashtable_get tbl r f g =
-  if (r @_is (Some ??k)) && ((list_get_opt tbl k) @_is (Some ??v))
-    then f v
-    else g ()
 
-external list_pop_opt : int list -> int option = ""
-
-
-(* TODO: parse "while" *)
-(* let queue_while_pop q f =
-  while ((list_pop_opt q) @_is (Some ??x)) do
-    f x
-  done
- *)
 
 
 
@@ -332,21 +344,11 @@ let testing_inv_and (t : int option) =
 
 
 
-(* let x1 : int option = Some 1
-let x2 : int option = Some 2
+(*
 
 let bbe_and : int = if x1 @_is Some ??a && x2 @_is Some ??b then a + b else -1
 
-let y1 : int option = Some 1
-let y2 : int option = None
 
-let bbe_or_1 : int = if y1 @_is Some ??c || y2 @_is Some ??c then c else -1
-let bbe_or_2 : int = if y2 @_is Some ??c || y1 @_is Some ??c then c else -1
-
-(*Expected to fail*)
-let bbe_or_1_fail : int = if y1 @_is Some ??c || y2 @_is Some ??c then c else c
-(*Expected to fail*)
-let bbe_or_2_fail : int = if y2 @_is Some ??c || y1 @_is Some ??c then c else c
 
 let bbe_not : int = if not (x1 @_is Some ??d) then -1 else d
 (*Expected to fail*)
@@ -354,12 +356,6 @@ let bbe_is_bind_fail : int = if not (x1 @_is Some ??d) then d else -1
 
 let z1 = Some (Some 2)
 
-let pat_when : int = if x1 @_is (Some ??a @_when a = 1) then a else -1
-let pat_deep_when : int = if z1 @_is (Some ??a @_when (a @_is (Some ??n @_when n = 2))) then n else -1
-
-
-let even x : bool = x mod 2 = 0
-let div_4 x : bool = x mod 4 = 0
 
 let some_even (x : int option) : int option = if x @_is (Some ??a @_when (a @_is even)) then Some a else None
 let div_4_inv (x : int option) : int option = if x @_is (Some ??a @_when (a @_is div_4)) then Some a else None
@@ -384,12 +380,6 @@ let pat_not : int option = if x3 @_is not (Some ??x) then x else x
 
 let pat_as : int = if z1 @_is Some ((Some ??x) @_as ??y) && y @_is some_even ??z then z else -1
 
-
-let y1 : int option = Some 1
-let y2 : int option = None
-
-let bbe_or_1 : int = if y1 @_is Some ??c || y2 @_is Some ??c then c else -1
-let bbe_or_2 : int = if y2 @_is Some ??c || y1 @_is Some ??c then c else -1
 
 let empty_switch (type a) : a = switch []
 let nonempty_switch : unit = switch [

@@ -79,7 +79,7 @@ let merge_distinct ~loc (e1 : env_var) (e2 : env_var) : env_var =
 
 (** [env_extend e1 e2]: adds the bindings of binds inside e1.*)
 let env_extend ~loc (e1 : env) (binds : env) : env = (* TODO: env_bbe = env_var, and binds/"eb" has type env_bbe *)
-  assert (Env.size binds.env_tconstr = 0); (* it is assumed no expression can bind type constructors *)
+  assert (Env.size binds.env_tconstr = 0); (* it is assumed no expression can bind type constructors *) (* why is that? I mean how can there be extension of tconstr in binds? *)
   {e1 with env_var = (merge_distinct ~loc e1.env_var binds.env_var)}
 
 let env_merge_binds ~loc (bl : env list) : env =
@@ -692,7 +692,7 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
   | Trm_while (b, t) ->
     let b = aux_bbe b in
     let e = env_extend ~loc e (bindsof b) in
-    let t = aux ~env:e t in
+    let t = aux ~expected_typ:the_typ_unit ~env:e t in
     return the_typ_unit (Trm_while (b, t))
 
   | _ -> failwith "unexpected construct in typecheck_ml"
@@ -736,14 +736,14 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
       let b1 = aux_bbe b1 in
       let e = env_extend ~loc e (bindsof b1) in
       let b2 = aux_bbe ~env:e b2 in
-      let total_binds = env_merge_binds ~loc [bindsof b1; bindsof b2] in
-      return (Trm_and (b1, b2)) total_binds
+      let b1u2 = env_merge_binds ~loc [bindsof b1; bindsof b2] in
+      return (Trm_and (b1, b2)) b1u2
 
     | Trm_or (b1, b2) ->
       let b1 = aux_bbe b1 in
       let b2 = aux_bbe b2 in
-      let total_binds = env_intersect ~loc e (bindsof b1) (bindsof b2) in
-      return (Trm_or (b1, b2)) total_binds
+      let b1n2 = env_intersect ~loc e (bindsof b1) (bindsof b2) in
+      return (Trm_or (b1, b2)) b1n2
 
     | Trm_bbe_is (t, p) ->
       let t = aux_ml t in
@@ -837,39 +837,30 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
 
     (* For predicate pattern and inversor pattern, we look in the table for a "Pattern__" version, that would indicate that the pattern is inversible. Meaning that there is a predefined function for destructing the construction. *)
    (* Predicate pattern *)
-    | Trm_var x ->
-      (* Usual idea:
-        1. Write a "into_pattern" function. The idea is that, either this is a variable, or the root is a variable (if it is a constructor basically).
-          1(bis). Call this into_pattern function for either variables, or obvious variables. (ok)
-        2. Functions are not yet supposed to have a "Pattern__" counterpart, but with an attribute handling this is possible as well.
-          - *)
-      let pat_x = try_read_pattern ~loc e.env_var x in
-
-      let typ = typ_nameless () in
-      (* Crée un nouveau type, qui est une version instanciée du type de la variable. Donc all good. *)
-      let (_, pat_typ) = typecheck_variable loc e pat_x in
-
-      unify_or_error ~loc e (typ_arrow [typ] the_typ_bool) pat_typ (Unable_to_unify ((typ_arrow [typ] the_typ_bool), pat_typ));
-
-(*       (* 2. Typecheck this to "expected_typ -> bool" *)
+  | Trm_var x ->
+    let pat_x = try_read_pattern ~loc e.env_var x in
+    let typ = typ_nameless () in
+    let (_, pat_typ) = typecheck_variable loc e pat_x in
+    unify_or_error ~loc e (typ_arrow [typ] the_typ_bool) pat_typ (Unable_to_unify ((typ_arrow [typ] the_typ_bool), pat_typ));
+    return typ (Trm_var x) env_empty
+(* In the case where we want to handle expected types, we could destruct it and feed the sup-types
       let exp_typ = match expected_typ with Some ty -> ty | None -> assert false in (* use typ_of_some_or_nameless *)
       let (varid, tyv) = typecheck_variable loc e v in
       (* let typ = varid.varid_typ in *)
       unify_or_error ~loc e (typ_arrow [exp_typ] the_typ_bool) tyv (Unable_to_unify (exp_typ, tyv));
  *)
-      return typ (Trm_var x) env_empty
 
    (* Inversor pattern *)
-   | Trm_apps (t0, ps) ->
-      (* For the moment this is expected to work with "Pattern__XXX" written by hand.  *)
-      assert (ps <> []);
-      (* Kind of the same idea, give a "shape to fit", and do the typing. *)
-      (* let typ = match expected_typ with Some ty -> ty | None -> typ_nameless() in *)
-      let typ = typ_nameless () in
-      let typ_args = List.map (fun _ -> typ_nameless()) ps in
+  | Trm_apps (t0, ps) ->
+    (* For the moment this is expected to work with "Pattern__XXX" written by hand.  *)
+    assert (ps <> []);
+    (* Kind of the same idea, give a "shape to fit", and do the typing. *)
+    (* let typ = match expected_typ with Some ty -> ty | None -> typ_nameless() in *)
+    let typ = typ_nameless () in
+    let typ_args = List.map (fun _ -> typ_nameless()) ps in
 
       (* NEW *)
-(*       let t0 = typecheck_ml {e with env_is_in_pattern = true} t0 in
+(*    let t0 = typecheck_ml {e with env_is_in_pattern = true} t0 in
       match typ_arrow_inv_opt (typeof t0) with
       |   Some (_, [typ_arg]) when length ps > 1 ->
       insert tuple on the fly
@@ -879,41 +870,30 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
       if try_unify e (typ_arrow [typ] (typ_option (typ_tuple_flex typ_args))) (typeof t0) then
         ret
  *)
-
-      (* Si il n'y a qu'un seul argument, c'est soit un constructeur qui prend le type tuple, soit un constructeur qui currifie/une fonction qui currifie. Pas de moyen de le savoir à l'avance, donc il faut tester les deux. Même si je sens qu'il y peut y avoir des débordements... (Some (??x) (??y)) Sera surement interprété pareil que (Some (??x, ??y))
-
-      - inv (p1, p2)
-      - (inv p1 p2)
-      - inv p
-
-      on sait pas à l'avance lequel des trois a été utilisé. Soit p est tout seul,
-
-
-      *)
-      (* let t0 = typecheck_ml {e with env_is_in_pattern = true} t0 in *)
-
       (* typ_tuple_flex <- typ_tuple_if_several/if_multiple *)
       let t0 = typecheck_ml ~expected_typ:(typ_arrow [typ] (typ_option ((typ_tuple_flex typ_args)(*  (typ_tuple typ_args) *)))) {e with env_is_in_pattern = true} t0 in
       let ps = List.map2 (fun pi typ_arg_i -> typecheck_pattern e ~expected_typ:typ_arg_i pi) ps typ_args in
       return typ (Trm_apps (t0,ps)) (env_merge_binds ~loc (List.map bindsof ps))
 
-
-
    (* Conjunction *)
-   | Trm_and (p1, p2) ->
-      let typ = typ_of_some_or_nameless expected_typ in
-      let p1 = aux_pat ~expected_typ:typ p1 in
-      let e1 = env_extend ~loc e (bindsof p1) in
-      let p2 = aux_pat ~expected_typ:typ ~env:e1 p2 in
-      let e1u2 = env_extend ~loc e1 (bindsof p2) in
-      return typ (Trm_and (p1, p2)) e1u2
+  | Trm_and (p1, p2) ->
+    let typ = typ_of_some_or_nameless expected_typ in
+    let p1 = aux_pat ~expected_typ:typ p1 in
+    let e1 = env_extend ~loc e (bindsof p1) in
+    let p2 = aux_pat ~expected_typ:typ ~env:e1 p2 in
+    let p1u2 = env_merge_binds ~loc [bindsof p1; bindsof p2] in
+    return typ (Trm_and (p1, p2)) p1u2
 
-   | Trm_or (p1, p2) ->
-      let typ = typ_of_some_or_nameless expected_typ in
-      let p1 = aux_pat ~expected_typ:typ p1 in
-      let p2 = aux_pat ~expected_typ:typ p2 in
-      let e1n2 = env_intersect ~loc e (* current env *) (bindsof p1) (bindsof p2) in
-      return typ (Trm_or (p1, p2)) e1n2
+  | Trm_or (p1, p2) ->
+    let typ = typ_of_some_or_nameless expected_typ in
+    let p1 = aux_pat ~expected_typ:typ p1 in
+    let p2 = aux_pat ~expected_typ:typ p2 in
+    let p1n2 = env_intersect ~loc e (bindsof p1) (bindsof p2) in
+    return typ (Trm_or (p1, p2)) p1n2
+
+  | Trm_not p ->
+    let p = aux_pat p in
+    return (typeof p) (Trm_not p) env_empty
 
    (* TODO: Future improvements, no need for specific constructs *)
    (* Conjunction *)
@@ -945,10 +925,8 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
       let p = aux_pat ~expected_typ:typ p in
       let e1 = env_extend ~loc e (bindsof p) in
       let b = aux_bbe ~env:e1 b in
-      let e1u2 = env_extend ~loc e1 (bindsof b) in
-      return typ (Trm_pat_when (p, b)) e1u2
-
-
+      let p1u2 = env_merge_binds ~loc [bindsof p; bindsof b] in
+      return typ (Trm_pat_when (p, b)) p1u2
 
   (* | Trm_apps ({trm_desc = Trm_var v}, pl) when tconstr_inv e.env_tconstr v.varid_var -> (* Fonction d'inversion qui vérifie si v est dans l'environnement de types d'entrée. Si oui, alors c'est un constructeur de type et faire cas particulier, sinon autre cas. Ça devrait surement pouvoir être mis dans une clause "when". *)
   match tconstr_inv_bind e.env_tconstr v.varid_var with

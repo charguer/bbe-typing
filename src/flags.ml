@@ -55,7 +55,7 @@ let style_resolution_full = ref ResolutionInstanceOrSymbol
 let style_resolution_base = ref ResolutionInstanceOrSymbol
 let style_resolution_args = ref ResolutionInstanceOrSymbol
 let style_debug = ref DebugNone
-let style_binds = ref BindsAll
+let style_binds = ref BindsNone
 
 
 (** When annotating a let-binding with a [let[@type_error "msg"] … = …], do we

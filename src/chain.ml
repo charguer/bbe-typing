@@ -95,9 +95,11 @@ let full
       style_binds = !Flags.style_binds ;
     } ast in
     if !Flags.verbose then
-      Printf.printf "Raw ast :\n%s\n"
-      (Debug.print_low_level_program ast);
-      Printf.printf "Readable ast :\n%s\n" res;
+      begin
+        Printf.printf "Raw ast :\n%s\n"
+          (Debug.print_low_level_program ast);
+        Printf.printf "Readable ast :\n%s\n" res;
+      end;
     call_back_syntax res
   ) ;
   (* Print *)

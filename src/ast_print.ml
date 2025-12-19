@@ -753,7 +753,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
       let d =
         if style.style_binds = BindsAll then
           with_bindings ~style t0 else
-        aux t
+        aux t0
       in
          string "not"
       ^^ blank 1
@@ -792,8 +792,24 @@ and trm_to_doc_raw ~style (t : trm) : doc =
       ^^ d2
 
   | Trm_switch cases -> failwith "TODO 'switch' printing"
-  | Trm_while (b, t) -> failwith "TODO 'while' printing "
-    (* while "e1" do "e2" done *)
+  | Trm_while (b1, t2) ->
+    (* has the form: [while "e1" do "e2" done] *)
+    let d1 =
+      if style.style_binds <> BindsNone then
+        with_bindings ~style b1 else
+      aux b1
+    in
+    let d2 = aux t2 in
+       string "while"
+    ^^ blank 1
+    ^^ parens d1
+    ^^ blank 1
+    ^^ string "do"
+    ^^ hardline
+    ^^ blank 2
+    ^^ d2
+    ^^ hardline
+    ^^ string "done"
 
   | Trm_bbe_is (t1, p2) ->
       let d1 = aux t1 in
