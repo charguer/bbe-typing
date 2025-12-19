@@ -551,6 +551,30 @@ let rec tr_exp (e : expression) : trm =
         end
       | _ -> assert false (* It should be impossible to have an operator that is not handled here *)
     end
+
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__switch"; _}; _}, cases) -> (* We know for sure that this case was parsed as a switch *)
+    (* Destruct "cases" to get back the list of constructions. It should be as simple as : "is it a construct '::' applied to a binary tuple? Yes? process first element and fold to the next. No? Stop if it is empty loop, assert false. " *)
+    failwith "TODO"
+  (* TODO: write an inversor for switches. *)
+  (* Prototype :
+    - __switch [
+      case b1 @_then t1;
+      case b2 @_then t2;
+      case b3 @_then t3;
+    ]
+     *)
+
+  (* Representation: *)
+  (*
+  apply of "__switch" to 1 arg.
+  an expression of a construct "::" applied to a tuple.
+ -> Pexp_tuple (_, _) (aka. premier element, le reste)
+ -> "_case", applied to 1 arg.
+ -> "@", applied to 2 args.
+ -> "b1", and "_then t1".
+  *)
+
+
   | Pexp_apply (e0, aes) ->
     let is_labeled lbl =
       match lbl with
@@ -595,7 +619,7 @@ let rec tr_exp (e : expression) : trm =
   (* We parse Some (__tuple (x,y)) as the application of Some to a single argment which is a tuple *)
   | Pexp_construct (c, Some {pexp_desc =
           Pexp_apply (
-            {pexp_desc = Pexp_ident {txt = Longident.Lident "___tuple"; _}; _},
+            {pexp_desc = Pexp_ident {txt = Longident.Lident "__tuple"; _}; _},
             [(_, {pexp_desc = Pexp_tuple ts; _})]); (* TODO: repalce "_" with no-label *)
           _}) ->
       return (trm_desc_constr (constr (tr_longident c.txt)) [trm_tuple (List.map tr_exp ts)])
@@ -643,6 +667,9 @@ let rec tr_exp (e : expression) : trm =
  *)
   | Pexp_match (e, cs) ->
     return (trm_desc_match (tr_exp e) (List.map tr_case cs))
+
+  | Pexp_while (e1, e2) ->
+    return (trm_desc_while (tr_exp e1) (tr_exp e2))
 
   | Pexp_assert e when false_inv e ->
     return (trm_desc_assert_false ())

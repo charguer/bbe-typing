@@ -22,15 +22,19 @@ let tuple3 = (2,3,4)
 
 (* Constructors *)
 
+let simple_option1 = Some 2
+let simple_option2 = None
+let simple_option2_syntyp : bool option = None
+
+
 (* Let-bindings *)
 
 let let_1 =
   let x = 3 in x
-
-(* let let_poly =
+let let_2 =
+  let x = 3 in let y = 2 in (x, y)
+let let_poly =
   let x : type a. a list = [] in x
- *)
-
 
 (* Function definition *)
 let fun_1 (x : int) : int =
@@ -42,7 +46,11 @@ let fun_2 (x : int) (y : int) : int * int =
 let fun_poly (type a) (x : a) : a =
   x
 
-(* External fnctions *)
+(* External functions *)
+external (+) : int -> int -> int = "%addint"
+external (=) : int -> int -> bool = ""
+external (mod) : int -> int -> int = ""
+external (/) : int -> int -> int = ""
 
 (* Function call *)
 let call_1 =
@@ -59,16 +67,24 @@ let call_poly_2 (type a) (x : a) : a =
 
 (* Custom data types *)
 
+(* not there yet. *)
+
+
+(* Unification of branches *)
+let unify_options = if true then Some 2 else Some 3
+
+let[@type_error "to_test"] unify_options_fail = if true then Some 2 else Some false
+
+
+
 (**************************************************************)
 (* BBE in if-statement: is, and, or, not *)
-
-(* Typechecking traditional ML constructs *)
 
 let bbe_is = if true @_is __ then true else false
 let bbe_is_syntyp = if true @_is (__ : bool) then true else false
 
 (* Expected to fail *)
-let[@type_error ""]  bbe_is_syntyp_fail = if true @_is (__ : int) then true else false
+let[@type_error "to_test"]  bbe_is_syntyp_fail = if true @_is (__ : int) then true else false
 
 let bbe_is_bind1 : bool = if true @_is ??x then x else false
 
@@ -78,37 +94,32 @@ let[@type_error "unbound variable x"] bbe_is_bind_fail = if (true @_is ??x) && (
 
 
 
-let bbe_and_bind = if (true @_is ??x) && x then true else false
+let bbe_and_bind = if (true @_is ??x) && x then x else false
+let[@type_error "unbound variable x"] bbe_and_bind_fail = if (true @_is ??x) && x then x else x
+
 
 let bbe_or_bind = if true @_is ??x || false @_is ??x then x else false
 
-(* Expected to fail *)
 let[@type_error "unbound variable x"]  bbe_or_bind_fail1 = if false @_is ??x || true then x else false
 
-(* Expected to fail *)
 let[@type_error "unable to unify"]  bbe_or_bind_fail2 = if false @_is ??x || 2 @_is ??x then x else false
 
-
-let simple_option1 = Some 2
-let simple_option2 : bool option = None
-
-(* Observation : maybe this works ever since we removed all of the instance resolution.*)
-let simple_option2_fail = None
-
-let unify_options = if true then Some 2 else Some 3
-
-let f x = x
-
-let[@type_error ""] unify_options_fail = if true then Some 2 else Some false
-
+let bbe_not = if not ((Some 2) @_is ??x) then false else true
+let[@type_error "to_test"] bbe_not_fail = if not ((Some 2) @_is ??x) then x else (Some 1)
 
 (**************************************************************)
-(* Pattern: variable, wildcard constructor/inversor, predicate, and, or, not *)
+(* Pattern: variable, wildcard, constructor/inversor, predicate, and, or, not *)
 
-external (+) : int -> int -> int = "%addint"
+(* variable and wildcards : check BBE section *)
+
+(* Tuple constructor pattern *)
 let tuple_bind1 = if tuple2 @_is (??x, ??y) then x + y else -1
 let tuple_bind2 = if tuple3 @_is (??x1, ??x2, ??x3) then x1 + x3 else -1
-let[@type_error ""] tuple_bind_fail = if tuple3 @_is (??x1, ??x2, ??x3) then x1 + x3 else x2
+let[@type_error "to_test"] tuple_bind_fail = if tuple3 @_is (??x1, ??x2, ??x3) then x1 + x3 else x2
+
+(* Predicates *)
+
+(* Option destruction *)
 
 (* write an inversion of the option, should be enough for the moment. *)
 
@@ -124,10 +135,6 @@ let option_pat = if simple_option1 @_is None then 1 else 0
 let difficult_option : ((int option) * (int option)) option = Some (Some 2, Some 3)
 let option_pat = if difficult_option @_is (Some (Some ??x, Some ??y)) then y else 3
 
-
-external (=) : int -> int -> bool = ""
-external (mod) : int -> int -> int = ""
-external (/) : int -> int -> int = ""
 let even n = ((n mod 2) = 0)
 
 let even_opt n = if (even n) then (Some (n/2)) else None

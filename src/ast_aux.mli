@@ -74,12 +74,14 @@ val trm_desc_seq : trm -> trm -> trm_desc
 val trm_desc_apps : trm -> trms -> trm_desc
 val trm_desc_match : trm -> (pat * trm) list -> trm_desc
 val trm_desc_tuple : trm list -> trm_desc
-
 val trm_desc_not : trm -> trm_desc
 val trm_desc_and : trm -> trm -> trm_desc
 val trm_desc_or : trm -> trm -> trm_desc
+val trm_desc_while : bbe -> trm -> trm_desc
+val trm_desc_switch : (bbe * trm) list -> trm_desc
 
 val trm_desc_bbe_is : trm -> trm_pat -> trm_desc
+
 val trm_desc_pat_var : var -> trm_desc
 val trm_desc_pat_var_varid : varid -> trm_desc
 val trm_desc_pat_wild : unit -> trm_desc
@@ -118,9 +120,11 @@ val trm_match : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> (pat * trm)
 val trm_not : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm
 val trm_and : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
 val trm_or : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
+val trm_while : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) bbe -> trm -> trm
+val trm_switch : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) (bbe * trm) list -> trm
 
 
-(* put switch and while LATER *)
+
 (* val trm_or : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
 val trm_or : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
  *)

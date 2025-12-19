@@ -793,7 +793,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
 
   | Trm_switch cases -> failwith "TODO 'switch' printing"
   | Trm_while (b, t) -> failwith "TODO 'while' printing "
-
+    (* while "e1" do "e2" done *)
 
   | Trm_bbe_is (t1, p2) ->
       let d1 = aux t1 in
