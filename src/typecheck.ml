@@ -707,7 +707,7 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
   result
 
 and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a "bindsof" function *)
-  if !Flags.verbose && !Flags.debug then Printf.printf "Entering typecheck_bbe with :\n t = %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e) *) (trm_to_string b);
+  if !Flags.verbose && !Flags.debug then Printf.printf "Entering typecheck_bbe with :\n %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e) *) (trm_to_string b);
 
   let loc = b.trm_loc in
   let aux_ml ?(expected_typ:typ option) ?(env : env = e) (t : trm) : trm =
@@ -801,11 +801,11 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_p
       let typ = typ_nameless () in
       return typ Trm_pat_wild env_empty
   (* TODO : add expected_typ to pat *)
-  | Trm_annot (t1, sty) ->
+  | Trm_annot (p1, sty) ->
     let sty = syntyp_internalize e sty in
     let typ = sty.syntyp_typ in
-    let t1 = aux_pat ~expected_typ:typ ~env:e t1 in
-    return (typeof t1) (Trm_annot (t1, sty)) (bindsof t1)
+    let p1 = aux_pat ~expected_typ:typ ~env:e p1 in
+    return (typeof p1) (Trm_annot (p1, sty)) (bindsof p1)
 
   | Trm_pat_var x ->
     let typ = typ_nameless () in

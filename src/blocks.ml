@@ -387,6 +387,7 @@ let get_typ_for_arg_with_expected_type env (v : varsyntyp) (ret_ty : typ) : typ 
 
 let rec arrow_of_styp (ct : styp) : styp list * styp =
   match ct.ptyp_desc with
+  (* | Ptyp_constr ("tfun", ct) -> [], ct *)
   | Ptyp_arrow (Nolabel, ct1, ct2) ->
     let ct_args, ct_res = arrow_of_styp ct2 in
     ct1 :: ct_args, ct_res
@@ -644,7 +645,7 @@ let type_constructor e overall_type (c : Parsetree.constructor_declaration) : co
   let id = tconstr td.ptype_name.txt in
   let (var_names, vars) = get_vars_params td in
   (* Declared type, with its variables  *)
-  let ty_overall = typ_constr id vars in (* eg id=option, vars=['a] *)
+  let ty_overall = typ_constr id vars in (* eg id=option, vars=['a],   typ_overall=['a option] *)
   let e_with_locals = env_add_tvars e var_names vars in
   let tconstr_def =
     match td.ptype_kind, td.ptype_manifest with
@@ -673,7 +674,6 @@ let type_constructor e overall_type (c : Parsetree.constructor_declaration) : co
   let e =
     match tconstr_def with
     | Tconstr_def_sum cs -> (* eg cs=[("None",'a option]); ("Some",'a->'a option)] *)
-      (* We add each constructor as an implicit overloaded instance. *)
       (* Constructor types are in Rocq style, meaning that they are seen as functions that output their corresponding type *)
       List.fold_left (fun e (c, ty) ->
         let typ_of_constructors =

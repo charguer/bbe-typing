@@ -267,6 +267,11 @@ let put_parens_trm (t : trm) (d : doc) : doc =
  *)
 (* let print_symbol sym = string (symbol_to_string sym)
  *)
+let pop_last lst =
+  match List.rev lst with
+  | x :: xs -> (List.rev xs, x)
+  | [] -> assert false (* only called when the lst has at least 2 arguments *)
+
 let rec typ_to_doc (t : typ) : doc =
   match t.typ_desc with
   | Flexible v -> string (print_tvar v)
@@ -293,6 +298,10 @@ let rec typ_to_doc (t : typ) : doc =
           ^^ blank 1
           ^^ put_parens t1
       | ts ->
+        if x = "->" then
+          let (args, result) = pop_last ts in
+        parens (separate (comma ^^ blank 1) (List.map put_parens ts)) ^^ blank 1 ^^ string x ^^ blank 1 ^^ (put_parens result)
+        else
         separate (blank 1 ^^ string x ^^ blank 1) (List.map put_parens ts)
 
 and put_parens (t : typ) : doc =
@@ -333,7 +342,7 @@ and sch_to_doc (sch : sch) : doc =
         if str.[0] = '\'' then (typ, x :: acc)
         else (
           (* Such a type would not be syntactically accepted by OCaml. *)
-          let x' = tconstr (sprintf "'rigid_%s" str) in
+          let x' = tconstr (sprintf "'%s" str) in
           let typ' = replace_rigid_with x (typ_constr x' []) typ in
           (typ', x' :: acc)
         )

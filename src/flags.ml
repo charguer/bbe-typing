@@ -2,8 +2,8 @@
 (** Global flags to change the behavior of the program.
   They are only modified in Typer. **)
 
-let debug = ref false
-let verbose = ref false
+let debug = ref true
+let verbose = ref true
 
 let quiet = ref false
 
@@ -57,6 +57,8 @@ let style_resolution_args = ref ResolutionInstanceOrSymbol
 let style_debug = ref DebugNone
 let style_binds = ref BindsNone
 
+(* let _ = style_binds := BindsToplevel *)
+let _ = style_binds := BindsAll
 
 (** When annotating a let-binding with a [let[@type_error "msg"] … = …], do we
   expect the string to be the exact error message or we are fine if there is any
@@ -70,4 +72,5 @@ let print_counters = ref false
 
 (* Hack for gathering more specific statistics *)
 let counters_only_for_resolutions_in_last_topdef = ref false
+
 

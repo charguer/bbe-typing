@@ -217,9 +217,8 @@ type trm_desc =
   | Trm_pat_var of varid
   | Trm_pat_wild
   | Trm_pat_when of trm_pat * trm
-  (* TODO: Trm_switch of (trm * trm) list
-     Trm_while of trm * trm
-     LATER: Trm_for of dir * var * trm * trm * trm
+  (*
+  LATER: Trm_for of dir * var * trm * trm * trm
   *)
 
 and trm = {
@@ -283,7 +282,10 @@ and trm_pat = trm (*temporary solution, hoping to remove the "pat" type and chan
                          typ_mark = _}
             }
 
-  About arrow ("->"): The arrow type is part of the builtin type constructors. It takes a list of types as arguments (of size n), and represents an n-ary type [(T1, ..., T(n-1)) -> Tn].
+  About arrow ("->"): The arrow type is part of the builtin type constructors. It takes a list of types as arguments (of size n), and represents an n-ary function type [(T1, ..., T(n-1)) -> Tn].
+  - In our printing, we use the notation [(T1,T2)->T3] for a function type with two arguments
+  - In our parsing, we require the user to write [T1->T2->(func (T3->T4))] to describe a function of two arguments that returns a function of one argument.
+  The type constructor "func" is nothing but a syntactic token to deambiguate parsing.
   *)
 (* Definition of a type. *)
 type tconstr_def =

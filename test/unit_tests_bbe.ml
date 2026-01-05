@@ -40,6 +40,12 @@ let let_2 =
   let x : type a. a list = [] in x
 *)
 
+(* External functions *)
+external (* [%from_ocaml] *) (+) : int -> int -> int = "%addint"
+external (=) : int -> int -> bool = ""
+external (mod) : int -> int -> int = ""
+external (/) : int -> int -> int = ""
+
 (* Function definition *)
 let fun_1 (x : int) : int =
   x
@@ -49,12 +55,9 @@ let fun_2 (x : int) (y : int) : int * int =
 
 let fun_poly (type a) (x : a) : a = x
 
+let fun_fun (x : int) : int -> int =
+   fun (y : int) -> x + y
 
-(* External functions *)
-external (+) : int -> int -> int = "%addint"
-external (=) : int -> int -> bool = ""
-external (mod) : int -> int -> int = ""
-external (/) : int -> int -> int = ""
 
 (* Function call *)
 let call_1 =
@@ -68,6 +71,15 @@ let call_poly_1 =
 
 let call_poly_2 (type a) (x : a) : a =
   fun_poly x
+
+
+(* type 'a func = 'a *)
+(* TODO
+let call_poly_fun (type a) (f : a -> (a -> a) func) : a -> (a -> a) func =
+  fun_poly f
+
+let call_poly_fun_fun =
+  call_poly_fun fun_fun *)
 
 (* Custom data types *)
 

@@ -11,6 +11,9 @@ res=$?
 if [ ${res} -eq 0 ]; then
     echo 'debug successful'
     echo 'test/unit_tests_debug_typed.ml'
+else
+    echo 'debug failed'
+    cat output.txt
 fi
 
 # code output.txt

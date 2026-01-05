@@ -11,7 +11,7 @@ rm -f output.txt
 res=$?
 
 if [ ${res} -eq 0 ]; then
-    echo 'debug successful'
+    echo 'successfully typechecked test/unit_tests_bbe.ml'
     echo 'test/unit_tests_bbe_typed.ml'
 fi
 
