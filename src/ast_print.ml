@@ -300,7 +300,7 @@ let rec typ_to_doc (t : typ) : doc =
       | ts ->
         if x = "->" then
           let (args, result) = pop_last ts in
-        parens (separate (comma ^^ blank 1) (List.map put_parens ts)) ^^ blank 1 ^^ string x ^^ blank 1 ^^ (put_parens result)
+        parens (separate (comma ^^ blank 1) (List.map put_parens args)) ^^ blank 1 ^^ string x ^^ blank 1 ^^ (put_parens result)
         else
         separate (blank 1 ^^ string x ^^ blank 1) (List.map put_parens ts)
 

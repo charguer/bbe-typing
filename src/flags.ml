@@ -32,7 +32,7 @@ let disable_check_cycle_on_resolution_attempts = ref false
 
 (* If disabled, do not write any output. *)
 let output = ref true
-
+let print_typed = ref false
 let print_parsed = ref true
 
 (* Replace overloaded variables by the corresponding instance. *)
@@ -43,7 +43,7 @@ let remove_failing = ref true
 
 (* Inlining simple functions, doing basic computations, removing most type annotations,
    and calling Ocamlformat. *)
-let readable = ref true
+let readable = ref false
 
 (* Print symbols as they are parsed (showing the encoded symbols for records and constants). *)
 let print_raw_symbols = ref false
