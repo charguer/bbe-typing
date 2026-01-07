@@ -698,7 +698,7 @@ let env_add_type_declaration (e : env) (td : Parsetree.type_declaration) : env *
             begin
             match typ_arrow_inv_opt ty with
             | Some (ty_args, ty_ret) ->
-                 (* assert (ty_ret =?= ty_overall); *) (* Here I agree: Verify of the return type of the constructor the same as the overall type *)
+                 (* YL: not sure that there is any case where ty_args has more than 1 argument with our translation *)
                  typ_arrow [ty_ret] (typ_option (typ_tuple_flex ty_args))
            | None -> (* eg None *)
               typ_arrow [typ_of_constructor] the_typ_bool (* Here this is good *)

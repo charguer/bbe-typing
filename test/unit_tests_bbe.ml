@@ -288,19 +288,22 @@ let hashtable_get tbl r f g =
 
 
 (* Constructor inversion *)
-(* let bbe_is_bind_constr = if (Some true) @_is (Some ??x) then x else false
- *)
+let bbe_is_bind_constr = if (Some true) @_is (Some ??x) then x else false
+
 (* Custom type definition *)
-(* type myoptionint = MyNoneInt | MySomeInt of int
+(* ok *)
+type myoptionint = MyNoneInt | MySomeInt of int
 type 'a myoption = MyNone | MySome of 'a
-type 'a mylist = MyNil | MyCons of 'a * 'a mylist (* MyCons: typ_arrow ['a; typ_constr "mylist" ['a]] (typ_constr "mylist" ['a]) *)
-type 'a mylistp = MyNilp | MyConsp of ('a * 'a list) (* MyCons: typ_arrow [typ_tuple ['a; typ_constr "mylistp" ['a]]] (typ_constr "mylistp" ['a]) *)
+type 'a mylist = MyNil | MyCons of 'a * 'a mylist
+type 'a mylistp = MyNilp | MyConsp of ('a * 'a mylistp)
 type ('a,'b) mypair = 'a * 'b (* typ_tuple ['a; 'b] *)
 
 (* Constructors *)
+let myint1 = MyNoneInt
+let myint2 = MySomeInt 2
+let[@type_error "mistyped application"] myint_fail = MySomeInt false
 
 let mylist0 : int mylist = MyNil
-
 let mylist1 = MyCons (1, MyNil)
 let mylistp1 = MyConsp (2, MyNilp)
 
@@ -308,7 +311,7 @@ let myoptionnone : int myoption = MyNone
 let myoptionnsome : (int mylist) myoption = MySome mylist1
 
 (* Explicit BBE conversion *)
-let inv_lit c =
+(* let inv_lit c =
   bool_of (c @_is 3)
 
 let inv_bool c =
@@ -324,7 +327,7 @@ let alltrue (b1 b2 b3: bool) : bool =
 
 let optioneven (o: option int) : bool =
   (o is Some ??n) && (even n)
-
+ *)
 
 (* Deep inversors *)
 type trm_desc =
@@ -352,13 +355,12 @@ let trm_and_3_inv (t : trm_desc) : (trm_desc * trm_desc * trm_desc) option =
 (* Binding boolean expressions *)
 
 let even n = n mod 2 = 0
-let even_opt n = if even n then Some n/2 else None
+let even_opt n = if even n then (Some (n/2)) else None
 
 let f (x : int) : int = x
 
 let testing_inv_and (t : int option) =
-  if (t @_is Some ??k) && k @_is even_opt v then f v else f 0
- *)
+  if (t @_is (Some ??k)) && (k @_is (even_opt ??v)) then f v else f 0
 
   (*
   if (o is Some ??n) && (even n) then f() else g()
