@@ -310,6 +310,9 @@ let mylistp1 = MyConsp (2, MyNilp)
 let myoptionnone : int myoption = MyNone
 let myoptionnsome : (int mylist) myoption = MySome mylist1
 
+(* Destruction *)
+let bbe_view = if mylist0 @_is MyNil then MyNil else MyCons (1, MyNil)
+let bbe_view_bind = if (mylist0 @_is (MyCons (1, ??x))) then MyNil else MyCons (1, MyNil)
 (* Explicit BBE conversion *)
 (* let inv_lit c =
   bool_of (c @_is 3)
@@ -357,10 +360,10 @@ let trm_and_3_inv (t : trm_desc) : (trm_desc * trm_desc * trm_desc) option =
 let even n = n mod 2 = 0
 let even_opt n = if even n then (Some (n/2)) else None
 
-let f (x : int) : int = x
-
-let testing_inv_and (t : int option) =
+let testing_inv_and (type a) (t : int option) (f : int -> a) =
   if (t @_is (Some ??k)) && (k @_is (even_opt ??v)) then f v else f 0
+
+(* TODO URGENT: test pattern inversion of custom constructors. *)
 
   (*
   if (o is Some ??n) && (even n) then f() else g()
