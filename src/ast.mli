@@ -284,7 +284,7 @@ and trm_pat = trm (*temporary solution, hoping to remove the "pat" type and chan
 
   About arrow ("->"): The arrow type is part of the builtin type constructors. It takes a list of types as arguments (of size n), and represents an n-ary function type [(T1, ..., T(n-1)) -> Tn].
   - In our printing, we use the notation [(T1,T2)->T3] for a function type with two arguments
-  - In our parsing, we require the user to write [T1->T2->(func (T3->T4))] to describe a function of two arguments that returns a function of one argument.
+  - In our parsing, we require the user to write [T1->T2->((T3->T4) func)] to describe a function of two arguments that returns a function of one argument.
   The type constructor "func" is nothing but a syntactic token to deambiguate parsing.
   *)
 (* Definition of a type. *)

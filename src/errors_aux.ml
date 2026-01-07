@@ -48,6 +48,9 @@ let string_of_error ~style (e : error) : string =
   | Mismatch_type_is (ty1, ty2) ->
     sprintf "The expression has type %s but the pattern takes type %s."
       (typ_to_string ty1) (typ_to_string ty2)
+  | Mismatch_type_switch (ty1, ty2) ->
+    sprintf "This expression has type %s, even though a previous branch has type %s"
+      (typ_to_string ty1) (typ_to_string ty2)
   | Branches_mismatch_match (x, ty1, ty2) ->
     sprintf "Two branches of the pattern-matching disagree on %s: in one case it is typed as %s, in the other as %s."
       x (typ_to_string ty1) (typ_to_string ty2)
@@ -140,6 +143,8 @@ let string_of_error_short (e : error) : string =
   | Branches_mismatch_if (_ty1, _ty2) -> "branch mismatch in if"
   | Branches_mismatch_match (x, _ty1, _ty2) -> sprintf "branch mismatch in match on %s" x
   | Mismatch_type_is (ty1, ty2) -> "type mismatch in is"
+  | Mismatch_type_switch (ty1, ty2) ->
+    sprintf "type mismatch in switch"
   | Sequence _ty -> "non-unit in sequence"
   | Application_mistyped (_ty1, _ty2) -> "mistyped application"
   | Unable_to_unify (_ty1, _ty2) -> "unable to unify"

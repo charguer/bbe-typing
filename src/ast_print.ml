@@ -446,16 +446,20 @@ and env_to_string ~style (e : env) : string =
   Env.print (var_to_string) (sch_to_string) e.env_var
 
 and binds_to_doc ~style (binds : env option) : doc =
-  comment (
-     string "~>"
-  ^^ blank 1
-  ^^ braces (
-    string (Option.fold binds ~none:("") ~some:(env_to_string ~style)))
-  )
+  Option.fold binds ~none:(empty)
+  ~some:
+    (fun e ->
+    blank 1 ^^
+    comment (
+      string "~>"
+    ^^ blank 1
+    ^^ braces (
+      string (env_to_string ~style e)))
+    )
+
 
 and with_bindings ~style (t : trm) : doc =
   trm_to_doc_raw ~style t
-  ^^ blank 1
   ^^ (binds_to_doc ~style t.trm_binds)
 
 

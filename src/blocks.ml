@@ -9,6 +9,9 @@ open Errors
 open Errors_aux
 
 (*#########################################################################*)
+
+let debug_env = false
+
 (* ** Testing for cycles, and testing for partially/fully resolved types *)
 
 (** [is_flexible t] returns [true] if [t] is a flexible variable
@@ -321,14 +324,15 @@ let try_unifys env (ts1 : typs) (ts2 : typs) : bool =
     unif ts1 ts2)
 
 let unify_or_error ?(loc = loc_none) env (t1 : typ) (t2 : typ) (m : error) : unit =
-  Debug.log "Forced unification of %s with %s." (typ_to_string t1) (typ_to_string t2) ;
+  (* Debug.log "Forced unification of %s with %s." (typ_to_string t1) (typ_to_string t2) ;
+   *)
   if !Flags.verbose then Printf.printf "Forcing unification of %s with %s\n" (typ_to_string t1) (typ_to_string t2);
   if not (try_unify env t1 t2)
   then raise (Error (m, loc))
 
 let unifys_or_error ?(loc = loc_none) env (ts1 : typs) (ts2 : typs) (m : error) : unit =
-  List.iter2 (fun t1 t2 ->
-    Debug.log "Forced unification of %s with %s." (typ_to_string t1) (typ_to_string t2)) ts1 ts2 ;
+  (* List.iter2 (fun t1 t2 ->
+    Debug.log "Forced unification of %s with %s." (typ_to_string t1) (typ_to_string t2)) ts1 ts2 ; *)
   if not (try_unifys env ts1 ts2)
   then raise (Error (m, loc))
 
@@ -385,9 +389,12 @@ let get_typ_for_arg_with_expected_type env (v : varsyntyp) (ret_ty : typ) : typ 
 (*#########################################################################*)
 (* ** Typechecking of user-provided type annotations *)
 
+(* Accumulator to decurrify function definitions *)
 let rec arrow_of_styp (ct : styp) : styp list * styp =
   match ct.ptyp_desc with
-  (* | Ptyp_constr ("tfun", ct) -> [], ct *)
+  | Ptyp_constr ({txt=Lident "func"}, [ct]) -> [], ct
+  | Ptyp_constr ({txt=Lident "func"}, l) ->
+    failwith (Printf.sprintf "wrong arity for 'func'. Expected 1, but got %d" (List.length l))
   | Ptyp_arrow (Nolabel, ct1, ct2) ->
     let ct_args, ct_res = arrow_of_styp ct2 in
     ct1 :: ct_args, ct_res
@@ -640,12 +647,13 @@ let type_constructor e overall_type (c : Parsetree.constructor_declaration) : co
 (* TODO "Type declarations" : quite explicit. When we will need types. No atomic functions needed, handle this later.*)
 
 (** [env_add_type_declaration e td]: processes the OCaml type declarations and adds them to the environment  *)
-(* let env_add_type_declaration (e : env) (td : Parsetree.type_declaration) : env * tconstr_desc =
-  let loc = td.Parsetree.ptype_loc in
+let env_add_type_declaration (e : env) (td : Parsetree.type_declaration) : env * tconstr_desc =
+  (* let loc = td.Parsetree.ptype_loc in *)
   let id = tconstr td.ptype_name.txt in
   let (var_names, vars) = get_vars_params td in
   (* Declared type, with its variables  *)
   let ty_overall = typ_constr id vars in (* eg id=option, vars=['a],   typ_overall=['a option] *)
+  (* Adds dummy types to the environment for a first pass *)
   let e_with_locals = env_add_tvars e var_names vars in
   let tconstr_def =
     match td.ptype_kind, td.ptype_manifest with
@@ -661,7 +669,6 @@ let type_constructor e overall_type (c : Parsetree.constructor_declaration) : co
       let fs = List.sort (fun (f1, _ty1) (f2, _ty2) -> compare f1 f2) fs in
       Tconstr_record fs
     | _, _ ->
-      (* I didn't understand what these correspond to. *)
       failwith "Not implemented: type declaration" in
   let tconstr_typ =
     match vars with
@@ -671,32 +678,49 @@ let type_constructor e overall_type (c : Parsetree.constructor_declaration) : co
   (* Adding the type into the environment. *)
   let e = env_add_tconstr e id tdesc in
   (* Adding the constructors into the environment, if any. *)
-  let e =
+  let e_var =
     match tconstr_def with
     | Tconstr_def_sum cs -> (* eg cs=[("None",'a option]); ("Some",'a->'a option)] *)
-      (* Constructor types are in Rocq style, meaning that they are seen as functions that output their corresponding type *)
+      (* returns an environment in which all of the constructors have been added. *)
       List.fold_left (fun e (c, ty) ->
-        let typ_of_constructors =
-            (* assert (ty =?= ty_overall); *) (* Verify if the output type of the constructor is the same as the computed one. *)
+        (* Prototyping:
+          Goal: add all of the constructors to the environment, as well as their Pattern__ version.
+          - This means: add to environment (c : ty)
+          - break apart ty, according to the internal representation detailed in the Pattern__ explaination in ast.mli. to get [arguments] ty_ret.
+          - add to environment (Pattern__xxx : ty_ret -> (arguments) option
+          Possible problems:
+          I would probably need polymorphism at some point for the constructors. This means that (C : forall a. a -> a list). Have I correctly instantiated the variables/how do I get them?
+          This should be solved if I can get info on the free variables of the typ ?
+ *)
+        let typ_of_constructor =
             ty in
         let typ_of_inversor =
             begin
             match typ_arrow_inv_opt ty with
             | Some (ty_args, ty_ret) ->
                  (* assert (ty_ret =?= ty_overall); *) (* Here I agree: Verify of the return type of the constructor the same as the overall type *)
-                 typ_arrow [ty_ret] (typ_option (typ_tuple ty_args)) (* TODO "option" : Add an option type, with smart constructors and inversors "the_type_option" or smthing *)
-                 (* typ_tuple ts = typ_constr "__tuple" ts *)
+                 typ_arrow [ty_ret] (typ_option (typ_tuple_flex ty_args))
            | None -> (* eg None *)
-              typ_arrow [ty_ret] the_typ_bool (* Here this is good *)
+              typ_arrow [typ_of_constructor] the_typ_bool (* Here this is good *)
             end
           in
         (* Debugging with printings. Good idea of having a local debug flag. Not very modular but not bad for working on a specific file. *)
         let env_add_var e x s =
-           if debug_env then printf "adding %s %s" x (string_of_sch s);
+           if debug_env then Printf.printf "adding %s %s" x (sch_to_string s);
             Env.add e x s
-        let e = env_add_var c (mk_sch vars typ_of_constructor) in
-        let e = env_add_var ("Pattern__" ^ c) .. typ_of_inversor in
-        add_implicit_overloaded_instance ~loc e var_names (SymbolName (constr_to_var c)) ty) e cs
+        in
+        (* let tv = tvar_rigid "'a" in
+           let t = typ_rigid tv in
+           env_add_var e (var "Some")
+             (mk_sch [tv]
+        (typ_arrow [t] (typ_option t))) in *)
+        (* how do I get the tvar_rigid? *)
+        let e = env_add_var e c (mk_sch var_names typ_of_constructor) in
+        let e = env_add_var e ("Pattern__" ^ c) (mk_sch var_names typ_of_inversor) in
+        e)
+        e.env_var (List.map (fun (c, ty) -> (constr_to_var c, ty)) cs)
+        (* What does this function do that I can not do myself?  *)
+        (* add_implicit_overloaded_instance ~loc e var_names (SymbolName (constr_to_var c)) ty) *)
     (* | Tconstr_record fs ->
       let e =
         let ty = typ_arrow (List.map snd fs) ty_overall in
@@ -718,11 +742,12 @@ let type_constructor e overall_type (c : Parsetree.constructor_declaration) : co
         e) e fs *)
     | Tconstr_record _ -> failwith "Records are not accepted in the language. Temporary error message, modify [Blocks.env_add_type_declaration]" (* TODO: proper error messages *)
     | Tconstr_abstract
-    | Tconstr_def_alias _ -> e
+    | Tconstr_def_alias _ -> e.env_var
     | Tconstr_special_nary -> assert false (* These can't be defined by the user for now. *)
-    | _ -> assert false
+    (* | _ -> assert false *)
   in
-  (e, tdesc) *)
+  let e = {e with env_var=e_var} in
+  (e, tdesc)
 
 
 

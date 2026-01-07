@@ -494,7 +494,7 @@ and typecheck_let  ~loc (e : env) (b : let_def) : let_def * env * sch =
     (* TODO (low efforts) : rename to typecheck_trm *)
 and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
 
-  if !Flags.verbose && !Flags.debug then Printf.printf "Entering typecheck_ml with :\n t = %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e ) *) (trm_to_string t);
+  if !Flags.verbose && !Flags.debug then Printf.printf "Entering typecheck_ml with :\n  %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e ) *) (trm_to_string t);
 
   let loc = t.trm_loc in
   let aux ?(expected_typ:typ option) ?(env : env = e) (t : trm) : trm =
@@ -685,7 +685,8 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
     let ty_ret = typ_of_some_or_nameless expected_typ in
     List.iter (fun (_, t) ->
       let ty = typeof t in
-      unify_or_error ~loc e ty_ret ty (Mismatch_type_is (ty_ret, ty))) (* TODO: low efforts, create a new error for mismatching branches of a switch *)
+      unify_or_error ~loc e ty_ret ty (Mismatch_type_switch (ty_ret, ty)))
+      (*  *)
     cases;
 
     return ty_ret (Trm_switch cases)
@@ -703,11 +704,11 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
   end
   in
 
-  if !Flags.verbose && !Flags.debug then Printf.printf "Exiting typecheck_ml with %s\n\n" (trm_to_string result);
+  if !Flags.verbose && !Flags.debug then Printf.printf "Exiting typecheck_ml with :\n  %s\n" (trm_to_string result);
   result
 
 and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a "bindsof" function *)
-  if !Flags.verbose && !Flags.debug then Printf.printf "Entering typecheck_bbe with :\n %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e) *) (trm_to_string b);
+  if !Flags.verbose && !Flags.debug then Printf.printf "Entering typecheck_bbe with :\n  %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e) *) (trm_to_string b);
 
   let loc = b.trm_loc in
   let aux_ml ?(expected_typ:typ option) ?(env : env = e) (t : trm) : trm =
@@ -728,37 +729,41 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
       trm_binds = Some binds(* ;
       trm_annot = annot  *)} in (* LATER: factorizable return functions? *)
 
-  match b.trm_desc with
-    (* Handling boolean operators *)
-    | Trm_not b ->
-      let b = aux_bbe b in
-      return (Trm_not b) (env_empty)
-    | Trm_and (b1, b2) ->
-      let b1 = aux_bbe b1 in
-      let e = env_extend ~loc e (bindsof b1) in
-      let b2 = aux_bbe ~env:e b2 in
-      let b1u2 = env_merge_binds ~loc [bindsof b1; bindsof b2] in
-      return (Trm_and (b1, b2)) b1u2
+  let result =
+    match b.trm_desc with
+      (* Handling boolean operators *)
+      | Trm_not b ->
+        let b = aux_bbe b in
+        return (Trm_not b) (env_empty)
+      | Trm_and (b1, b2) ->
+        let b1 = aux_bbe b1 in
+        let e = env_extend ~loc e (bindsof b1) in
+        let b2 = aux_bbe ~env:e b2 in
+        let b1u2 = env_merge_binds ~loc [bindsof b1; bindsof b2] in
+        return (Trm_and (b1, b2)) b1u2
 
-    | Trm_or (b1, b2) ->
-      let b1 = aux_bbe b1 in
-      let b2 = aux_bbe b2 in
-      let b1n2 = env_intersect ~loc e (bindsof b1) (bindsof b2) in
-      return (Trm_or (b1, b2)) b1n2
+      | Trm_or (b1, b2) ->
+        let b1 = aux_bbe b1 in
+        let b2 = aux_bbe b2 in
+        let b1n2 = env_intersect ~loc e (bindsof b1) (bindsof b2) in
+        return (Trm_or (b1, b2)) b1n2
 
-    | Trm_bbe_is (t, p) ->
-      let t = aux_ml t in
-      if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s\n" (trm_to_string t)(Ast_print.typ_to_string (typeof t)) (trm_to_string p) (Ast_print.typ_to_string p.trm_typ);
-      let p = aux_pat ~expected_typ:(typeof t) (t.trm_typ) p in (* TODO "expected type for pat" : add the type of t as expected for p *)
-      unify_or_error ~loc e (typeof t) (typeof p) (Mismatch_type_is (typeof t, typeof p)); (* In theory this is not useful anymore. Remove when all of the modifications are made *)
+      | Trm_bbe_is (t, p) ->
+        let t = aux_ml t in
+        if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s\n" (trm_to_string t)(Ast_print.typ_to_string (typeof t)) (trm_to_string p) (Ast_print.typ_to_string p.trm_typ);
+        let p = aux_pat ~expected_typ:(typeof t) (t.trm_typ) p in
+        unify_or_error ~loc e (typeof t) (typeof p) (Mismatch_type_is (typeof t, typeof p)); (* In theory this is not useful anymore. Remove when all of the modifications are made *)
 
-      if debug_env then Printf.printf "Environment bound by p : %s\n" (Ast_print.env_to_string ~style:Ast_print.style_debug (bindsof p));
+        if debug_env then Printf.printf "Environment bound by p : %s\n" (Ast_print.env_to_string ~style:Ast_print.style_debug (bindsof p));
 
-      return (Trm_bbe_is (t, p)) (bindsof p)
+        return (Trm_bbe_is (t, p)) (bindsof p)
 
-    (* simply returning aux_ml would not initialize trm_binds, meaning that the result term would be interpreted as a term, and not as a BBE by the "bindsof" function.
-      Instead, we wrap with the "return" function to initialize the result bindings to [Some {}] *)
-    | _ -> return (aux_ml ~expected_typ:the_typ_bool b).trm_desc (env_empty)
+      (* simply returning aux_ml would not initialize trm_binds, meaning that the result term would be interpreted as a term, and not as a BBE by the "bindsof" function.
+        Instead, we wrap with the "return" function to initialize the result bindings to [Some {}] *)
+      | _ -> return (aux_ml ~expected_typ:the_typ_bool b).trm_desc (env_empty)
+  in
+  if !Flags.verbose && !Flags.debug then Printf.printf "Exiting typecheck_bbe with :\n  %s\n" (trm_to_string result);
+  result
 
 
 
@@ -1351,9 +1356,8 @@ let typecheck_topdef ?exact_error_messages ~style (env : env) (td : topdef) : to
         Debug.log "🟩 Internalised as %s." (sch_to_string synsch.synsch_sch) ;
         ({ td with topdef_desc = Topdef_external tde }, env)
 
-
     (* Process a type definition *)
-    (* | Topdef_typ_def tdt ->
+    | Topdef_typ_def tdt ->
         let tds = tdt.typ_def_td in
         (* First, we add dummy definition for all the types. *)
         let env =
@@ -1364,15 +1368,15 @@ let typecheck_topdef ?exact_error_messages ~style (env : env) (td : topdef) : to
         let (env, tcs) =
           List.fold_left (fun (env, tcs) td ->
             try
-              let (env, tc) = env_add_type_declaration env td in
+              let (env, tc) = env_add_type_declaration env td in (* Note: I just need to add the constructors basically *)
               (env, tc :: tcs)
             with Failure msg ->
               raise_typecheck_error loc msg) (env, []) tds in
         let tdt = { tdt with typ_def_typs = List.rev tcs } in
         Debug.log "🟩 Done." ;
         ({ td with topdef_desc = Topdef_typ_def tdt }, env)
- *)
-    | _ -> raise (Error (Unsupported_term "Topdef_typ_def", td.topdef_loc))
+
+    (* | _ -> raise (Error (Unsupported_term "Topdef_typ_def", td.topdef_loc)) *)
   )
 
 let typecheck_program ?exact_error_messages ?(continue_on_error = false) ~style (tds: topdefs) : topdefs =

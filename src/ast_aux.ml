@@ -740,25 +740,6 @@ let pat_ors ?loc ?typ (ps : pats) =
 (*#########################################################################*)
 (* ** Environment initialisation *)
 
-(* Question: what does this function do? It creates an "env_item". Here in particular, we define an overloaded item for constructors. Is it really necessary? Can't I just use specific constructs? Or is it because we want to be able to unify with any type? *)
-(* let mk_base_constr name ?(symbol = SymbolName (Var.var name)) inputs tvars typ =
-  let x = var name in
-  Env_item_overload {
-      candidates_and_modes_candidates = [{
-        instance_value = trm_var ~typ ~resolution:VarRegular x ;
-        instance_sig = {
-          instance_tvars = tvars ;
-          instance_assumptions = [] ;
-          instance_typ = typ
-        } ;
-        instance_loc = loc_none ;
-        instance_symbol = symbol
-      }] ;
-      candidates_and_modes_modes = Some (inputs, Mode_in)
-  }
- *)
-
- (* "tuple" is not in env_builtin, there are special rules for it in the typechecker *)
 let env_builtin =
   let mk_special = {
     tconstr_tvars = [] ;

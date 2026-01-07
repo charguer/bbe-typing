@@ -119,8 +119,8 @@ val add_dummy_type : env -> Parsetree.type_declaration -> env
   the environment.
   If the type declaration is recursive, then it will assume that it is already within
   the environment (at least as a dummy placeholder). *)
-(* val env_add_type_declaration : env -> Parsetree.type_declaration -> env * tconstr_desc
- *)
+val env_add_type_declaration : env -> Parsetree.type_declaration -> env * tconstr_desc
+
 
 (*#########################################################################*)
 (* ** Typechecking of user-provided type annotations *)

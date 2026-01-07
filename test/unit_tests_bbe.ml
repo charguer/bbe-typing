@@ -72,14 +72,17 @@ let call_poly_1 =
 let call_poly_2 (type a) (x : a) : a =
   fun_poly x
 
+let[@type_error "mistyped application"] fun_fun_fail (f : int -> int -> int) : int -> int =
+  f 2
 
-(* type 'a func = 'a *)
-(* TODO
+let fun_fun_curried (f : int -> (int -> int) func) : int -> int =
+  f 2
+
 let call_poly_fun (type a) (f : a -> (a -> a) func) : a -> (a -> a) func =
   fun_poly f
 
 let call_poly_fun_fun =
-  call_poly_fun fun_fun *)
+  call_poly_fun fun_fun
 
 (* Custom data types *)
 
@@ -188,9 +191,14 @@ let while_bind x f =
     f y
   done
 
-let[@type_error "term conflicts with context"] while_bind_fail (x : int option) f =
+let[@type_error "term conflicts with context"] while_bind_type_fail (x : int option) f =
   while (x @_is (Some ??y)) do
     y
+  done
+
+let[@type_error "unbound variable z"] while_bind_var_fail (x : int option) f =
+  while (x @_is (Some ??y)) do
+    z
   done
 
 (* switch *)
@@ -217,6 +225,13 @@ let[@type_error "unbound variable x"] switch_fail =
     _case ((true @_is ??x) @_then x);
     _case (true @_then x)
   ]
+
+let[@type_error "type mismatch in switch"] switch_type_fail =
+  __switch [
+    _case ((true @_is ??x) @_then ());
+    _case (true @_then 3)
+  ]
+
 
 (**************************************************************)
 (* Nesting of features *)
