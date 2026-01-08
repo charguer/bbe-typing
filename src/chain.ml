@@ -103,12 +103,15 @@ let full
     call_back_syntax res
   ) ;
 
-  let transformed_ast =
+  let _transformed_ast =
     wrapper (Transform.transform_program) ast in
+
 
   (* Print *)
   let out_str = Ast_print.to_string ~style:printing_styles ast in
-  let out_str_transformed = Ast_print.to_string ~style:printing_styles transformed_ast in
+  (* let out_str_transformed = Ast_print.to_string ~style:printing_styles transformed_ast in *)
+
+  let out_str_transformed = "" in
 
   let out_str =
     if readable then (
