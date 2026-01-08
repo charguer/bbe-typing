@@ -15,7 +15,7 @@ if [ ${res} -eq 0 ]; then
     echo 'test/unit_tests_bbe_typed.ml'
 else
     echo 'debug failed'
-    cat 'output.txt'
+    # cat 'output.txt'
 fi
 
 

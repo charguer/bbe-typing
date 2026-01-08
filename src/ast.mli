@@ -144,7 +144,7 @@ type cst =
 
 
   (* TODO REMOVE PAT *)
-type pat = {
+(* type pat = {
   pat_desc : pat_desc;
   pat_loc : loc;
   pat_typ : typ;
@@ -160,7 +160,7 @@ and pat_desc =
   | Pat_constraint of pat * syntyp  (* (_ : sty) *)
   | Pat_or of pat * pat             (* _ | _ *)
 
-and pats = pat list
+and pats = pat list *)
 
 type rec_flag = Asttypes.rec_flag
 
@@ -212,11 +212,11 @@ type trm_desc =
   | Trm_switch of (bbe * trm) list
   | Trm_while of bbe * trm
   (*BBE constructions*)
-  | Trm_bbe_is of trm * trm_pat
+  | Trm_bbe_is of trm * pat
   (*Pattern constructions*)
   | Trm_pat_var of varid
   | Trm_pat_wild
-  | Trm_pat_when of trm_pat * trm
+  | Trm_pat_when of pat * trm
   (*
   LATER: Trm_for of dir * var * trm * trm * trm
   *)
@@ -235,7 +235,7 @@ and trm = {
 and trms = trm list
 
 and bbe = trm
-and trm_pat = trm (*temporary solution, hoping to remove the "pat" type and change "pattern" to pat later on.*)
+and pat = trm (*temporary solution, hoping to remove the "pat" type and change "pattern" to pat later on.*)
 
 (* TODO: reread this later *)
 (*

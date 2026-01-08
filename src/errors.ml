@@ -14,7 +14,7 @@ type error =
   | Bad_annotation of string * typ * typ
   | Unexpected_annotation of styp
   | Conflict_with_context of trm * typ * typ
-  | Conflict_with_context_pattern of pat * typ * typ
+(*   | Conflict_with_context_pattern of pat * typ * typ *)
   | Boolean_condition of typ
   | Branches_mismatch_if of typ * typ
   | Branches_mismatch_match of string * typ * typ

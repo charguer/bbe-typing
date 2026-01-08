@@ -13,6 +13,12 @@ open Ast_aux
 open Tools
 open Ast_print
 open PPrint
+open Errors
+open Errors_aux
+
+let unsupported ?(loc=loc_none) (m : string) : 'a =
+  prerr_endline (Printf.sprintf "🟪 Unsupported, %s: %s" (Ast_print.print_loc loc) m) ;
+  exit 1
 
 module FreshVar : sig
   type t
@@ -57,7 +63,7 @@ let mk_raise_switch_failure loc : trm =
 (* ============================================================================ *)
 
 (* Main translation function for terms *)
-let rec translate_trm (fresh_state : FreshVar.t) (t : trm) : trm =
+let rec transform_trm (fresh_state : FreshVar.t) (t : trm) : trm =
   let loc = t.trm_loc in
   match t.trm_desc with
 
@@ -71,66 +77,66 @@ let rec translate_trm (fresh_state : FreshVar.t) (t : trm) : trm =
 
   (* fun (x1 : T1) ... (xn : Tn) -> t ==> fun (x1:T1) ... (xn:Tn) -> [[t]] *)
   | Trm_funs (params, body) ->
-      trm_funs ~loc params (translate_trm fresh_state body)
+      trm_funs ~loc params (transform_trm fresh_state body)
 
   (* if b then t1 else t2 ==> [[b]] ([[t1]]) ([[t2]]) *)
   | Trm_if (cond, then_branch, else_branch) ->
-      let then_translated = translate_trm fresh_state then_branch in
-      let else_translated = translate_trm fresh_state else_branch in
-      translate_bbe fresh_state cond then_translated else_translated
+      let then_transformd = transform_trm fresh_state then_branch in
+      let else_transformd = transform_trm fresh_state else_branch in
+      transform_bbe fresh_state cond then_transformd else_transformd
 
   (* let _ = t1 in t2 ==> let _ = [[t1]] in [[t2]] *)
   (* let x = t1 in t2 ==> let x = [[t1]] in [[t2]] *)
   | Trm_let (let_def, body) ->
-      let translated_rhs = translate_trm fresh_state let_def.let_def_body in
-      let translated_body = translate_trm fresh_state body in
+      let transformd_rhs = transform_trm fresh_state let_def.let_def_body in
+      let transformd_body = transform_trm fresh_state body in
       let new_let_def = {
         let_def with
-        let_def_body = translated_rhs;
+        let_def_body = transformd_rhs;
       } in
-      trm_let_def ~loc new_let_def translated_body
+      trm_let_def ~loc new_let_def transformd_body
 
   (* f (t1, ..., tn) ==> ([[f]] [[t1]] ... [[tn]]) *)
   | Trm_apps (f, args) ->
-      let f' = translate_trm fresh_state f in
-      let args' = List.map (translate_trm fresh_state) args in
+      let f' = transform_trm fresh_state f in
+      let args' = List.map (transform_trm fresh_state) args in
       trm_apps ~loc f' args'
 
   (* (t : T) ==> ([[t]] : T) *)
   | Trm_annot (t, ty) ->
-      trm_annot ~loc (translate_trm fresh_state t) ty
+      trm_annot ~loc (transform_trm fresh_state t) ty
 
   (* fun (type a) -> t ==> fun (type a) -> [[t]] *)
   | Trm_forall (tvar, body) ->
-      trm_forall ~loc tvar (translate_trm fresh_state body)
+      trm_forall ~loc tvar (transform_trm fresh_state body)
 
   (* match v with | p1 -> t1 | ... | pn -> tn ==> [[switch ...]] *)
   | Trm_match (scrutinee, cases) ->
-      translate_match fresh_state scrutinee cases loc
+      transform_match fresh_state scrutinee cases loc
 
   (* (t1, ..., tn) ==> ([[t1]], ..., [[tn]]) *)
   | Trm_tuple ts ->
-      trm_tuple ~loc (List.map (translate_trm fresh_state) ts)
+      trm_tuple ~loc (List.map (transform_trm fresh_state) ts)
 
   (* not t ==> not [[t]] *)
   | Trm_not t ->
-      trm_not ~loc (translate_trm fresh_state t)
+      trm_not ~loc (transform_trm fresh_state t)
 
   (* t1 && t2 ==> [[t1]] && [[t2]] *)
   | Trm_and (t1, t2) ->
-      trm_and ~loc (translate_trm fresh_state t1) (translate_trm fresh_state t2)
+      trm_and ~loc (transform_trm fresh_state t1) (transform_trm fresh_state t2)
 
   (* t1 || t2 ==> [[t1]] || [[t2]] *)
   | Trm_or (t1, t2) ->
-      trm_or ~loc (translate_trm fresh_state t1) (translate_trm fresh_state t2)
+      trm_or ~loc (transform_trm fresh_state t1) (transform_trm fresh_state t2)
 
   (* switch (case b then t) :: case_list ==> [[b]] ([[t]]) ([[switch case_list]]) *)
   | Trm_switch cases ->
-      translate_switch fresh_state cases loc
+      transform_switch fresh_state cases loc
 
   (* while b then t ==> let rec __loop_N () = [[b]] ([[t]]; __loop_N ()) (()) in __loop_N () *)
   | Trm_while (cond, body) ->
-      translate_while fresh_state cond body loc
+      transform_while fresh_state cond body loc
 
   (* BBE constructions should not appear in term position during parsing *)
   | Trm_bbe_is (t, p) ->
@@ -146,7 +152,7 @@ let rec translate_trm (fresh_state : FreshVar.t) (t : trm) : trm =
 
 (* Translation for BBE (branching boolean expressions) with continuations
    [[b]] (on_success) (on_failure) *)
-and translate_bbe (fresh_state : FreshVar.t)
+and transform_bbe (fresh_state : FreshVar.t)
                   (b : trm)
                   (on_success : trm)
                   (on_failure : trm) : trm =
@@ -155,46 +161,46 @@ and translate_bbe (fresh_state : FreshVar.t)
 
   (* [[y is p]] (u) (u') ==> (y |> [[p]] (u) (u')) *)
   | Trm_bbe_is ({ trm_desc = Trm_var y; _ }, p) ->
-      translate_pattern fresh_state y p on_success on_failure loc
+      transform_pattern fresh_state y p on_success on_failure loc
 
   (* [[t is p]] (u) (u') ==> let y = t in (y |> [[p]] (u) (u')) *)
   | Trm_bbe_is (t, p) ->
       let fresh_var = FreshVar.generate fresh_state "__match" in
-      let pattern_check = translate_pattern fresh_state fresh_var p on_success on_failure loc in
-      let t' = translate_trm fresh_state t in
+      let pattern_check = transform_pattern fresh_state fresh_var p on_success on_failure loc in
+      let t' = transform_trm fresh_state t in
       trm_let ~loc Nonrecursive (fresh_var, None) t' pattern_check
 
   (* [[b1 && b2]] (u) (u') ==> [[b1]] ([[b2]] (u) (u')) (u') *)
   | Trm_and (b1, b2) ->
-      let inner = translate_bbe fresh_state b2 on_success on_failure in
-      translate_bbe fresh_state b1 inner on_failure
+      let inner = transform_bbe fresh_state b2 on_success on_failure in
+      transform_bbe fresh_state b1 inner on_failure
 
   (* [[b1 || b2]] (u) (u') ==> [[b1]] (u) ([[b2]] (u) (u')) *)
   | Trm_or (b1, b2) ->
-      let inner = translate_bbe fresh_state b2 on_success on_failure in
-      translate_bbe fresh_state b1 on_success inner
+      let inner = transform_bbe fresh_state b2 on_success on_failure in
+      transform_bbe fresh_state b1 on_success inner
 
   (* [[not b]] (u) (u') ==> [[b]] (u') (u) *)
   | Trm_not b ->
-      translate_bbe fresh_state b on_failure on_success
+      transform_bbe fresh_state b on_failure on_success
 
   (* [[t]] (u) (u') ==> if [[t]] then u else u' where t is a boolean term *)
   | _ ->
-      let t' = translate_trm fresh_state b in
+      let t' = transform_trm fresh_state b in
       trm_if ~loc t' on_success on_failure
 
 (* Translation for patterns with continuations
    (y |> pattern (on_success) (on_failure))
 
    Note: scrutinee_var is always a variable name, not a term *)
-and translate_pattern (fresh_state : FreshVar.t)
+and transform_pattern (fresh_state : FreshVar.t)
                       (scrutinee_var : varid)
-                      (p : trm_pat)
+                      (p : pat)
                       (on_success : trm)
                       (on_failure : trm)
                       (loc : loc) : trm =
 
-  (* Since trm_pat is an alias for trm, we pattern match on trm_desc *)
+  (* Since pat is an alias for trm, we pattern match on trm_desc *)
   match p.trm_desc with
 
   (* (y |> _ (u) (u')) ==> u *)
@@ -218,19 +224,19 @@ and translate_pattern (fresh_state : FreshVar.t)
       let k_thunk = trm_funs ~loc unit_param on_failure in
 
       (* [[b]] (u) (k ()) *)
-      let guarded_success = translate_bbe fresh_state guard on_success k_call in
+      let guarded_success = transform_bbe fresh_state guard on_success k_call in
 
       (* (y |> [[p]] (guarded_success) (k ())) *)
-      let pattern_match = translate_pattern fresh_state scrutinee_var inner_pat guarded_success k_call loc in
+      let pattern_match = transform_pattern fresh_state scrutinee_var inner_pat guarded_success k_call loc in
 
       (* let k () = on_failure in pattern_match *)
       trm_let ~loc Nonrecursive (k_name, None) k_thunk pattern_match
 
   (* Handle structured patterns *)
   | _ ->
-      translate_pattern_structure fresh_state scrutinee_var p on_success on_failure loc
+      transform_pattern_structure fresh_state scrutinee_var p on_success on_failure loc
 
-(* Helper to translate structured patterns
+(* Helper to transform structured patterns
    This handles patterns like:
    - C
    - C (p1, ..., pn)
@@ -239,9 +245,9 @@ and translate_pattern (fresh_state : FreshVar.t)
    - (p1 | p2)
    - (not p)
 *)
-and translate_pattern_structure (fresh_state : FreshVar.t)
+and transform_pattern_structure (fresh_state : FreshVar.t)
                                 (scrutinee_var : varid)
-                                (p : trm_pat)
+                                (p : pat)
                                 (on_success : trm)
                                 (on_failure : trm)
                                 (loc : loc) : trm =
@@ -252,19 +258,19 @@ and translate_pattern_structure (fresh_state : FreshVar.t)
   (* Pattern conjunction: (p1 & p2) *)
   (* (y |> (p1 & p2) (u) (u')) ==> (y |> [[p1]] (y |> [[p2]] (u) (u')) (u')) *)
   | Trm_and (p1, p2) ->
-      let inner = translate_pattern fresh_state scrutinee_var p2 on_success on_failure loc in
-      translate_pattern fresh_state scrutinee_var p1 inner on_failure loc
+      let inner = transform_pattern fresh_state scrutinee_var p2 on_success on_failure loc in
+      transform_pattern fresh_state scrutinee_var p1 inner on_failure loc
 
   (* Pattern disjunction: (p1 | p2) *)
   (* (y |> (p1 | p2) (u) (u')) ==> (y |> [[p1]] (u) (y |> [[p2]] (u) (u'))) *)
   | Trm_or (p1, p2) ->
-      let inner = translate_pattern fresh_state scrutinee_var p2 on_success on_failure loc in
-      translate_pattern fresh_state scrutinee_var p1 on_success inner loc
+      let inner = transform_pattern fresh_state scrutinee_var p2 on_success on_failure loc in
+      transform_pattern fresh_state scrutinee_var p1 on_success inner loc
 
   (* Pattern negation: (not p) *)
   (* (y |> (not p) (u) (u')) ==> (y |> [[p]] (u') (u)) *)
   | Trm_not p ->
-      translate_pattern fresh_state scrutinee_var p on_failure on_success loc
+      transform_pattern fresh_state scrutinee_var p on_failure on_success loc
 
   (* Constructor without arguments: C *)
   (* (y |> C (u) (u')) ==> match y with | C -> u | _ -> u' *)
@@ -301,7 +307,7 @@ and translate_pattern_structure (fresh_state : FreshVar.t)
       in
 
       let combined_check = build_conjunction fresh_vars pattern_args in
-      let check_result = translate_bbe fresh_state combined_check on_success on_failure in
+      let check_result = transform_bbe fresh_state combined_check on_success on_failure in
 
       (* Create match pattern: C (x1, ..., xn) *)
       let var_patterns = List.map (fun v -> trm_pat_var ~loc v) fresh_vars in
@@ -317,7 +323,7 @@ and translate_pattern_structure (fresh_state : FreshVar.t)
        let x = [[f]] y in (x |> Some (p1, ..., pn) (u) (u')) *)
   | Trm_apps (func, pattern_args) ->
       let y_var = trm_var ~loc scrutinee_var in
-      let func' = translate_trm fresh_state func in
+      let func' = transform_trm fresh_state func in
       let app = trm_apps ~loc func' [y_var] in
 
       let fresh_var = FreshVar.generate fresh_state "__view" in
@@ -327,7 +333,7 @@ and translate_pattern_structure (fresh_state : FreshVar.t)
       let tuple_pattern = trm_tuple ~loc pattern_args in
       let some_pattern = trm_apps ~loc some_constr [tuple_pattern] in
 
-      let inner_check = translate_pattern fresh_state fresh_var some_pattern on_success on_failure loc in
+      let inner_check = transform_pattern fresh_state fresh_var some_pattern on_success on_failure loc in
       trm_let ~loc Nonrecursive (fresh_var, None) app inner_check
 
   (* Tuple pattern: (p1, ..., pn) - represented as Trm_tuple *)
@@ -353,7 +359,7 @@ and translate_pattern_structure (fresh_state : FreshVar.t)
       in
 
       let combined_check = build_conjunction fresh_vars pattern_list in
-      let check_result = translate_bbe fresh_state combined_check on_success on_failure in
+      let check_result = transform_bbe fresh_state combined_check on_success on_failure in
 
       (* Create match pattern: (x1, ..., xn) *)
       let var_patterns = List.map (fun v -> trm_pat_var ~loc v) fresh_vars in
@@ -373,14 +379,18 @@ and translate_pattern_structure (fresh_state : FreshVar.t)
       let failure_case = (wildcard, on_failure) in
       trm_match ~loc y_var [success_case; failure_case]
 
-  | _ ->
-      failwith "Unsupported pattern structure"
+  | Trm_annot (p, st) ->
+    let p' = transform_pattern fresh_state scrutinee_var p on_success on_failure loc in
+    trm_annot ~loc p' st
 
-(* Helper: translate match to switch
+  | _ ->
+    unsupported ~loc (Printf.sprintf "Unexpected construct in pattern position: %s\n" (trm_to_string ~style:style_debug p))
+
+(* Helper: transform match to switch
    match v with | p1 -> t1 | ... | pn -> tn ==> [[switch ...]] *)
-and translate_match (fresh_state : FreshVar.t)
+and transform_match (fresh_state : FreshVar.t)
                     (scrutinee : trm)
-                    (cases : (trm_pat * trm) list)
+                    (cases : (pat * trm) list)
                     (loc : loc) : trm =
   (* The scrutinee must be bound to a variable first *)
   let scrutinee_var =
@@ -389,27 +399,27 @@ and translate_match (fresh_state : FreshVar.t)
     | _ -> FreshVar.generate fresh_state "__scrutinee"
   in
 
-  (* Convert each (pattern, body) to (bbe, translated_body) *)
+  (* Convert each (pattern, body) to (bbe, transformd_body) *)
   let switch_cases = List.map (fun (pattern, body) ->
     (* Create BBE: scrutinee_var is pattern *)
     let scrutinee_trm = trm_var ~loc scrutinee_var in
     let bbe = trm_bbe_is ~loc scrutinee_trm pattern in
-    let translated_body = translate_trm fresh_state body in
-    (bbe, translated_body)
+    let transformd_body = transform_trm fresh_state body in
+    (bbe, transformd_body)
   ) cases in
 
-  let switch_trm = translate_switch fresh_state switch_cases loc in
+  let switch_trm = transform_switch fresh_state switch_cases loc in
 
   (* If we created a fresh variable, wrap in let binding *)
   match scrutinee.trm_desc with
   | Trm_var _ -> switch_trm
   | _ ->
-      let scrutinee' = translate_trm fresh_state scrutinee in
+      let scrutinee' = transform_trm fresh_state scrutinee in
       trm_let ~loc Nonrecursive (scrutinee_var, None) scrutinee' switch_trm
 
-(* Helper: translate switch statements
+(* Helper: transform switch statements
    switch (case b then t) :: case_list ==> [[b]] ([[t]]) ([[switch case_list]]) *)
-and translate_switch (fresh_state : FreshVar.t)
+and transform_switch (fresh_state : FreshVar.t)
                      (cases : (bbe * trm) list)
                      (loc : loc) : trm =
   match cases with
@@ -419,16 +429,16 @@ and translate_switch (fresh_state : FreshVar.t)
 
   | (cond, body) :: rest ->
       (* switch (case b then t) :: case_list ==> [[b]] ([[t]]) ([[switch case_list]]) *)
-      let rest_switch = translate_switch fresh_state rest loc in
-      let body' = translate_trm fresh_state body in
-      translate_bbe fresh_state cond body' rest_switch
+      let rest_switch = transform_switch fresh_state rest loc in
+      let body' = transform_trm fresh_state body in
+      transform_bbe fresh_state cond body' rest_switch
 
-(* Helper: translate while loops
+(* Helper: transform while loops
    while b then t ==>
      let rec __loop_N () =
        [[b]] ([[t]]; __loop_N ()) (())
      in __loop_N () *)
-and translate_while (fresh_state : FreshVar.t)
+and transform_while (fresh_state : FreshVar.t)
                     (cond : bbe)
                     (body : trm)
                     (loc : loc) : trm =
@@ -440,13 +450,13 @@ and translate_while (fresh_state : FreshVar.t)
   let loop_call = trm_apps ~loc loop_var [unit_arg] in
 
   (* [[t]] *)
-  let body' = translate_trm fresh_state body in
+  let body' = transform_trm fresh_state body in
 
   (* [[t]]; __loop_N () *)
   let body_seq = trm_seq ~loc body' loop_call in
 
   (* [[b]] (body_seq) (()) *)
-  let loop_body = translate_bbe fresh_state cond body_seq unit_arg in
+  let loop_body = transform_bbe fresh_state cond body_seq unit_arg in
 
   (* fun () -> loop_body *)
   let unit_param : varsyntyps = [("_", dummy_syntyp ())] in
@@ -460,10 +470,31 @@ and translate_while (fresh_state : FreshVar.t)
 (* ============================================================================ *)
 
 (* Main entry point for translation *)
-let translate (t : trm) : trm =
+(* transform a single top-level definition *)
+let transform_topdef (fresh_state : FreshVar.t) (td : topdef) : topdef =
+  let desc' = match td.topdef_desc with
+    | Topdef_val_def let_def ->
+        (* transform the body of the let definition *)
+        let transformd_body = transform_trm fresh_state let_def.let_def_body in
+        let new_let_def = { let_def with let_def_body = transformd_body } in
+        Topdef_val_def new_let_def
+
+    | Topdef_typ_def typ_def ->
+        (* Type definitions are propagated as-is *)
+        Topdef_typ_def typ_def
+
+    | Topdef_external ext_def ->
+        (* External definitions are propagated as-is *)
+        Topdef_external ext_def
+  in
+  { td with topdef_desc = desc' }
+
+(* transform a complete program (list of top-level definitions) *)
+let transform_program (prog : program) : program =
+  (* see if this is enough. *)
   let fresh_state = FreshVar.create () in
-  translate_trm fresh_state t
+  List.map (transform_topdef fresh_state) prog
 
 (* Entry point with custom fresh variable state *)
-let translate_with_state (fresh_state : FreshVar.t) (t : trm) : trm =
-  translate_trm fresh_state t
+let transform_with_state (fresh_state : FreshVar.t) (t : trm) : trm =
+  transform_trm fresh_state t

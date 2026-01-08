@@ -740,7 +740,8 @@ and trm_to_doc_raw ~style (t : trm) : doc =
         ^^ parens (aux t1)
 
   | Trm_match (t, pts) ->
-          string "begin match"
+    failwith "TODO: change implementation of patterns"
+          (* string "begin match"
         ^^ blank 1
         ^^ aux t
         ^^ blank 1
@@ -757,7 +758,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
               ^^ blank 1
               ^^ aux t) pts)
         ^^ hardline
-        ^^ string "end"
+        ^^ string "end" *)
 
   | Trm_tuple ts -> (* TODO: check if this is the correct result. *)
     parens (separate comma
@@ -987,7 +988,7 @@ and syntyp_to_doc sty =
   ^^ blank 1
   ^^ string "*)"
 
-and pat_to_doc (p : pat) : doc =
+(* and pat_to_doc (p : pat) : doc =
   let aux = pat_to_doc in
   match p.pat_desc with
   | Pat_any -> string "_"
@@ -1020,7 +1021,7 @@ and pat_to_doc (p : pat) : doc =
       ^^ string "|"
       ^^ blank 1
       ^^ aux p2
-
+ *)
 
 let varid_to_string ~style x = doc_to_string (varid_to_doc ~style x)
 
@@ -1258,6 +1259,6 @@ let rec print_modifs (ms : (typ * typ_desc) list) : unit =
 let trm_to_string ~style t =
   doc_to_string (trm_to_doc ~style t)
 
-let pat_to_string t =
+(* let pat_to_string t =
   doc_to_string (pat_to_doc t)
-
+ *)

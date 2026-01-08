@@ -13,8 +13,8 @@ if [ ${res} -eq 0 ]; then
     echo 'test/unit_tests_debug_typed.ml'
 else
     echo 'debug failed'
-    echo "$output"
-    cat output.txt
+    # echo "$output"
+    # cat output.txt
 fi
 
 # code output.txt

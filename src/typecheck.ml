@@ -715,7 +715,7 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
     typecheck_ml ?expected_typ env t in
   let aux_bbe ?(env : env = e) (t : trm) : bbe =
     typecheck_bbe env t in
-  let aux_pat ?(env : env = e) ?(expected_typ:typ option) (typ : typ) (p : trm_pat) : trm_pat =
+  let aux_pat ?(env : env = e) ?(expected_typ:typ option) (typ : typ) (p : pat) : pat =
     typecheck_pattern ?expected_typ env p in
   let return (* ?(annot = b.trm_annot) *) (u : trm_desc) (binds : env) : trm =
     (* We also unify with the previously stored type in place, for the rare cases in which the parser
@@ -781,13 +781,13 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
 *)
 
 (* typecheck_pat TODO change name. typecheck_pat -> typecheck_match pour le moment. Type pat -> match_pat ? *)
-and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : trm_pat) : trm_pat =
+and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : pat) : pat =
   let loc = p.trm_loc in
   let _aux_ml ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
     typecheck_ml ?expected_typ env t in
   let aux_bbe ?(env : env = e) (b : bbe) : bbe =
     typecheck_bbe env b in
-  let aux_pat ?(expected_typ:typ option) ?(env : env = e) (p : trm_pat) : trm_pat =
+  let aux_pat ?(expected_typ:typ option) ?(env : env = e) (p : pat) : pat =
     typecheck_pattern ?expected_typ env p in
   let return(*  ?(annot = p.trm_annot)  *)(typ : typ) (u : trm_desc) (binds : env) : trm =
     (* TODO: remove the option on expected_typ? I don't think we should be able to call this function without expecting anything *)

@@ -80,12 +80,12 @@ val trm_desc_or : trm -> trm -> trm_desc
 val trm_desc_while : bbe -> trm -> trm_desc
 val trm_desc_switch : (bbe * trm) list -> trm_desc
 
-val trm_desc_bbe_is : trm -> trm_pat -> trm_desc
+val trm_desc_bbe_is : trm -> pat -> trm_desc
 
 val trm_desc_pat_var : var -> trm_desc
 val trm_desc_pat_var_varid : varid -> trm_desc
 val trm_desc_pat_wild : unit -> trm_desc
-val trm_desc_pat_when : trm_pat -> bbe -> trm_desc
+val trm_desc_pat_when : pat -> bbe -> trm_desc
 val trm_desc_assert_false : unit -> trm_desc
 (** ** For Terms *)
 
@@ -134,12 +134,12 @@ val trm_record_set : ?loc:loc -> ?typ:typ -> trm -> field -> trm -> trm
 val trm_record_make : ?loc:loc -> ?typ:typ -> (field * trm) list -> trm
 val trm_record_with : ?loc:loc -> ?typ:typ -> trm -> field -> trm -> trm
  *)
-val trm_bbe_is : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm_pat -> trm
+val trm_bbe_is : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> pat -> trm
 
 val trm_pat_var : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) var -> trm
 val trm_pat_var_varid : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) varid -> trm
 val trm_pat_wild : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) unit -> trm
-val trm_pat_when : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm_pat -> bbe -> trm
+val trm_pat_when : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) pat -> bbe -> trm
 
 
 (* Like [trm_funs], but simply returns the body if no arguments are provided. *)
@@ -150,7 +150,7 @@ val trm_tuple_flex : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm list -> t
 
 (** ** For Patterns *)
 
-val pat_any : ?loc:loc -> ?typ:typ -> unit -> pat
+(* val pat_any : ?loc:loc -> ?typ:typ -> unit -> pat
 val pat_var : ?loc:loc -> ?typ:typ -> var -> pat
 val pat_alias : ?loc:loc -> ?typ:typ -> pat -> var -> pat
 val pat_constant : ?loc:loc -> ?typ:typ -> cst -> pat
@@ -159,7 +159,7 @@ val pat_construct : ?loc:loc -> ?typ:typ -> constr -> pats -> pat
 val pat_constraint : ?loc:loc -> ?typ:typ -> pat -> syntyp -> pat
 val pat_or : ?loc:loc -> ?typ:typ -> pat -> pat -> pat
 val pat_ors : ?loc:loc -> ?typ:typ -> pats -> pat
-
+ *)
 (** ** For Toplevels *)
 
 val topdef_desc_val : ?sch:sch -> rec_flag -> bind -> trm -> topdef_desc
@@ -295,16 +295,16 @@ val trm_clone : trm -> trm
 
 (* Apply the function to all types in the term or pattern. *)
 val trm_map_typ : (typ -> typ) -> trm -> trm
-val pat_map_typ : (typ -> typ) -> pat -> pat
-
+(* val pat_map_typ : (typ -> typ) -> pat -> pat
+ *)
 (** * Iterators on patterns *)
 
-val pat_map : (pat -> pat) -> pat -> pat
+(* val pat_map : (pat -> pat) -> pat -> pat
 val pat_iter : (pat -> unit) -> pat -> unit
-
+ *)
 (* Variables declared within a pattern. *)
-val pat_vars : pat -> var list
-
+(* val pat_vars : pat -> var list
+ *)
 (** * Iterators on program *)
 
 (* Iterate on each top-level declaration of the provided program. *)

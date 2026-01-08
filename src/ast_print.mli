@@ -78,7 +78,7 @@ val print_typ_option : out_channel -> typ option -> unit
 val cst_to_doc : cst -> doc
 val var_to_doc : var -> doc
 val put_parens_trm : trm -> doc -> doc
-val pat_to_doc : pat -> doc
+(* val pat_to_doc : pat -> doc *)
 val trm_to_doc : style:style -> trm -> doc
 val topdef_to_doc : style:style -> topdef -> doc
 val topdef_to_string : style:style -> topdef -> string
@@ -93,7 +93,7 @@ val print_item : style:style -> out_channel -> sch -> unit
 val modes_to_string : mode list -> string
 val modes_io_to_string : mode list * mode -> string *)
 val trm_to_string : style:style -> trm -> string
-val pat_to_string : pat -> string
+(* val pat_to_string : pat -> string *)
 (* val insts_to_string : style:style -> candidates_and_modes -> string
 val instance_to_string : style:style -> instance -> string *)
 

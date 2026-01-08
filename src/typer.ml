@@ -128,6 +128,11 @@ let gen_parsed inputfile =
   let dirname = Filename.dirname inputfile in
   Filename.concat dirname (Printf.sprintf "%s_%s.txt" basename "parsed")
 
+let gen_transformed inputfile =
+  let basename = Filename.chop_suffix (Filename.basename inputfile) ".ml" in
+  let dirname = Filename.dirname inputfile in
+  Filename.concat dirname (Printf.sprintf "%s_%s.txt" basename "transformed")
+
 let get_output_filename (inputfile : string) : string =
   match !output_filename with
   | Some f -> f
@@ -135,6 +140,9 @@ let get_output_filename (inputfile : string) : string =
 
 let get_parsed_filename (inputfile : string) : string =
   gen_parsed inputfile
+
+let get_transformed_filename (inputfile : string) : string =
+  gen_transformed inputfile
 
 let get_parsed_and_converted_filename (inputfile : string) : string =
   gen_filename "translated" inputfile
@@ -223,7 +231,7 @@ let _ =
         res)
     else None in
 
-  let res =
+  let (typed_res, transformed_res)  =
     try
       Chain.full
         ~exact_error_messages:!Flags.exact_error_messages
@@ -259,7 +267,18 @@ let _ =
     let out =
       if outputfile = "-" then stdout
       else open_out outputfile in
-    output_string out res ;
+    output_string out typed_res ;
+    close_out out
+  ) ;
+
+  if !Flags.output then (
+    let outputfile = get_transformed_filename inputfile in
+    if not !Flags.quiet then
+      print_endline (Printf.sprintf "Translation successful. Generating file %s." outputfile) ;
+    let out =
+      if outputfile = "-" then stdout
+      else open_out outputfile in
+    output_string out transformed_res ;
     close_out out
   ) ;
 

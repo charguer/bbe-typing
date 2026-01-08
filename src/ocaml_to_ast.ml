@@ -101,7 +101,8 @@ let tr_pat_to_var (p : pattern) : varsyntyp option =
     Some (no_name_var (), { cty with syntyp_typ = the_typ_unit })
   | _ -> None
 
-let rec tr_pat (p : pattern) : pat =
+(* TODO: change this function to take an OCaml pattern, and translate it into a DSL pat.  *)
+(* let rec tr_pat (p : pattern) : pat =
   (* The set of variables appearing in the pattern is also returned. *)
   let aux = tr_pat in
   let loc = p.ppat_loc in
@@ -130,7 +131,7 @@ let rec tr_pat (p : pattern) : pat =
     | Ppat_constraint (p, ty) ->
         Pat_constraint (aux p, mk_syntyp ty)
     | _ -> unsupported ~loc "Unsupported pattern." in
-  { pat_desc ; pat_loc = p.ppat_loc ; pat_typ = typ_nameless () }
+  { pat_desc ; pat_loc = p.ppat_loc ; pat_typ = typ_nameless () } *)
 
 (* unsupported
 |	Ppat_interval of constant * constant
@@ -707,7 +708,9 @@ let rec tr_exp (e : expression) : trm =
 
  *)
   | Pexp_match (e, cs) ->
-    return (trm_desc_match (tr_exp e) (List.map tr_case cs))
+    failwith "TODO: change pattern implementation"
+    (* Note: important code, keep it. *)
+    (* return (trm_desc_match (tr_exp e) (List.map tr_case cs)) *)
 
   | Pexp_while (e1, e2) ->
     return (trm_desc_while (tr_exp e1) (tr_exp e2))
@@ -886,10 +889,10 @@ and tr_let (rf : rec_flag) (attrs : attributes) (vb : value_binding) : let_def l
     | _ -> unsupported ~loc "Only variable and wildcard pattern are accepted here."
   ) *)
 
-and tr_case c =
+(* and tr_case c =
   match c.pc_guard with
   | Some e -> unsupported ~loc:e.pexp_loc "when clauses within pattern-matching."
-  | None -> (tr_pat c.pc_lhs, tr_exp c.pc_rhs)
+  | None -> (tr_pat c.pc_lhs, tr_exp c.pc_rhs) *)
 
 
 and tr_structure (s : structure) : topdefs =

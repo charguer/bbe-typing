@@ -102,21 +102,29 @@ let full
       end;
     call_back_syntax res
   ) ;
+
+  let transformed_ast =
+    wrapper (Transform.transform_program) ast in
+
   (* Print *)
   let out_str = Ast_print.to_string ~style:printing_styles ast in
+  let out_str_transformed = Ast_print.to_string ~style:printing_styles transformed_ast in
 
-  if readable then (
-    let open Ocamlformat_lib in
-    let conf = Conf.default in
-    match
-      Translation_unit.parse_and_format Syntax.Use_file conf
-        ~input_name
-        ~source:out_str
-    with
-    | Ok formatted -> formatted
-    | Error e ->
-      let buffer = Buffer.create 160 in
-      Translation_unit.Error.print (Format.formatter_of_buffer buffer) e ;
-      failwith ("Formating error: " ^ Buffer.contents buffer)
-  ) else out_str
+  let out_str =
+    if readable then (
+      let open Ocamlformat_lib in
+      let conf = Conf.default in
+      match
+        Translation_unit.parse_and_format Syntax.Use_file conf
+          ~input_name
+          ~source:out_str
+      with
+      | Ok formatted -> formatted
+      | Error e ->
+        let buffer = Buffer.create 160 in
+        Translation_unit.Error.print (Format.formatter_of_buffer buffer) e ;
+        failwith ("Formating error: " ^ Buffer.contents buffer)
+    ) else out_str
+  in
+  (out_str, out_str_transformed)
 

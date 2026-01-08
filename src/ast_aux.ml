@@ -528,7 +528,7 @@ let trm_desc_while (b : bbe) (t : trm) : trm_desc =
 
 
 (* ** Smart constructors for bbe trm descriptors*)
-let trm_desc_bbe_is (t : trm) (p : trm_pat) : trm_desc =
+let trm_desc_bbe_is (t : trm) (p : pat) : trm_desc =
   Trm_bbe_is (t, p)
 
 (* ** Smart constructors for pattern trm descriptors*)
@@ -541,7 +541,7 @@ let trm_desc_pat_var (x : var) : trm_desc =
 let trm_desc_pat_wild () : trm_desc =
   Trm_pat_wild
 
-let trm_desc_pat_when (p : trm_pat) (b : bbe) : trm_desc =
+let trm_desc_pat_when (p : pat) (b : bbe) : trm_desc =
   Trm_pat_when (p, b)
 
 let trm_desc_assert_false () : trm_desc =
@@ -684,7 +684,7 @@ let trm_while ?loc ?typ (* ?annot *) (b : bbe) (t : trm) : trm =
   mktrm ?loc ?typ (trm_desc_while b t)
 
 (* ** Smart constructors for bbes *)
-let trm_bbe_is ?loc ?typ (* ?annot *) (t : trm) (p : trm_pat) : trm =
+let trm_bbe_is ?loc ?typ (* ?annot *) (t : trm) (p : pat) : trm =
   mktrm ?loc ?typ (* ?annot *) (trm_desc_bbe_is t p)
 
 (* ** Smart constructors for trm_patterns *)
@@ -698,22 +698,22 @@ let trm_pat_var_varid ?loc ?typ (* ?annot *) varid : trm =
 let trm_pat_wild ?loc ?typ (* ?annot *) () : trm =
   mktrm ?loc ?typ (* ?annot *) (trm_desc_pat_wild ())
 
-let trm_pat_when ?loc ?typ (* ?annot *) (p : trm_pat) (b : bbe) : trm =
+let trm_pat_when ?loc ?typ (* ?annot *) (p : pat) (b : bbe) : trm =
   mktrm ?loc ?typ (* ?annot *) (trm_desc_pat_when p b)
 
 (*#########################################################################*)
 (* ** Smart constructors for patterns *)
 
-let mkpat ?(loc = loc_none) ?typ (desc : pat_desc) : pat = {
+(* let mkpat ?(loc = loc_none) ?typ (desc : pat_desc) : pat = {
   pat_desc = desc ;
   pat_loc = loc ;
   pat_typ =
     match typ with
     | Some ty -> ty
     | None -> typ_nameless ()
-}
+} *)
 
-let pat_any ?loc ?typ () = mkpat ?loc ?typ Pat_any
+(* let pat_any ?loc ?typ () = mkpat ?loc ?typ Pat_any
 
 let pat_var ?loc ?typ (x : var) = mkpat ?loc ?typ (Pat_var x)
 
@@ -735,7 +735,7 @@ let pat_ors ?loc ?typ (ps : pats) =
   match ps with
   | [] -> failwith "pat_ors: empty list."
   | p :: ps -> List.fold_left (pat_or ?loc ?typ) p ps
-
+ *)
 
 (*#########################################################################*)
 (* ** Environment initialisation *)
@@ -1170,7 +1170,7 @@ let trm_map (f : trm -> trm) (t : trm) : trm =
 
 (** * Iterators on patterns *)
 
-let pat_iter (f : pat -> unit) (p : pat) : unit =
+(* let pat_iter (f : pat -> unit) (p : pat) : unit =
   match p.pat_desc with
   | Pat_any
   | Pat_var _
@@ -1179,9 +1179,9 @@ let pat_iter (f : pat -> unit) (p : pat) : unit =
   | Pat_tuple ps -> List.iter f ps
   | Pat_construct (_, ps) -> List.iter f ps
   | Pat_constraint (p, _) -> f p
-  | Pat_or (p1, p2) -> f p1 ; f p2
+  | Pat_or (p1, p2) -> f p1 ; f p2 *)
 
-let pat_map (f : pat -> pat) (p : pat) : pat =
+(* let pat_map (f : pat -> pat) (p : pat) : pat =
   let loc = p.pat_loc in
   let typ = p.pat_typ in
   match p.pat_desc with
@@ -1206,9 +1206,9 @@ let pat_map (f : pat -> pat) (p : pat) : pat =
     let p1' = f p1 in
     let p2' = f p2 in
     if p1' == p1 && p2' == p2 then p
-    else pat_or ~loc ~typ p1' p2'
+    else pat_or ~loc ~typ p1' p2' *)
 
-let pat_vars p =
+(* let pat_vars p =
   let rec aux p =
     match p.pat_desc with
     | Pat_any -> []
@@ -1219,16 +1219,16 @@ let pat_vars p =
     | Pat_construct (_c, ps) -> List.concat_map aux ps
     | Pat_constraint (p, _ty) -> aux p
     | Pat_or (p1, _p2) -> aux p1 (* Both sides should declare the same variables. *) in
-  List.sort_uniq compare (aux p)
+  List.sort_uniq compare (aux p) *)
 
-let rec pat_clone p =
+(* let rec pat_clone p =
   let loc = p.pat_loc in
   let typ = p.pat_typ in
   match p.pat_desc with
   | Pat_any -> pat_any ~loc ~typ ()
   | Pat_var x -> pat_var ~loc ~typ x
   | Pat_constant c -> pat_constant ~loc ~typ c
-  | _ -> pat_map pat_clone p
+  | _ -> pat_map pat_clone p *)
 
 (** * Iterators on program *)
 
@@ -1239,11 +1239,11 @@ let rec trm_clone t =
   | Trm_var x ->
     mktrm ~loc ~typ (Trm_var x (* { x with varid_env = x.varid_env ; varid_resolution = x.varid_resolution } *))
   | Trm_cst c -> trm_cst ~loc ~typ c
-  | Trm_match (t, pts) ->
-    trm_match ~loc ~typ (trm_clone t) (List.map (fun (p, t) -> (pat_clone p, trm_clone t)) pts)
+  | Trm_match (t, pts) -> failwith "TODO: change pattern implementation" (*
+    trm_match ~loc ~typ (trm_clone t) (List.map (fun (p, t) -> (pat_clone p, trm_clone t)) pts) *)
   | _ -> trm_map trm_clone t
 
-let rec pat_map_typ f p =
+(* let rec pat_map_typ f p =
   let aux = pat_map_typ f in
   let f_syntyp sty = { sty with syntyp_typ = f sty.syntyp_typ } in
   let p = { p with pat_typ = f p.pat_typ } in
@@ -1251,7 +1251,7 @@ let rec pat_map_typ f p =
   let typ = p.pat_typ in
   match p.pat_desc with
   | Pat_constraint (p, sty) -> pat_constraint ~loc ~typ (aux p) (f_syntyp sty)
-  | _ -> pat_map aux p
+  | _ -> pat_map aux p *)
 
 let rec trm_map_typ f t =
   let aux = trm_map_typ f in
@@ -1264,9 +1264,9 @@ let rec trm_map_typ f t =
   | Trm_var varid -> trm_var_varid ~loc ~typ varid (*  { varid with varid_typ = f varid.varid_typ } *)
   | Trm_funs (vs, t) -> trm_funs ~loc ~typ (List.map (fun (x, sty) -> (x, f_syntyp sty)) vs) (aux t)
   | Trm_annot (t, sty) -> trm_annot ~loc ~typ (aux t) (f_syntyp sty)
-  | Trm_match (t, pts) ->
-    trm_match ~loc ~typ (aux t) (List.map (fun (p, t) ->
-      (pat_map_typ f p, aux t)) pts)
+  | Trm_match (t, pts) -> failwith "TODO: change pattern implementation"
+(*     trm_match ~loc ~typ (aux t) (List.map (fun (p, t) ->
+      (pat_map_typ f p, aux t)) pts) *)
   | Trm_let ({ let_def_rec = rf ; let_def_bind = Bind_var (x, synschopt) ; let_def_body = t1 }, t2) ->
     let t1 = aux t1 in
     let t2 = aux t2 in

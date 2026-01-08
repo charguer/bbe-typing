@@ -37,9 +37,9 @@ let string_of_error ~style (e : error) : string =
   | Conflict_with_context (t, ty1, ty2) ->
     sprintf "%s has type %s but the context expects type %s."
       (trm_to_string ~style t) (typ_to_string ty1) (typ_to_string ty2)
-  | Conflict_with_context_pattern (p, ty1, ty2) ->
+  (* | Conflict_with_context_pattern (p, ty1, ty2) ->
     sprintf "%s has type %s but the context expects type %s."
-      (pat_to_string p) (typ_to_string ty1) (typ_to_string ty2)
+      (pat_to_string p) (typ_to_string ty1) (typ_to_string ty2) *)
   | Boolean_condition ty ->
     sprintf "The condition should have type bool but it has type %s." (typ_to_string ty)
   | Branches_mismatch_if (ty1, ty2) ->
@@ -138,7 +138,7 @@ let string_of_error_short (e : error) : string =
   | Bad_annotation (s, ty1, ty2) -> sprintf "bad annotation for %s" s
   | Unexpected_annotation sty -> sprintf "Issue with annotation %s." (print_styp sty)
   | Conflict_with_context (t, _ty1, _ty2) -> "term conflicts with context"
-  | Conflict_with_context_pattern (p, _ty1, _ty2) -> "pattern conflicts with context"
+ (*  | Conflict_with_context_pattern (p, _ty1, _ty2) -> "pattern conflicts with context" *)
   | Boolean_condition _ty -> "non-boolean condition"
   | Branches_mismatch_if (_ty1, _ty2) -> "branch mismatch in if"
   | Branches_mismatch_match (x, _ty1, _ty2) -> sprintf "branch mismatch in match on %s" x
