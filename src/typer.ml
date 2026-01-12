@@ -128,10 +128,10 @@ let gen_parsed inputfile =
   let dirname = Filename.dirname inputfile in
   Filename.concat dirname (Printf.sprintf "%s_%s.txt" basename "parsed")
 
-let gen_transformed inputfile =
+let gen_compiled inputfile =
   let basename = Filename.chop_suffix (Filename.basename inputfile) ".ml" in
   let dirname = Filename.dirname inputfile in
-  Filename.concat dirname (Printf.sprintf "%s_%s.txt" basename "transformed")
+  Filename.concat dirname (Printf.sprintf "%s_%s.ml" basename "compiled")
 
 let get_output_filename (inputfile : string) : string =
   match !output_filename with
@@ -141,8 +141,8 @@ let get_output_filename (inputfile : string) : string =
 let get_parsed_filename (inputfile : string) : string =
   gen_parsed inputfile
 
-let get_transformed_filename (inputfile : string) : string =
-  gen_transformed inputfile
+let get_compiled_filename (inputfile : string) : string =
+  gen_compiled inputfile
 
 let get_parsed_and_converted_filename (inputfile : string) : string =
   gen_filename "translated" inputfile
@@ -161,6 +161,8 @@ type ocaml_ast = Parsetree.structure
 
 let _ =
   let inputfile = parse_command_line () in
+
+  Printf.printf "inputfile = %s\n" inputfile;
 
   (* Parse *)
   let infile = open_in inputfile in
@@ -231,7 +233,7 @@ let _ =
         res)
     else None in
 
-  let (typed_res, transformed_res)  =
+  let (typed_res, compiled_res)  =
     try
       Chain.full
         ~exact_error_messages:!Flags.exact_error_messages
@@ -272,13 +274,13 @@ let _ =
   ) ;
 
   if !Flags.output then (
-    let outputfile = get_transformed_filename inputfile in
+    let outputfile = get_compiled_filename inputfile in
     if not !Flags.quiet then
-      print_endline (Printf.sprintf "Translation successful. Generating file %s." outputfile) ;
+      print_endline (Printf.sprintf "Compilation successful. Generating file %s." outputfile) ;
     let out =
       if outputfile = "-" then stdout
       else open_out outputfile in
-    output_string out transformed_res ;
+    output_string out compiled_res ;
     close_out out
   ) ;
 

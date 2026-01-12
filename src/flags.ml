@@ -32,8 +32,10 @@ let disable_check_cycle_on_resolution_attempts = ref false
 
 (* If disabled, do not write any output. *)
 let output = ref true
-let print_typed = ref false
-let print_parsed = ref true
+let print_types = ref false
+let print_parsed = ref false
+
+let recompile = ref true
 
 (* Replace overloaded variables by the corresponding instance. *)
 let instantiate = ref false
@@ -50,7 +52,7 @@ let print_raw_symbols = ref false
 
 open Ast_print
 (* Options on how to print terms. *)
-let style_types = ref TypesVarsAndBinders
+let style_types = ref TypesNone
 let style_resolution_full = ref ResolutionInstanceOrSymbol
 let style_resolution_base = ref ResolutionInstanceOrSymbol
 let style_resolution_args = ref ResolutionInstanceOrSymbol

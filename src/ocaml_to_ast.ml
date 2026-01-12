@@ -101,37 +101,34 @@ let tr_pat_to_var (p : pattern) : varsyntyp option =
     Some (no_name_var (), { cty with syntyp_typ = the_typ_unit })
   | _ -> None
 
-(* TODO: change this function to take an OCaml pattern, and translate it into a DSL pat.  *)
-(* let rec tr_pat (p : pattern) : pat =
+(* Important note: the patterns in match statements use the syntax of OCaml patterns, not expressions. This means in particular that a pattern variable should not have "??" as suffix. As it would cause a syntax error *)
+let rec tr_pat (p : pattern) : pat =
   (* The set of variables appearing in the pattern is also returned. *)
   let aux = tr_pat in
   let loc = p.ppat_loc in
-  let pat_desc =
-    match p.ppat_desc with
-    | Ppat_any -> Pat_any
-    | Ppat_var var_loc -> Pat_var (var var_loc.txt)
-    | Ppat_alias (p, var_loc) -> Pat_alias (aux p, var var_loc.txt)
-    | Ppat_constant c -> Pat_constant (tr_constant ~loc c)
-    | Ppat_tuple ps ->
-      add_tuple_arity (List.length ps) ;
-      Pat_tuple (List.map aux ps)
-    | Ppat_construct ({ txt = Lident "true" }, None) ->
-        Pat_constant (Cst_bool true)
-    | Ppat_construct ({ txt = Lident "false" }, None) ->
-        Pat_constant (Cst_bool false)
-    | Ppat_construct ({ txt = Lident "()" }, None) ->
-        Pat_constant (Cst_unit ())
-    | Ppat_construct (c, None) ->
-        Pat_construct (constr (tr_longident c.txt), [])
-    | Ppat_construct (c, Some (tys, p)) ->
-        assert (tys = []) ; (* I'm not sure when this is triggered. I guess only with GADTs. *)
-        let p = aux p in
-        Pat_construct (constr (tr_longident c.txt), [p])
-    | Ppat_or (p1, p2) -> Pat_or (aux p1, aux p2)
-    | Ppat_constraint (p, ty) ->
-        Pat_constraint (aux p, mk_syntyp ty)
-    | _ -> unsupported ~loc "Unsupported pattern." in
-  { pat_desc ; pat_loc = p.ppat_loc ; pat_typ = typ_nameless () } *)
+  match p.ppat_desc with
+  | Ppat_any -> trm_pat_wild ~loc ()
+  | Ppat_var var_loc -> trm_pat_var ~loc (var var_loc.txt)
+  | Ppat_alias (p, var_loc) -> failwith "Unsupported pattern Ppat_alias (Ocaml_to_ast.tr_pat)" (* Pat_alias (aux p, var var_loc.txt) *)
+  | Ppat_constant c -> trm_cst (tr_constant ~loc c)
+  | Ppat_tuple ps -> trm_tuple ~loc (List.map aux ps)
+  | Ppat_construct ({ txt = Lident "true" }, None) -> trm_cst ~loc (Cst_bool true)
+  | Ppat_construct ({ txt = Lident "false" }, None) -> trm_cst ~loc (Cst_bool false)
+  | Ppat_construct ({ txt = Lident "()" }, None) -> trm_cst ~loc (Cst_unit ())
+  | Ppat_construct (c, None) ->
+      trm_var ~loc (tr_longident c.txt)
+  | Ppat_construct (c, Some (tys, {ppat_desc = Ppat_tuple ps})) ->
+      assert (tys = []) ; (* I'm not sure when this is triggered. I guess only with GADTs. *)
+      let ps = List.map tr_pat ps in
+      trm_apps ~loc (trm_var (tr_longident c.txt)) ps
+  | Ppat_construct (c, Some (tys, p)) ->
+      assert (tys = []) ; (* I'm not sure when this is triggered. I guess only with GADTs. *)
+      let p = aux p in
+      trm_apps ~loc (trm_var (tr_longident c.txt)) [p]
+  | Ppat_or (p1, p2) -> trm_or ~loc (aux p1) (aux p2)
+  | Ppat_constraint (p, ty) ->
+      trm_annot ~loc (aux p) (mk_syntyp ty)
+  | _ -> unsupported ~loc "Unsupported pattern."
 
 (* unsupported
 |	Ppat_interval of constant * constant
@@ -145,6 +142,7 @@ let tr_pat_to_var (p : pattern) : varsyntyp option =
 |	Ppat_extension of extension
 |	Ppat_open of Longident.t Asttypes.loc * pattern
 *)
+
 
 (* YL: Simplify this function by understanding the use... *)
 (* Add instance declarations at the beginning of a function body. *)
@@ -708,12 +706,12 @@ let rec tr_exp (e : expression) : trm =
 
  *)
   | Pexp_match (e, cs) ->
-    failwith "TODO: change pattern implementation"
-    (* Note: important code, keep it. *)
-    (* return (trm_desc_match (tr_exp e) (List.map tr_case cs)) *)
+    return (trm_desc_match (tr_exp e) (List.map tr_case cs))
 
   | Pexp_while (e1, e2) ->
-    return (trm_desc_while (tr_exp e1) (tr_exp e2))
+    let t1 = tr_exp e1 in
+    let t2 = tr_exp e2 in
+    return (trm_desc_while t1 t2)
 
   | Pexp_assert e when false_inv e ->
     return (trm_desc_assert_false ())
@@ -743,6 +741,17 @@ let rec tr_exp (e : expression) : trm =
 Trying to debug for
 Pstr_value [pattern Ppat_var "f" = pexpfun (pattern ppatvar "x" -> pexp_ident "x") ]
 *)
+
+and tr_case (c : case) : pat * trm =
+  let lhs = tr_pat c.pc_lhs in
+  let lhs =
+    match c.pc_guard with
+    | None -> lhs
+    | Some e -> failwith "Unsupported: guard inside match (Ocaml_to_ast.tr_case)\n"
+  in
+  let rhs = tr_exp c.pc_rhs in
+  (lhs, rhs)
+
 and tr_let (rf : rec_flag) (attrs : attributes) (vb : value_binding) : let_def list =
   let loc = vb.pvb_loc in
   (* let _symbols = filter_attributes_binding (attrs @ vb.pvb_attributes) in (*TODO : handling @pattern*) *)

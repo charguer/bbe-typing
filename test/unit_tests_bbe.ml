@@ -42,7 +42,7 @@ let let_2 =
 
 (* External functions *)
 external (* [%from_ocaml] *) (+) : int -> int -> int = "%addint"
-external (=) : int -> int -> bool = ""
+(* external (=) : int -> int -> bool = "" *)
 external (mod) : int -> int -> int = ""
 external (/) : int -> int -> int = ""
 
@@ -201,7 +201,7 @@ let[@type_error "unbound variable z"] while_bind_var_fail (x : int option) f =
     z
   done
 
-(* switch *)
+(* switch statements *)
 
 (* Note on syntax : The parsing is specifically asking for "_case" to be applied to a single argument. This means that it is often necessary to add parentheses on the right. It might be interesting to change the inversion function at some point in the future *)
 
@@ -232,6 +232,22 @@ let[@type_error "type mismatch in switch"] switch_type_fail =
     _case (true @_then 3)
   ]
 
+(* Match statements *)
+(* Important note: the patterns in match statements use the syntax of OCaml patterns, not expressions. This means in particular that a pattern variable should not have "??" as suffix. As it would cause a syntax error *)
+(* Does not pass through the "compilation" process *)
+(* let match_empty =
+  match false with
+  | _ -> ()
+
+let match1 =
+  match false with
+  | true -> false
+
+let match2 =
+  match (true, false) with
+  | (false, true) -> false
+  | (false, x) -> x
+  | (x, y) -> (if x then y else x) *)
 
 (**************************************************************)
 (* Nesting of features *)

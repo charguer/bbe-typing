@@ -812,6 +812,10 @@ let env_builtin =
     let tv = tvar_rigid "'a" in
     let t = typ_rigid tv in
     env_add_var e (var "__assert_false") (mk_sch [tv] t) in
+  let e =
+    let tv = tvar_rigid "'a" in
+    let t = typ_rigid tv in
+    env_add_var e (var "=") (mk_sch [tv] (typ_arrow [t; t] (the_typ_bool))) in
   e
 
 (* let env_builtin_with_tuples =
@@ -1239,7 +1243,8 @@ let rec trm_clone t =
   | Trm_var x ->
     mktrm ~loc ~typ (Trm_var x (* { x with varid_env = x.varid_env ; varid_resolution = x.varid_resolution } *))
   | Trm_cst c -> trm_cst ~loc ~typ c
-  | Trm_match (t, pts) -> failwith "TODO: change pattern implementation" (*
+  | Trm_match (t0, cases) ->
+    trm_match ~loc ~typ t0 cases (*
     trm_match ~loc ~typ (trm_clone t) (List.map (fun (p, t) -> (pat_clone p, trm_clone t)) pts) *)
   | _ -> trm_map trm_clone t
 
@@ -1264,7 +1269,8 @@ let rec trm_map_typ f t =
   | Trm_var varid -> trm_var_varid ~loc ~typ varid (*  { varid with varid_typ = f varid.varid_typ } *)
   | Trm_funs (vs, t) -> trm_funs ~loc ~typ (List.map (fun (x, sty) -> (x, f_syntyp sty)) vs) (aux t)
   | Trm_annot (t, sty) -> trm_annot ~loc ~typ (aux t) (f_syntyp sty)
-  | Trm_match (t, pts) -> failwith "TODO: change pattern implementation"
+  | Trm_match (t, pts) ->
+    trm_match ~loc ~typ (aux t) (List.map (fun (p, t) -> (aux p, aux t)) pts)
 (*     trm_match ~loc ~typ (aux t) (List.map (fun (p, t) ->
       (pat_map_typ f p, aux t)) pts) *)
   | Trm_let ({ let_def_rec = rf ; let_def_bind = Bind_var (x, synschopt) ; let_def_body = t1 }, t2) ->

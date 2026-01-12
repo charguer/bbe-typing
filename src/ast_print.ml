@@ -739,26 +739,27 @@ and trm_to_doc_raw ~style (t : trm) : doc =
         ^^ blank 1
         ^^ parens (aux t1)
 
-  | Trm_match (t, pts) ->
-    failwith "TODO: change implementation of patterns"
-          (* string "begin match"
+  | Trm_match (t0, pts) ->
+      string "begin match"
         ^^ blank 1
-        ^^ aux t
+        ^^ aux t0
         ^^ blank 1
         ^^ string "with"
         ^^ hardline
         ^^ separate hardline
-            (List.map (fun (p, t) ->
+            (List.map (fun (p1, t2) ->
+              let d2 = aux t2 in
+              let d2 = put_parens_trm t2 d2 in
                   blank 2
               ^^ string "|"
               ^^ blank 1
-              ^^ pat_to_doc p
+              ^^ trm_to_doc ~style p1
               ^^ blank 1
               ^^ string "->"
               ^^ blank 1
-              ^^ aux t) pts)
+              ^^ d2) pts)
         ^^ hardline
-        ^^ string "end" *)
+        ^^ string "end"
 
   | Trm_tuple ts -> (* TODO: check if this is the correct result. *)
     parens (separate comma

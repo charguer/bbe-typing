@@ -525,7 +525,7 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       | Trm_var v ->
         let pat_v = try_read_pattern ~loc e.env_var v in
         let (varid, tyx) = typecheck_variable loc e pat_v in
-        return tyx (Trm_var varid)
+        return tyx (Trm_var v)
       | _ -> typecheck_ml {e with env_is_in_pattern = false} t
     else
   begin
@@ -634,19 +634,16 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
     (* This constructor should only appear at let-definitions. *)
     raise (Error (Unsupported_term "Trm_forall", loc))
 
-  (*| Trm_match (t0, pts) ->
+  | Trm_match (t0, pts) ->
     let t0 = aux t0 in
     let tyr = typ_nameless () in
     let pts =
       List.map (fun (pi, ti) ->
-        let (pi, ei) = typecheck_pat  ~expected_typ:(typeof t0) e pi in
-        let e' =
-          Env.fold ei (fun e' x ty ->
-            env_add_var e' x (Env_item_var (sch_of_nonpolymorphic_typ ty))) e in
-        let ti = aux ~env:e' ~expected_typ:tyr ti in
+        let pi = typecheck_pat ~expected_typ:(typeof t0) e pi in
+        let ei = env_extend ~loc e (bindsof pi) in
+        let ti = aux ~env:ei ~expected_typ:tyr ti in
         (pi, ti)) pts in
-    return tyr (Trm_match (t0, pts)) *)
-  | Trm_match _ -> raise (Error (Unsupported_term "Trm_match", loc))
+    return tyr (Trm_match (t0, pts))
 
   | Trm_tuple ts ->
     (* LATER: could test
@@ -704,7 +701,8 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
   end
   in
 
-  if !Flags.verbose && !Flags.debug then Printf.printf "Exiting typecheck_ml with :\n  %s\n" (trm_to_string result);
+  if !Flags.verbose && !Flags.debug then Printf.printf "Exiting typecheck_ml with :\n  %s\n
+  Concluding on type : %s\n " (trm_to_string result) (Ast_print.typ_to_string result.trm_typ);
   result
 
 and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a "bindsof" function *)
@@ -716,7 +714,7 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
   let aux_bbe ?(env : env = e) (t : trm) : bbe =
     typecheck_bbe env t in
   let aux_pat ?(env : env = e) ?(expected_typ:typ option) (typ : typ) (p : pat) : pat =
-    typecheck_pattern ?expected_typ env p in
+    typecheck_pat ?expected_typ env p in
   let return (* ?(annot = b.trm_annot) *) (u : trm_desc) (binds : env) : trm =
     (* We also unify with the previously stored type in place, for the rare cases in which the parser
       shares types between terms. *)
@@ -776,19 +774,19 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
       -> If we find it, consider it as the current application, otherwise use the original one (happens in the case of an inversor function application)
       -> If there any sub-pattern (>= 1), then assert that the return type is an option. Otherwise (= 0), assert it is the type bool.
       -> Propagate the expected types to the corresponding sub-patterns if any.
-    2. "List.map2 (fun typ p -> typecheck_pattern ~expected_typ:typ p [...]) typs pats", and merge all of the result bindings, checking for conflicts.
+    2. "List.map2 (fun typ p -> typecheck_pat ~expected_typ:typ p [...]) typs pats", and merge all of the result bindings, checking for conflicts.
     3. The result bindings of the pattern is the disjoint union of all of the sub-pattern bindings.
 *)
 
 (* typecheck_pat TODO change name. typecheck_pat -> typecheck_match pour le moment. Type pat -> match_pat ? *)
-and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : pat) : pat =
+and typecheck_pat ?(expected_typ:typ option) (e : env) (p : pat) : pat =
   let loc = p.trm_loc in
   let _aux_ml ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
     typecheck_ml ?expected_typ env t in
   let aux_bbe ?(env : env = e) (b : bbe) : bbe =
     typecheck_bbe env b in
   let aux_pat ?(expected_typ:typ option) ?(env : env = e) (p : pat) : pat =
-    typecheck_pattern ?expected_typ env p in
+    typecheck_pat ?expected_typ env p in
   let return(*  ?(annot = p.trm_annot)  *)(typ : typ) (u : trm_desc) (binds : env) : trm =
     (* TODO: remove the option on expected_typ? I don't think we should be able to call this function without expecting anything *)
     Option.iter (fun typ' ->
@@ -865,20 +863,9 @@ and typecheck_pattern ?(expected_typ:typ option) (e : env) (p : pat) : pat =
     let typ = typ_nameless () in
     let typ_args = List.map (fun _ -> typ_nameless()) ps in
 
-      (* NEW *)
-(*    let t0 = typecheck_ml {e with env_is_in_pattern = true} t0 in
-      match typ_arrow_inv_opt (typeof t0) with
-      |   Some (_, [typ_arg]) when length ps > 1 ->
-      insert tuple on the fly
-      | _ -> unify (typeof t0) (typ_arrow [typ] (typ_option (typ_tuple typ_args)))
- *)
- (*       let t0 = typecheck_ml {e with env_is_in_pattern = true} t0 in
-      if try_unify e (typ_arrow [typ] (typ_option (typ_tuple_flex typ_args))) (typeof t0) then
-        ret
- *)
-      (* typ_tuple_flex <- typ_tuple_if_several/if_multiple *)
+    (* typ_tuple_flex <- typ_tuple_if_several/if_multiple *)
       let t0 = typecheck_ml ~expected_typ:(typ_arrow [typ] (typ_option ((typ_tuple_flex typ_args)(*  (typ_tuple typ_args) *)))) {e with env_is_in_pattern = true} t0 in
-      let ps = List.map2 (fun pi typ_arg_i -> typecheck_pattern e ~expected_typ:typ_arg_i pi) ps typ_args in
+      let ps = List.map2 (fun pi typ_arg_i -> typecheck_pat e ~expected_typ:typ_arg_i pi) ps typ_args in
       return typ (Trm_apps (t0,ps)) (env_merge_binds ~loc (List.map bindsof ps))
 
    (* Conjunction *)

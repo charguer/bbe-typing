@@ -51,6 +51,14 @@ let chain
  *)
   ast
 
+let gen_compiled inputfile =
+  let basename = Filename.chop_suffix (Filename.basename inputfile) ".ml" in
+  let dirname = Filename.dirname inputfile in
+  Filename.concat dirname (Printf.sprintf "%s_%s.ml" basename "compiled")
+let get_compiled_filename (inputfile : string) : string =
+  gen_compiled inputfile
+
+
 let full
   ~exact_error_messages
   ~continue_on_error
@@ -103,16 +111,44 @@ let full
     call_back_syntax res
   ) ;
 
-  let _transformed_ast =
-    wrapper (Transform.transform_program) ast in
+  let compiled_ast =
+    if !Flags.recompile then
+      wrapper (Ast_comp.comp_program) ast
+    else []
+  in
 
+  let out_str_compiled = Ast_print.to_string ~style:printing_styles compiled_ast in
+
+  if !Flags.debug && !Flags.verbose then (
+    let outputfile = get_compiled_filename "test/unit_tests_bbe.ml" in
+    if not !Flags.quiet then
+      print_endline (Printf.sprintf "Compilation successful. Generating file %s." outputfile) ;
+    let out =
+      if outputfile = "-" then stdout
+      else open_out outputfile in
+    output_string out out_str_compiled ;
+    close_out out
+  ) ;
+
+  let compiled_ast =
+    wrapper
+      (chain
+        ~exact_error_messages
+        ~continue_on_error
+        ~remove_failing
+        (* ~instantiate *)
+        ~readable
+        ~printing_styles)
+        compiled_ast in
 
   (* Print *)
   let out_str = Ast_print.to_string ~style:printing_styles ast in
-  (* let out_str_transformed = Ast_print.to_string ~style:printing_styles transformed_ast in *)
+  let out_str_compiled = Ast_print.to_string ~style:printing_styles compiled_ast in
 
+
+(*
   let out_str_transformed = "" in
-
+ *)
   let out_str =
     if readable then (
       let open Ocamlformat_lib in
@@ -129,5 +165,5 @@ let full
         failwith ("Formating error: " ^ Buffer.contents buffer)
     ) else out_str
   in
-  (out_str, out_str_transformed)
+  (out_str, out_str_compiled)
 
