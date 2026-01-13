@@ -172,9 +172,8 @@ let typ_of_some_or_nameless (exp_typ : typ option) : typ =
  *)
 (* TODO   let env_lookup_or_error e v : sch *)
 
-  (* [typecheck_variable e v] looks up [v] in [e] to get its type scheme [sch],
-     then take a fresh instance of [sch]. TODO: return should only be typ. *)
-let typecheck_variable loc (e : env) (v : var) : varid * typ  =
+  (* [typecheck_variable e v] looks up [v] in [e] to get its type. *)
+let typecheck_variable loc (e : env) (v : var) : typ =
       (* if env_is_in_pattern  chercher d'abord "Pattern__" ^ v TODO *) (* AC *)
   let s =
     match Env.read_option e.env_var v with
@@ -186,8 +185,7 @@ let typecheck_variable loc (e : env) (v : var) : varid * typ  =
       is obtained as the instantiation of this type scheme on fresh variables.
     *)
   let typ = apply_to_fresh_flexibles s in
-  let varid = create_varid v in
-  (varid, typ)
+  typ
 
 (* TODO remove *)
 (* For each pattern, we returned the typed pattern and the environment it introduces. *)
@@ -274,7 +272,7 @@ let typecheck_variable loc (e : env) (v : var) : varid * typ  =
 (* FIXME: trm_desc should be u not t nor e *)
 
 (* ARTHUR: check this *)
-(** [typecheck_ml_let_sch] typechecks its provided term [t] and returns its type scheme.
+(** [typecheck_trm_let_sch] typechecks its provided term [t] and returns its type scheme.
     Examples:
     - [let f = (fun (x:int) -> int)]
     - [let f = (fun (type a) (x:a) -> x)]
@@ -297,7 +295,7 @@ let typecheck_variable loc (e : env) (v : var) : varid * typ  =
     The [t] corresponds to the body, e.g. [(fun (type a) (x:a) -> x)].
 
     The synschopt must be internalized before the call. *)
-let rec typecheck_ml_let_sch  ~loc ?(fully_resolved=false) rf (e : env) ((x, synschopt) : varsynschopt) (t : trm) : trm * sch =
+let rec typecheck_trm_let_sch  ~loc ?(fully_resolved=false) rf (e : env) ((x, synschopt) : varsynschopt) (t : trm) : trm * sch =
   (* First, we extract the "forall" quantifiers at the head of [t]. *)
   let (tvars_rhs, t1) = trm_foralls_inv t in
   (* Add the universally quantified types into the environment. *)
@@ -397,7 +395,7 @@ let rec typecheck_ml_let_sch  ~loc ?(fully_resolved=false) rf (e : env) ((x, syn
       env_add_var e2 x sch
     ) else e2 in
   (* Now we are ready to typecheck the body of the type scheme in that environment *)
-  let t1' = typecheck_ml  e3 ~expected_typ:sch.sch_body t1 in
+  let t1' = typecheck_trm  e3 ~expected_typ:sch.sch_body t1 in
   let external_typ =
     let m =
       List.fold_left (fun m tv ->
@@ -409,7 +407,7 @@ let rec typecheck_ml_let_sch  ~loc ?(fully_resolved=false) rf (e : env) ((x, syn
         RigidMap.add tv (typ_rigid (tvar_rigid n)) m) RigidMap.empty sch.sch_tvars in
     replace_rigids_with m sch.sch_body in
   let t' = trm_foralls ~typ:external_typ tvars_for_typing_t1 t1' in
-  (t', sch)
+  (t', if !Flags.weak_typer then (sch_of_nonpolymorphic_typ the_typ_top) else sch) (* YL: low chances that this works) *)
 
 
 (** [typecheck_let] typechecks a let-binding, both in a local [let _ = _ in _] and in a
@@ -422,19 +420,23 @@ and typecheck_let  ~loc (e : env) (b : let_def) : let_def * env * sch =
   let t1 = b.let_def_body in
   let bind = b.let_def_bind in
   let return bind e t1 sch =
+    let sch =
+      if not !Flags.weak_typer
+      then (sch_of_nonpolymorphic_typ the_typ_top)
+      else sch
+    in
     ({ b with let_def_bind = bind ; let_def_body = t1 }, e, sch) in
   match bind with
   | Bind_anon ->
-      let t1 = typecheck_ml ~expected_typ:the_typ_unit e t1 in
-      return bind e t1 (sch_of_nonpolymorphic_typ the_typ_unit)
-
+    let t1 = typecheck_trm ~expected_typ:the_typ_unit e t1 in
+    return bind e t1 (sch_of_nonpolymorphic_typ the_typ_unit)
   | Bind_var (x, synschopt) ->
       (* This case handles a binding of the form [let x = t1 in t2].
          It can be monomorphic or polymorphic (e.g. [let x : type a. a list = [] in t2]).
          Note that the [let[@instance]] form is a sequence of such a let-binding, with a
         [let[@register]. *)
       let synschopt = Option.map (synsch_internalize ~loc e) synschopt in
-      let (t1, sch) = typecheck_ml_let_sch ~loc rf e (x, synschopt) t1 in
+      let (t1, sch) = typecheck_trm_let_sch ~loc rf e (x, synschopt) t1 in
       (* If no annotation was provided, we add one in order to be able to display the inferred
         type scheme. *)
       let synsch =
@@ -473,7 +475,7 @@ and typecheck_let  ~loc (e : env) (b : let_def) : let_def * env * sch =
           asmpt.assumption_typ.syntyp_typ) instance_assumptions) inst_sig.instance_typ in
       Debug.log "DEBUG: %s" (Ast_print.typ_to_string ty_overall) ;
       (* Typechecking [t1]. *)
-      let t1 = typecheck_ml  ~expected_typ:ty_overall e1 t1 in
+      let t1 = typecheck_trm  ~expected_typ:ty_overall e1 t1 in
       let inst = {
         instance_value = t1 ;
         instance_sig = inst_sig ;
@@ -486,19 +488,19 @@ and typecheck_let  ~loc (e : env) (b : let_def) : let_def * env * sch =
     (* | _ -> failwith "Unexpected register/instance in a let binding." *)
 
 
-(** [typecheck_ml e t] typechecks [t] in [e] and returns [t] with the correct type.
+(** [typecheck_trm e t] typechecks [t] in [e] and returns [t] with the correct type.
     If an expected type is provided, the type computed for [t] is unified
     with it at the very end of the process. There is no propagation
     downwards into the term of the expected type. *)
 
     (* TODO (low efforts) : rename to typecheck_trm *)
-and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
+and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
 
-  if !Flags.verbose && !Flags.debug then Printf.printf "Entering typecheck_ml with :\n  %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e ) *) (trm_to_string t);
+  if !Flags.verbose && !Flags.debug then Printf.printf "Entering typecheck_trm with :\n  %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e ) *) (trm_to_string t);
 
   let loc = t.trm_loc in
   let aux ?(expected_typ:typ option) ?(env : env = e) (t : trm) : trm =
-    typecheck_ml ?expected_typ env t in
+    typecheck_trm ?expected_typ env t in
   let aux_bbe ?(env : env = e) (b : bbe) : bbe =
     typecheck_bbe env b in
   let return (* ?(annot = t.trm_annot) *) (typ : typ) (u : trm_desc) : trm =
@@ -510,7 +512,7 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       shares types between terms. *)
     { trm_desc = u;
       trm_loc = loc;
-      trm_typ = typ;
+      trm_typ = if !Flags.weak_typer then the_typ_top else typ;
       trm_env = e;
       trm_binds = None (* ;
       trm_annot = annot  *)} in
@@ -524,15 +526,15 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       match t.trm_desc with
       | Trm_var v ->
         let pat_v = try_read_pattern ~loc e.env_var v in
-        let (varid, tyx) = typecheck_variable loc e pat_v in
+        let tyx = typecheck_variable loc e pat_v in
         return tyx (Trm_var v)
-      | _ -> typecheck_ml {e with env_is_in_pattern = false} t
+      | _ -> typecheck_trm {e with env_is_in_pattern = false} t
     else
   begin
   match t.trm_desc with
   | Trm_var x ->
-      let (varid, tyx) = typecheck_variable loc e x in
-      return tyx (Trm_var varid)
+      let tyx = typecheck_variable loc e x in
+      return tyx (Trm_var x)
 
   | Trm_cst c ->
       (* At this stage, the syntactic constants have already been translated as an application
@@ -694,14 +696,14 @@ and typecheck_ml ?(expected_typ:typ option) (e : env) (t : trm) : trm =
     let t = aux ~expected_typ:the_typ_unit ~env:e t in
     return the_typ_unit (Trm_while (b, t))
 
-  | _ -> failwith "unexpected construct in typecheck_ml"
+  | _ -> failwith "unexpected construct in typecheck_trm"
   (* | Trm_bbe_is _ -> raise (Error (Unsupported_term "Trm_bbe_is", loc))
   | Trm_pat_var _ -> raise (Error (Unsupported_term "Trm_pat_var", loc))
   | Trm_pat_wild  -> raise (Error (Unsupported_term "Trm_pat_wild", loc)) *)
   end
   in
 
-  if !Flags.verbose && !Flags.debug then Printf.printf "Exiting typecheck_ml with :\n  %s\n
+  if !Flags.verbose && !Flags.debug then Printf.printf "Exiting typecheck_trm with :\n  %s\n
   Concluding on type : %s\n " (trm_to_string result) (Ast_print.typ_to_string result.trm_typ);
   result
 
@@ -710,22 +712,17 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
 
   let loc = b.trm_loc in
   let aux_ml ?(expected_typ:typ option) ?(env : env = e) (t : trm) : trm =
-    typecheck_ml ?expected_typ env t in
+    typecheck_trm ?expected_typ env t in
   let aux_bbe ?(env : env = e) (t : trm) : bbe =
     typecheck_bbe env t in
   let aux_pat ?(env : env = e) ?(expected_typ:typ option) (typ : typ) (p : pat) : pat =
     typecheck_pat ?expected_typ env p in
-  let return (* ?(annot = b.trm_annot) *) (u : trm_desc) (binds : env) : trm =
-    (* We also unify with the previously stored type in place, for the rare cases in which the parser
-      shares types between terms. *)
-    (* FIXME TODO: This fails when an instance take parameters as arguments: maybe the parser isn't
-      generating the types the right way? *)
+  let return (u : trm_desc) (binds : env) : trm =
     { trm_desc = u;
       trm_loc = loc;
-      trm_typ = the_typ_bbe; (* TODO: binder ça, et unify doit interdir d'unifier typ_bbe avec lui meme *) (* TODO mid efforts/high prority "specific type for bbe" : forbidding unification. Asks for going a little deep in the unification function. As soon as we see a "the_type_bbe", we stop and return an error. All good *)
+      trm_typ = the_typ_bbe;
       trm_env = e;
-      trm_binds = Some binds(* ;
-      trm_annot = annot  *)} in (* LATER: factorizable return functions? *)
+      trm_binds = Some binds} in (* LATER: factorizable return functions? *)
 
   let result =
     match b.trm_desc with
@@ -782,22 +779,21 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
 and typecheck_pat ?(expected_typ:typ option) (e : env) (p : pat) : pat =
   let loc = p.trm_loc in
   let _aux_ml ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
-    typecheck_ml ?expected_typ env t in
+    typecheck_trm ?expected_typ env t in
   let aux_bbe ?(env : env = e) (b : bbe) : bbe =
     typecheck_bbe env b in
   let aux_pat ?(expected_typ:typ option) ?(env : env = e) (p : pat) : pat =
     typecheck_pat ?expected_typ env p in
-  let return(*  ?(annot = p.trm_annot)  *)(typ : typ) (u : trm_desc) (binds : env) : trm =
-    (* TODO: remove the option on expected_typ? I don't think we should be able to call this function without expecting anything *)
+  let return (typ : typ) (u : trm_desc) (binds : env) : trm =
     Option.iter (fun typ' ->
       unify_or_error ~loc e typ typ'
         (Conflict_with_context (p, typ, typ'))) expected_typ;
     { trm_desc = u;
       trm_loc = loc;
-      trm_typ = typ;
+      trm_typ = if !Flags.weak_typer then the_typ_top else typ;
       trm_env = e;
-      trm_binds = Some binds(* ;
-      trm_annot = annot  *)} in (* LATER: factorizable return functions? *)
+      trm_binds = Some binds}
+  in (* LATER: factorizable return functions? *)
 
   match p.trm_desc with
   | Trm_pat_wild ->
@@ -844,7 +840,7 @@ and typecheck_pat ?(expected_typ:typ option) (e : env) (p : pat) : pat =
   | Trm_var x ->
     let pat_x = try_read_pattern ~loc e.env_var x in
     let typ = typ_nameless () in
-    let (_, pat_typ) = typecheck_variable loc e pat_x in
+    let pat_typ = typecheck_variable loc e pat_x in
     unify_or_error ~loc e (typ_arrow [typ] the_typ_bool) pat_typ (Unable_to_unify ((typ_arrow [typ] the_typ_bool), pat_typ));
     return typ (Trm_var x) env_empty
 (* In the case where we want to handle expected types, we could destruct it and feed the sup-types
@@ -864,7 +860,7 @@ and typecheck_pat ?(expected_typ:typ option) (e : env) (p : pat) : pat =
     let typ_args = List.map (fun _ -> typ_nameless()) ps in
 
     (* typ_tuple_flex <- typ_tuple_if_several/if_multiple *)
-      let t0 = typecheck_ml ~expected_typ:(typ_arrow [typ] (typ_option ((typ_tuple_flex typ_args)(*  (typ_tuple typ_args) *)))) {e with env_is_in_pattern = true} t0 in
+      let t0 = typecheck_trm ~expected_typ:(typ_arrow [typ] (typ_option ((typ_tuple_flex typ_args)(*  (typ_tuple typ_args) *)))) {e with env_is_in_pattern = true} t0 in
       let ps = List.map2 (fun pi typ_arg_i -> typecheck_pat e ~expected_typ:typ_arg_i pi) ps typ_args in
       return typ (Trm_apps (t0,ps)) (env_merge_binds ~loc (List.map bindsof ps))
 

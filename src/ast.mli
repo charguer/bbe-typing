@@ -173,7 +173,7 @@ type let_def = {
 (* List of functions to modify/list of dependencies when changing trm_desc:
   - src/debug.ml: [print_low_level_trm] function
   - src/ast_aux.ml: [trm_iter] and [trm_map] functions
-  - src/typecheck.ml: [typecheck_ml], [typecheck_bbe] and [typecheck_pat] functions
+  - src/typecheck.ml: [typecheck_trm], [typecheck_bbe] and [typecheck_pat] functions
   - src/ast_print.ml: [trm_to_doc_raw] function
 
   There is also a need to add smart constructors and inversors in ast_aux.ml
@@ -190,7 +190,7 @@ type let_def = {
    Idem pour not, and, or, ..
    Pour moi ça serait cohérent avec le fait d'avoir
    le type [t1 * t2] comme [Typ_constr "__tuple" [t1;t2]].*
-   Là ça oblige à avoir du code pour typer "Trm_and" dans "typecheck_ml"
+   Là ça oblige à avoir du code pour typer "Trm_and" dans "typecheck_trm"
    alors qu'il suffirait de déclarer "&&" comme une fonction de type
    "bool->bool->bool" dans l'environnement initial pour avoir le même effet. *)
 

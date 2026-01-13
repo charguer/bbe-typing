@@ -263,6 +263,10 @@ let rec unfold_alias env t =
 let is_type_bbe (id : tvar_rigid) : bool =
   (print_tvar_rigid id) = "type_bbe"
 
+let is_type_top (id : tvar_rigid) : bool =
+  (print_tvar_rigid id) = "type_top"
+
+
 let rec unify_exn_aux ?loc env (t1 : typ) (t2 : typ) : unit =
   Counters.(compute_count_and_time counter_unify time_unify (fun () ->
     let tr1 = Repr.get_repr t1 in
