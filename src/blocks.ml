@@ -275,6 +275,7 @@ let rec unify_exn_aux ?loc env (t1 : typ) (t2 : typ) : unit =
 
 (* [unify_desc ty1 ty2] assumes that [ty1] and [ty2] are roots (results of [Repr.get_repr]). *)
 and unify_desc ?(loc = loc_none) env (t1 : typ) (t2 : typ) : unit =
+
   let t1 = unfold_alias env t1 in
   let t2 = unfold_alias env t2 in (* replaces the find operation for Union-find algorithm *)
   match t1.typ_desc, t2.typ_desc with
@@ -283,16 +284,19 @@ and unify_desc ?(loc = loc_none) env (t1 : typ) (t2 : typ) : unit =
     | Flexible _, _ -> unify_flexible t1 t2
     | _, Flexible _ -> unify_flexible t2 t1
     | Typ_constr (id1, ts1), Typ_constr (id2, ts2) ->
-        if is_type_bbe id1 || is_type_bbe id2 then
-          raise (Error (Trying_to_unifying_bbe, loc));
-        if id1 <> id2 then
-          (* At this stage, id1 and id2 can't be aliases: the function unfold_alias has already
-            unfolded them. *)
-          raise (Error (Error_constr_mismatch (id1, id2), loc)) ;
-        if List.length ts1 <> List.length ts2 then
-          raise (Error (Error_number_of_arguments_mismatch (t1, t2), loc)) ;
-        List.iter2 (unify_exn_aux ~loc env) ts1 ts2
-
+        if (is_type_top id1) || (is_type_top id2) then ()
+        else
+          begin
+            if is_type_bbe id1 || is_type_bbe id2 then
+              raise (Error (Trying_to_unifying_bbe, loc));
+            if id1 <> id2 then
+              (* At this stage, id1 and id2 can't be aliases: the function unfold_alias has already
+                unfolded them. *)
+              raise (Error (Error_constr_mismatch (id1, id2), loc)) ;
+            if List.length ts1 <> List.length ts2 then
+              raise (Error (Error_number_of_arguments_mismatch (t1, t2), loc)) ;
+            List.iter2 (unify_exn_aux ~loc env) ts1 ts2
+          end
 (** [unify_exn env t1 t2] unifies [t1] and [t2], and raises an exception if the process fails. *)
 
 let unify_exn ?loc env (ty1 : typ) (ty2 : typ) : unit =

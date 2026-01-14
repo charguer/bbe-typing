@@ -756,12 +756,15 @@ let env_builtin =
   let e = env_empty in
   let e = env_add_tconstr e (tconstr "*") mk_special in
   let e = env_add_tconstr e (tconstr "->") mk_special in
-  let e = env_add_tconstr e (tconstr "option") mk_special in (* TODO: could not find a better solution, test this further *)
+  let e = env_add_tconstr e (tconstr "option") mk_special in
   let e = env_add_tconstr e (tconstr "int") (mk_base the_typ_int) in
   let e = env_add_tconstr e (tconstr "bool") (mk_base the_typ_bool) in
   let e = env_add_tconstr e (tconstr "float") (mk_base the_typ_float) in
   let e = env_add_tconstr e (tconstr "string") (mk_base the_typ_string) in
   let e = env_add_tconstr e (tconstr "unit") (mk_base the_typ_unit) in
+  (* Adding special types for corner cases *)
+  let e = env_add_tconstr e (tconstr "type_bbe") (mk_base the_typ_bbe) in
+  let e = env_add_tconstr e (tconstr "type_top") (mk_base the_typ_top) in
   let e =
     let tv = tvar_rigid "'a" in
     let t = typ_rigid tv in

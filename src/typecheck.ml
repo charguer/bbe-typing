@@ -151,6 +151,20 @@ let typ_of_some_or_nameless (exp_typ : typ option) : typ =
   | Some ty -> ty
   | _ -> typ_nameless ()
 
+let is_typ_top (t : typ) : bool =
+  let t = Repr.get_repr t in
+  match t.typ_desc with
+  | Typ_constr (tc, _) -> ((print_tconstr tc) = "type_top")
+  | _ -> false
+
+let is_sch_typ_top (s : sch) : bool =
+  (s.sch_tvars = []) && (is_typ_top s.sch_body)
+
+let is_synschopt_typ_top (s : synsch option) : bool =
+  match s with
+  | None -> false
+  | Some synsch -> is_sch_typ_top synsch.synsch_sch
+
 (** End of custom functions *)
 
 
@@ -373,6 +387,7 @@ let rec typecheck_trm_let_sch  ~loc ?(fully_resolved=false) rf (e : env) ((x, sy
         (sch, tvars_rhs, t1, e1)
     | Some syntyp ->
         let sch = syntyp.synsch_sch in
+        Printf.printf "Got sch = %s\n" (Ast_print.sch_to_string sch);
         if tvars_rhs <> [] then begin
           let xs1 = tvars_rhs in
           let xs2 = sch.sch_tvars in
@@ -435,8 +450,20 @@ and typecheck_let  ~loc (e : env) (b : let_def) : let_def * env * sch =
          It can be monomorphic or polymorphic (e.g. [let x : type a. a list = [] in t2]).
          Note that the [let[@instance]] form is a sequence of such a let-binding, with a
         [let[@register]. *)
-      let synschopt = Option.map (synsch_internalize ~loc e) synschopt in
-      let (t1, sch) = typecheck_trm_let_sch ~loc rf e (x, synschopt) t1 in
+      Option.iter (fun sy ->
+        (Printf.printf "binding variable %s with scheme %s\n" x (Ast_print.sch_to_string sy.synsch_sch))) synschopt;
+      let (t1, sch) =
+        (* temp solution *)
+        match synschopt with
+        | Some synsch ->
+          if is_sch_typ_top synsch.synsch_sch then
+          (t1, synsch.synsch_sch)
+          else
+            let synschopt = Some (synsch_internalize ~loc e synsch) in
+            typecheck_trm_let_sch ~loc rf e (x, synschopt) t1
+        | _ -> typecheck_trm_let_sch ~loc rf e (x, synschopt) t1
+      in
+
       (* If no annotation was provided, we add one in order to be able to display the inferred
         type scheme. *)
       let synsch =
