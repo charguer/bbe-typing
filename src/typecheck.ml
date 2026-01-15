@@ -450,8 +450,6 @@ and typecheck_let  ~loc (e : env) (b : let_def) : let_def * env * sch =
          It can be monomorphic or polymorphic (e.g. [let x : type a. a list = [] in t2]).
          Note that the [let[@instance]] form is a sequence of such a let-binding, with a
         [let[@register]. *)
-      Option.iter (fun sy ->
-        (Printf.printf "binding variable %s with scheme %s\n" x (Ast_print.sch_to_string sy.synsch_sch))) synschopt;
       let (t1, sch) =
         (* temp solution *)
         match synschopt with

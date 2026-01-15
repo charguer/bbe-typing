@@ -273,7 +273,7 @@ let _ =
     close_out out
   ) ;
 
-  if !Flags.output then (
+  if !Flags.output && !Flags.recompile then (
     let outputfile = get_compiled_filename inputfile in
     if not !Flags.quiet then
       print_endline (Printf.sprintf "Compilation successful. Generating file %s." outputfile) ;

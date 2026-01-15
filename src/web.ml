@@ -27,7 +27,7 @@ let _ =
       method compile str continue_on_error remove_failing (* instantiate *) readable =
         (* Parse *)
         let ast = parse str in
-        let res =
+        let (res, _) =
           Chain.full
             ~exact_error_messages:false
             ~continue_on_error:(Js.to_bool continue_on_error)

@@ -117,9 +117,10 @@ let full
     else []
   in
 
+  (*
   let out_str_compiled = Ast_print.to_string ~style:printing_styles compiled_ast in
 
-  if !Flags.debug && !Flags.verbose then (
+   if !Flags.debug && !Flags.verbose then (
     let outputfile = get_compiled_filename "test/unit_tests_bbe.ml" in
     if not !Flags.quiet then
       print_endline (Printf.sprintf "Compilation successful. Generating file %s." outputfile) ;
@@ -128,22 +129,28 @@ let full
       else open_out outputfile in
     output_string out out_str_compiled ;
     close_out out
-  ) ;
+  ) ; *)
 
   let compiled_ast =
-    wrapper
-      (chain
-        ~exact_error_messages
-        ~continue_on_error
-        ~remove_failing
-        (* ~instantiate *)
-        ~readable
-        ~printing_styles)
-        compiled_ast in
+    if !Flags.recompile then
+    Some (wrapper
+        (chain
+          ~exact_error_messages
+          ~continue_on_error
+          ~remove_failing
+          (* ~instantiate *)
+          ~readable
+          ~printing_styles)
+          compiled_ast)
+    else None
+  in
 
   (* Print *)
   let out_str = Ast_print.to_string ~style:printing_styles ast in
-  let out_str_compiled = Ast_print.to_string ~style:printing_styles compiled_ast in
+  (* The ast is either retyped, or not.  *)
+  let out_str_compiled =
+    Option.fold ~none:"" ~some:(Ast_print.to_string ~style:printing_styles) compiled_ast
+  in
 
 
 (*

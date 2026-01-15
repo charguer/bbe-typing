@@ -38,7 +38,8 @@ let output = ref true
 let print_types = ref false
 let print_parsed = ref false
 
-let recompile = ref true
+(* If enabled, do a second pass and type it through the typechecker *)
+let recompile = ref false
 
 (* Replace overloaded variables by the corresponding instance. *)
 let instantiate = ref false
