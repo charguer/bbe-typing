@@ -7,6 +7,14 @@
 )
 
 (library
+ (name ppx_bbe)
+ (kind ppx_rewriter)
+ (libraries ppxlib)
+
+ (modules_without_implementation ast)
+)
+
+(library
  (modes byte native)
  (name typer_lib)
  (preprocess (pps ppxlib.metaquot))
