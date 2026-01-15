@@ -133,6 +133,11 @@ let gen_compiled inputfile =
   let dirname = Filename.dirname inputfile in
   Filename.concat dirname (Printf.sprintf "%s_%s.ml" basename "compiled")
 
+let gen_expanded inputfile =
+  let basename = Filename.chop_suffix (Filename.basename inputfile) ".ml" in
+  let dirname = Filename.dirname inputfile in
+  Filename.concat dirname (Printf.sprintf "%s_%s.ml" basename "expanded")
+
 let get_output_filename (inputfile : string) : string =
   match !output_filename with
   | Some f -> f
@@ -143,6 +148,9 @@ let get_parsed_filename (inputfile : string) : string =
 
 let get_compiled_filename (inputfile : string) : string =
   gen_compiled inputfile
+
+let get_expanded_filename (inputfile : string) : string =
+  gen_expanded inputfile
 
 let get_parsed_and_converted_filename (inputfile : string) : string =
   gen_filename "translated" inputfile
@@ -233,7 +241,7 @@ let _ =
         res)
     else None in
 
-  let (typed_res, compiled_res)  =
+  let (typed_res, compiled_res, expanded_res)  =
     try
       Chain.full
         ~exact_error_messages:!Flags.exact_error_messages
@@ -281,6 +289,17 @@ let _ =
       if outputfile = "-" then stdout
       else open_out outputfile in
     output_string out compiled_res ;
+    close_out out
+  ) ;
+
+  if !Flags.output && !Flags.recompile && !Flags.expand then (
+    let outputfile = get_expanded_filename inputfile in
+    if not !Flags.quiet then
+      print_endline (Printf.sprintf "Expansion successful. Generating file %s." outputfile) ;
+    let out =
+      if outputfile = "-" then stdout
+      else open_out outputfile in
+    output_string out expanded_res ;
     close_out out
   ) ;
 

@@ -39,7 +39,10 @@ let print_types = ref false
 let print_parsed = ref false
 
 (* If enabled, do a second pass and type it through the typechecker *)
-let recompile = ref false
+let recompile = ref true
+
+(* If enabled, compile back to ocaml *)
+let expand = ref true
 
 (* Replace overloaded variables by the corresponding instance. *)
 let instantiate = ref false

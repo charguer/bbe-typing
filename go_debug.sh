@@ -12,6 +12,7 @@ if [ ${res} -eq 0 ]; then
     echo 'debug successful'
     echo 'typed version available at: test/unit_tests_debug_typed.ml'
     echo 'compiled version available at: test/unit_tests_debug_compiled.ml'
+    echo 'expanded version available at: test/unit_tests_debug_expanded.ml'
 else
     echo 'debug failed'
     # echo "$output"

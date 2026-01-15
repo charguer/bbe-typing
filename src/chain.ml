@@ -117,6 +117,17 @@ let full
     else []
   in
 
+  let expanded_ast =
+    if !Flags.recompile && !Flags.expand then
+      begin
+        Printf.printf "size of compiled_ast : %d\n" (List.length compiled_ast);
+        let result = Ast_expand.expand_program compiled_ast
+
+        in (Printf.printf "size of result : %d\n" (List.length result); result)
+      end
+    else []
+  in
+
   (*
   let out_str_compiled = Ast_print.to_string ~style:printing_styles compiled_ast in
 
@@ -132,7 +143,7 @@ let full
   ) ; *)
 
   let compiled_ast =
-    if !Flags.recompile then
+    if !Flags.recompile && false then
     Some (wrapper
         (chain
           ~exact_error_messages
@@ -143,6 +154,15 @@ let full
           ~printing_styles)
           compiled_ast)
     else None
+  in
+
+  let out_str_expanded =
+    if !Flags.recompile && !Flags.expand then
+      begin
+        let result = Printf.sprintf "%s" (Pprintast.string_of_structure expanded_ast)
+        in (Printf.printf "result : %s\n" result; result)
+      end
+    else ""
   in
 
   (* Print *)
@@ -172,5 +192,5 @@ let full
         failwith ("Formating error: " ^ Buffer.contents buffer)
     ) else out_str
   in
-  (out_str, out_str_compiled)
+  (out_str, out_str_compiled, out_str_expanded)
 

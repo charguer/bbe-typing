@@ -25,5 +25,5 @@ val full :
   ?wrapper:((Ast_fix.program -> Ast_fix.program) -> (Ast_fix.program -> Ast_fix.program)) ->
   (string -> unit) ->
   Ocaml_to_ast.ocaml_ast ->
-  (string * string)
+  (string * string * string)
 

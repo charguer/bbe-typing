@@ -9,6 +9,24 @@ open Tools
 open Ast_print
 open PPrint
 
+let expand_cst ~loc (c : cst) : expression =
+  match c with
+  | Cst_bool b -> pexp_construct ~loc (Located.mk ~loc (Lident (string_of_bool b))) None
+  | Cst_int n -> pexp_constant ~loc (Pconst_integer (string_of_int n, None))
+  | Cst_float f -> pexp_constant ~loc (Pconst_float (string_of_float f, None))
+  | Cst_string s -> pexp_constant ~loc (Pconst_string (s, loc, None))
+  | Cst_unit () -> pexp_construct ~loc (Located.mk ~loc (Lident "()")) None
+
+let expand_funs ~loc (args : varsyntyps) (body : expression) : expression =
+  List.fold_right (fun (x, sty) acc ->
+    let pat = ppat_var ~loc (Located.mk ~loc x) in
+    let pat' = match sty.syntyp_syntax with
+      | { ptyp_desc = Ptyp_any; _ } -> pat
+      | ty -> ppat_constraint ~loc pat ty
+    in
+    pexp_fun ~loc Nolabel None pat' acc
+  ) args body
+
 (* Main translation function from DSL trm to OCaml expression *)
 let rec expand_trm (t : trm) : expression =
   let aux = expand_trm in
@@ -22,14 +40,14 @@ let rec expand_trm (t : trm) : expression =
       expand_cst ~loc c
 
   | Trm_funs (args, t1) ->
-      let t1' = aux t1 in
-      expand_funs ~loc args t1'
+      let e1 = aux t1 in
+      expand_funs ~loc args e1
 
-  | Trm_if (b0, t1, t2) ->
-      let b0' = aux b0 in
-      let t1' = aux t1 in
-      let t2' = aux t2 in
-      pexp_ifthenelse ~loc b0' t1' (Some t2')
+  | Trm_if (t0, t1, t2) ->
+      let e0 = aux t0 in (* note that at this point this is a term, no more bbe *)
+      let e1 = aux t1 in
+      let e2 = aux t2 in
+      pexp_ifthenelse ~loc e0 e1 (Some e2)
 
   | Trm_let (ld, t2) ->
       let t2' = aux t2 in
@@ -83,24 +101,6 @@ let rec expand_trm (t : trm) : expression =
   | Trm_pat_var _ -> failwith "expand_trm: Trm_pat_var is not a term"
   | Trm_pat_wild -> failwith "expand_trm: Trm_pat_wild is not a term"
   | Trm_pat_when _ -> failwith "expand_trm: Trm_pat_when is not a term"
-
-and expand_cst ~loc (c : cst) : expression =
-  match c with
-  | Cst_bool b -> pexp_construct ~loc (Located.mk ~loc (Lident (string_of_bool b))) None
-  | Cst_int n -> pexp_constant ~loc (Pconst_integer (string_of_int n, None))
-  | Cst_float f -> pexp_constant ~loc (Pconst_float (string_of_float f, None))
-  | Cst_string s -> pexp_constant ~loc (Pconst_string (s, loc, None))
-  | Cst_unit () -> pexp_construct ~loc (Located.mk ~loc (Lident "()")) None
-
-and expand_funs ~loc (args : varsyntyps) (body : expression) : expression =
-  List.fold_right (fun (x, sty) acc ->
-    let pat = ppat_var ~loc (Located.mk ~loc x) in
-    let pat' = match sty.syntyp_syntax with
-      | { ptyp_desc = Ptyp_any; _ } -> pat
-      | ty -> ppat_constraint ~loc pat ty
-    in
-    pexp_fun ~loc Nolabel None pat' acc
-  ) args body
 
 and expand_let_def ~loc (ld : let_def) (t2 : expression) : expression =
   let rec_flag = ld.let_def_rec in
