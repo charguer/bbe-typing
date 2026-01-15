@@ -9,6 +9,13 @@ open Tools
 open Ast_print
 open PPrint
 
+(* Helper function to recognize constructors in application position *)
+let is_capitalized (s : string) : bool =
+  if String.length s = 0 then false
+  else
+    let c = String.get s 0 in
+    c >= 'A' && c <= 'Z'
+
 let expand_cst ~loc (c : cst) : expression =
   match c with
   | Cst_bool b -> pexp_construct ~loc (Located.mk ~loc (Lident (string_of_bool b))) None
@@ -33,6 +40,9 @@ let rec expand_trm (t : trm) : expression =
   let loc = t.trm_loc in
   match t.trm_desc with
 
+  | Trm_var x when x = "__assert_false" ->
+      pexp_assert ~loc (ebool ~loc false)
+
   | Trm_var x ->
       pexp_ident ~loc (Located.mk ~loc (Lident x))
 
@@ -53,7 +63,15 @@ let rec expand_trm (t : trm) : expression =
       let t2' = aux t2 in
       expand_let_def ~loc ld t2'
 
-  | Trm_apps (t0, ts) ->
+  | Trm_apps ({ trm_desc = Trm_var constr_name; _ }, ts) when is_capitalized constr_name ->
+    let ts' = List.map aux ts in
+      let args = match ts' with
+        | [t0] -> Some t0
+        | _ -> Some (pexp_tuple ~loc ts')
+      in
+      pexp_construct ~loc (Located.mk ~loc (Lident constr_name)) args
+
+  | Trm_apps (t0, ts) -> (* Depends on whether apps is a constructor or not *)
       let t0' = aux t0 in
       let ts' = List.map aux ts in
       List.fold_left (fun acc arg -> pexp_apply ~loc acc [Nolabel, arg]) t0' ts'
@@ -179,4 +197,21 @@ let expand_topdef (td : topdef) : structure_item =
       pstr_primitive ~loc (value_description ~loc ~name:(Located.mk ~loc x) ~type_:ty ~prim:prims)
 
 let expand_program (p : program) : structure =
-  List.map expand_topdef p
+
+  let func : structure_item =
+    let loc = Location.none in
+  pstr_type ~loc:loc Recursive [
+    type_declaration
+      ~loc
+      ~name:(Located.mk ~loc "func")
+      ~params:[
+        (ptyp_var ~loc "a", (NoVariance, NoInjectivity))
+      ]
+      ~cstrs:[]
+      ~kind:Ptype_abstract
+      ~private_:Public
+      ~manifest:(Some (ptyp_var ~loc "a"))
+  ]
+  in
+
+  func::(List.map expand_topdef p)

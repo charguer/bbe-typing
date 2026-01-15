@@ -6,6 +6,8 @@ open Ast_aux
 open Tools
 open Ast_print
 open PPrint
+open Ppxlib
+open Ast_builder.Default
 
 (* Fresh variable counter *)
 let fresh_counter = ref 0
@@ -105,7 +107,7 @@ let rec free_vars_pat (env : varid list) (p : trm) : varid list =
 and free_vars (env : varid list) (t : trm) : varid list =
   match t.trm_desc with
   | Trm_var x ->
-      if List.mem x env then [] else [x]
+      if List.mem x env || (is_capitalized x) then [] else [x]
 
   | Trm_cst _ ->
       []
@@ -274,10 +276,18 @@ let rec comp_trm (t : trm) : trm =
       let seq = trm_seq ~loc t2' loop_call in
       let unit_syntyp = mk_syntyp_unit () in
       let body = aux_bbe b1 seq (trm_unit ~loc ()) in
+      let unit_type ~loc =
+        ptyp_constr ~loc (Located.mk ~loc (Lident "unit")) []
+      in
+      let unit_to_unit_type : core_type =
+        let loc = Location.none in
+        ptyp_arrow ~loc Nolabel (unit_type ~loc) (unit_type ~loc)
+      in
+      (* Instead of using typ to styp, just build the styp by hand *)
       let loop_fun = trm_funs ~loc [(fresh_var (), unit_syntyp)] body in
 			(* let unit_styp = unit_syntyp.syntyp_syntax in *)
-			let let_typ = typ_to_styp (typ_arrow [the_typ_unit] the_typ_unit) in
-      trm_let ~loc Recursive (loop_name, Some (synsch_of_nonpolymorphic_typ (mk_syntyp let_typ))) loop_fun loop_call
+			(* let let_typ = typ_to_styp (typ_arrow [the_typ_unit] the_typ_unit) in *)
+      trm_let ~loc Recursive (loop_name, Some (synsch_of_nonpolymorphic_typ (mk_syntyp unit_to_unit_type))) loop_fun loop_call
 
   (* Non-term constructors should be errors *)
   | Trm_bbe_is _ ->

@@ -60,6 +60,8 @@ let fun_fun (x : int) : int -> int =
 
 
 (* Function call *)
+
+(* type 'a func = 'a *)
 let call_1 =
   fun_1 3
 
@@ -329,6 +331,22 @@ let myoptionnsome : (int mylist) myoption = MySome mylist1
 (* Destruction *)
 let bbe_view = if mylist0 @_is MyNil then MyNil else MyCons (1, MyNil)
 let bbe_view_bind = if (mylist0 @_is (MyCons (1, ??x))) then MyNil else MyCons (1, MyNil)
+
+(* Problème avec la duplication de continuation. *)
+(*  *)
+(*
+(mylist0 @_is (MyCons (1, ??x))) (MyNil) (MyCons (1, MyNil))
+match mylist0 with
+| MyCons (x1, x2) ->
+  let k () = MyCons (1, MyNil) in
+  if x1 = 1 then let x = x2 in MyNil else k ()
+  [[x1 is 1 && x2 is x]] (MyNil) (MyCons (1, MyNil))
+
+
+| _ -> (MyCons (1, MyNil))
+
+ *)
+
 (* Explicit BBE conversion *)
 (* let inv_lit c =
   bool_of (c @_is 3)
