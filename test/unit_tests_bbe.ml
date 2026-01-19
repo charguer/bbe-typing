@@ -247,20 +247,23 @@ let[@type_error "type mismatch in switch"] switch_type_fail =
 
 (* Match statements *)
 (* Important note: the patterns in match statements use the syntax of OCaml patterns, not expressions. This means in particular that a pattern variable should not have "??" as suffix. As it would cause a syntax error *)
-(* Does not pass through the "compilation" process *)
-(* let match_empty =
-  match false with
-  | _ -> ()
+
+let match_empty =
+  __match false [
+    __case (__ @_then ())
+  ]
 
 let match1 =
-  match false with
-  | true -> false
+  __match false [
+    __case (true @_then false)
+  ]
 
 let match2 =
-  match (true, false) with
-  | (false, true) -> false
-  | (false, x) -> x
-  | (x, y) -> (if x then y else x) *)
+  __match (true, false) [
+  __case ((false, true) @_then false);
+  __case ((false, ??x) @_then x);
+  __case ((??x, ??y) @_then (if x then y else x))
+  ]
 
 (**************************************************************)
 (* Nesting of features *)

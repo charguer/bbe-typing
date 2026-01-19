@@ -10,7 +10,7 @@ let quiet = ref false
 let continue_on_error = ref false
 
 (* If enabled, the typer will stop unifying types, and only verify variable scopes *)
-let weak_typer = ref true
+let weak_typer = ref false
 
 (* If enabled, halts the typing on error and forces OCaml's verbose runtime trace *)
 let halt_on_error = ref false

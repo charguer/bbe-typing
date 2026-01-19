@@ -613,11 +613,11 @@ and trm_to_doc_raw ~style (t : trm) : doc =
       ^^ s0
       ^^ blank 1
       ^^ string "then"
-      ^^ hardline
+      ^^ blank 1
       ^^ aux t1
-      ^^ hardline
+      ^^ blank 1
       ^^ string "else"
-      ^^ hardline
+      ^^ blank 1
       ^^ aux t2
 
   | Trm_let ({ let_def_bind = Bind_anon; let_def_body = { trm_desc = Trm_funs (xs, t1); _ }; _ }, t2) ->
@@ -813,7 +813,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
         aux b1
       in
       let d2 = aux t2 in
-         string "_case"
+         string "__case"
       ^^ blank 1
       ^^ d1
       ^^ blank 1
@@ -821,10 +821,9 @@ and trm_to_doc_raw ~style (t : trm) : doc =
       ^^ blank 1
       ^^ d2
     in
-
        string "switch"
     ^^ blank 1
-    ^^ brackets (
+    ^^ enclose (lbracket ^^ hardline) (hardline ^^ rbracket) (
       separate (semi ^^ hardline)
       (List.map case_to_doc cases)
     )

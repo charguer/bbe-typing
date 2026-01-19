@@ -69,8 +69,7 @@ let full
   ?(input_name = "-")
   ?(wrapper = fun f x -> f x)
   call_back_syntax
-  typed_input_parsetree (* ocaml_ast *) =
-
+  untyped_input_ocamlast =
 
   (* TODO YL:
      typed / untyped
@@ -78,19 +77,9 @@ let full
      ocamlast / bbeast
       *)
 
+  let untyped_input_bbeast : Ast_fix.program = Ocaml_to_ast.tr_structure untyped_input_ocamlast in
 
-
-  (* Convert *)
-  let ast : Ast_fix.program = Ocaml_to_ast.tr_structure typed_input_parsetree in
-
-  (* if !Flags.debug then Printf.printf ("%s\n") (Debug.print_low_level_program ast);
- *)
-  Debug.log "Tuples declared: %s."
-    (String.concat ", " (List.map string_of_int (Ast_aux.all_seen_tuple_arity ()))) ;
-
-
-  (* input *)
-  let ast =
+  let typed_input_bbeast =
     wrapper
       (chain
         ~exact_error_messages
@@ -99,7 +88,7 @@ let full
         (* ~instantiate *)
         ~readable
         ~printing_styles)
-        ast in
+        untyped_input_bbeast in
 
   if !Flags.print_parsed then (
     let res = Ast_print.to_string ~style:{
@@ -110,11 +99,11 @@ let full
       style_types = TypesVarsAndBinders ;
       style_print_symbols = true ;
       style_binds = !Flags.style_binds ;
-    } ast in
+    } typed_input_bbeast in
     if !Flags.verbose then
       begin
         Printf.printf "Raw ast :\n%s\n"
-          (Debug.print_low_level_program ast);
+          (Debug.print_low_level_program typed_input_bbeast);
         Printf.printf "Readable ast :\n%s\n" res;
       end;
     call_back_syntax res
@@ -122,21 +111,16 @@ let full
 
 
   (* simplified ast (compilation) *)
-  let compiled_ast =
+  let typed_compiled_bbeast =
     if !Flags.recompile then
-      wrapper (Ast_comp.comp_program) ast
+      wrapper (Ast_comp.comp_program) typed_input_bbeast
     else []
   in
 
   (* OCaml ast *)
-  let expanded_ast : Parsetree.structure =
+  let typed_compiled_ocamlast : Parsetree.structure =
     if !Flags.recompile && !Flags.expand then
-      begin
-        Printf.printf "size of compiled_ast : %d\n" (List.length compiled_ast);
-        let result = Ast_expand.expand_program compiled_ast
-
-        in (Printf.printf "size of result : %d\n" (List.length result); result)
-      end
+        Ast_expand.expand_program typed_compiled_bbeast
     else []
   in
 
@@ -155,7 +139,7 @@ let full
   ) ; *)
 
   (*  *)
-  let compiled_ast =
+  let typed_compiled_bbeast =
     if !Flags.recompile && false then
     Some (wrapper
         (chain
@@ -165,45 +149,45 @@ let full
           (* ~instantiate *)
           ~readable
           ~printing_styles)
-          compiled_ast)
+          typed_compiled_bbeast)
     else None
   in
 
-  let out_str_expanded =
+  let out_str_ocamlast =
     if !Flags.recompile && !Flags.expand then
       begin
-        let result = Printf.sprintf "%s" (Pprintast.string_of_structure expanded_ast)
+        let result = Printf.sprintf "%s" (Pprintast.string_of_structure typed_compiled_ocamlast)
         in (Printf.printf "result : %s\n" result; result)
       end
     else ""
   in
 
   (* Print *)
-  let out_str = Ast_print.to_string ~style:printing_styles ast in
+  let out_str_typed = Ast_print.to_string ~style:printing_styles typed_input_bbeast in
   (* The ast is either retyped, or not.  *)
   let out_str_compiled =
-    Option.fold ~none:"" ~some:(Ast_print.to_string ~style:printing_styles) compiled_ast
+    Option.fold ~none:"" ~some:(Ast_print.to_string ~style:printing_styles) typed_compiled_bbeast
   in
 
 
 (*
   let out_str_transformed = "" in
  *)
-  let out_str =
+  let out_str_typed =
     if readable then (
       let open Ocamlformat_lib in
       let conf = Conf.default in
       match
         Translation_unit.parse_and_format Syntax.Use_file conf
           ~input_name
-          ~source:out_str
+          ~source:out_str_typed
       with
       | Ok formatted -> formatted
       | Error e ->
         let buffer = Buffer.create 160 in
         Translation_unit.Error.print (Format.formatter_of_buffer buffer) e ;
         failwith ("Formating error: " ^ Buffer.contents buffer)
-    ) else out_str
+    ) else out_str_typed
   in
-  (out_str, out_str_compiled, out_str_expanded)
+  (out_str_typed, out_str_compiled, out_str_ocamlast)
 
