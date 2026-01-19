@@ -69,10 +69,19 @@ let full
   ?(input_name = "-")
   ?(wrapper = fun f x -> f x)
   call_back_syntax
-  ocaml_ast =
+  typed_input_parsetree (* ocaml_ast *) =
+
+
+  (* TODO YL:
+     typed / untyped
+     input / compiled
+     ocamlast / bbeast
+      *)
+
+
 
   (* Convert *)
-  let ast : Ast_fix.program = Ocaml_to_ast.tr_structure ocaml_ast in
+  let ast : Ast_fix.program = Ocaml_to_ast.tr_structure typed_input_parsetree in
 
   (* if !Flags.debug then Printf.printf ("%s\n") (Debug.print_low_level_program ast);
  *)
@@ -80,7 +89,7 @@ let full
     (String.concat ", " (List.map string_of_int (Ast_aux.all_seen_tuple_arity ()))) ;
 
 
-
+  (* input *)
   let ast =
     wrapper
       (chain
@@ -111,13 +120,16 @@ let full
     call_back_syntax res
   ) ;
 
+
+  (* simplified ast (compilation) *)
   let compiled_ast =
     if !Flags.recompile then
       wrapper (Ast_comp.comp_program) ast
     else []
   in
 
-  let expanded_ast =
+  (* OCaml ast *)
+  let expanded_ast : Parsetree.structure =
     if !Flags.recompile && !Flags.expand then
       begin
         Printf.printf "size of compiled_ast : %d\n" (List.length compiled_ast);
@@ -142,6 +154,7 @@ let full
     close_out out
   ) ; *)
 
+  (*  *)
   let compiled_ast =
     if !Flags.recompile && false then
     Some (wrapper

@@ -205,34 +205,45 @@ let[@type_error "unbound variable z"] while_bind_var_fail (x : int option) f =
 
 (* switch statements *)
 
-(* Note on syntax : The parsing is specifically asking for "_case" to be applied to a single argument. This means that it is often necessary to add parentheses on the right. It might be interesting to change the inversion function at some point in the future *)
+(* Note on syntax : The parsing is specifically asking for "__case" to be applied to a single argument. This means that it is often necessary to add parentheses on the right. It might be interesting to change the inversion function at some point in the future *)
 
 let switch_empty =
   __switch []
 
 let switch1 =
   __switch [
-    _case (true @_then false)
+    __case (true @_then false)
   ]
+
+(* let x : (type a) a list  = [] in (3::x, true::x) *)
 
 let switch2 =
   __switch [
-    _case (true @_then false);
-    _case ((true @_is ??x) @_then x);
-    _case (((false, true) @_is (??x, ??y)) @_then y)
+    __case (true @_then false);
+    __case ((true @_is ??x) @_then x);
+    __case (((false, true) @_is (??x, ??y)) @_then y)
   ]
 
 let[@type_error "unbound variable x"] switch_fail =
   __switch [
-    _case ((true @_is ??x) @_then x);
-    _case (true @_then x)
+    __case ((true @_is ??x) @_then x);
+    __case (true @_then x)
   ]
 
 let[@type_error "type mismatch in switch"] switch_type_fail =
   __switch [
-    _case ((true @_is ??x) @_then ());
-    _case (true @_then 3)
+    __case ((true @_is ??x) @_then ());
+    __case (true @_then 3)
   ]
+
+(* __match t [
+    __case pat then trm
+    ]
+*)
+
+(* list of constraints on match :
+  -> if t is a value then [[__match ...]]
+  -> otw: let x = t in [[__match ...]] (to switch) *)
 
 (* Match statements *)
 (* Important note: the patterns in match statements use the syntax of OCaml patterns, not expressions. This means in particular that a pattern variable should not have "??" as suffix. As it would cause a syntax error *)
@@ -284,6 +295,13 @@ let hashtable_get tbl r f g =
   if (r @_is (Some ??k)) && ((list_get_opt tbl k) @_is (Some ??v))
     then f v
     else g ()
+
+(* #(f _ x) == (fun y -> f y x) *)
+
+(* __partial (....) instead of '#', or '?!' *)
+(* if r is Some (?!(list_get_opt tbl _) ??v) then *)
+
+(* for the demo : TODO YL: get match version that duplicates continuation *)
 
 (* TODO: write this with switch + when later
  switch
@@ -376,6 +394,8 @@ let trm_bool (b : bool) = Trm_bool b
 let trm_if t1 t2 t3 = Trm_if (t1, t2, t3)
 
 let trm_and t1 t2 = trm_if t1 t2 (trm_bool false)
+
+let trm_and_3 t1 t2 t3 = trm_and t1 (trm_and t2 t3)
 
 let trm_bool_inv (t : trm_desc) : bool option =
   if t @_is (Trm_bool ??b) then Some b else None

@@ -449,11 +449,11 @@ let accumulate_arguments_list (cases : expression) : expression list =
 
 let case_inv_opt ~loc (e : expression) : expression option =
   begin match e.pexp_desc with
-  | Pexp_apply ({pexp_desc=Pexp_ident{txt=Longident.Lident "_case"; _}; _}, [(Nolabel, e)]) ->
+  | Pexp_apply ({pexp_desc=Pexp_ident{txt=Longident.Lident "__case"; _}; _}, [(Nolabel, e)]) ->
     Some e
   | _ -> None
   end
-(*  -> "_case", applied to 1 arg.
+(*  -> "__case", applied to 1 arg.
  -> "@", applied to 2 args.
  -> "b1", and "_then t1".
  *)
@@ -579,7 +579,6 @@ let rec tr_exp (e : expression) : trm =
     let (_, cases) = cases in
     let cases = accumulate_arguments_list cases in
     let t_cases = List.map
-    (* fonction, qui prend une liste d'expressions, vérifie si ca a la forme case e1 then e2, si oui, traduits e1 et e2 et renvoie le couple (t1, t2) traduit   *)
       (fun e ->
         begin match case_inv_opt ~loc e with
         | Some {pexp_desc=Pexp_apply (e0, aes); _} when atsign_inv e0 ->
@@ -595,25 +594,33 @@ let rec tr_exp (e : expression) : trm =
       ) cases in
 
     return (trm_desc_switch t_cases)
-  (* TODO: write an inversor for switches. *)
-  (* Prototype :
-    - __switch [
-      case (b1 @_then t1);
-      case (b2 @_then t2);
-      case (b3 @_then t3);
-    ]
-     *)
 
-  (* Representation: *)
-  (*
-  apply of "__switch" to 1 arg.
-  an expression of a construct "::" applied to a tuple.
- -> Pexp_tuple (_, _) (aka. premier element, le reste)
- -> "_case", applied to 1 arg.
- -> "@", applied to 2 args.
- -> "b1", and "_then t1".
-  *)
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__match"; _}; _}, [e0; cases]) ->
+    (* Folding on cases with an accumulator *)
+    (* I want to match recursively the cases. with an accumulator *)
+    (* Add a : let __v = t1 in ...  *)
 
+    let (_, e0) = e0 in
+    let t0 = tr_exp e0 in
+    let (_, cases) = cases in
+    let cases = accumulate_arguments_list cases in
+    let t_cases = List.map
+    (* fonction, qui prend une liste d'expressions, vérifie si ca a la forme case e1 then e2, si oui, traduits e1 et e2 et renvoie le couple (t1, t2) traduit *)
+      (fun e ->
+        begin match case_inv_opt ~loc e with
+        | Some {pexp_desc=Pexp_apply (e0, aes); _} when atsign_inv e0 ->
+            begin match infix_op_inv ~loc e0 aes with
+            | Some (e1,{pexp_desc=(Pexp_ident {txt=Lident "_then"; _}); _}, e3) ->
+              let t1 = tr_exp e1 in
+              let t3 = tr_exp e3 in
+              (trm_bbe_is t0 t1, t3)
+            | _ -> unsupported ~loc "argument in case not in '@_then' format"
+            end
+        | _ -> unsupported ~loc "argument in switch not in 'case' format"
+        end
+      ) cases in
+
+    return (trm_desc_let Nonrecursive ("__v", None) t0 (trm_switch t_cases))
 
   | Pexp_apply (e0, aes) ->
     let is_labeled lbl =

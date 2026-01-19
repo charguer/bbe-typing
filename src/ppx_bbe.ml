@@ -2,13 +2,11 @@ open Ppxlib
 open Ast_builder.Default
 open Asttypes
 open Parsetree
-open Var
 open Ast_fix
 open Ast_aux
 open Tools
 open Ast_print
 open PPrint
-open Chain
 
 let transform_impl (str : structure) : structure =
 

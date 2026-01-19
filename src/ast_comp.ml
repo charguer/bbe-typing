@@ -328,7 +328,7 @@ and comp_bbe (b : bbe) (u : trm) (u' : trm) : trm =
         let inner = aux_bbe b2 u u' in
         aux_bbe b1 inner u'
       else
-				let body k =
+		let body k =
         	let inner = aux_bbe b2 u k in
         	aux_bbe b1 inner k
 				in

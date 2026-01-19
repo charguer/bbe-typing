@@ -275,6 +275,8 @@ let rec unify_exn_aux ?loc env (t1 : typ) (t2 : typ) : unit =
 
 (* [unify_desc ty1 ty2] assumes that [ty1] and [ty2] are roots (results of [Repr.get_repr]). *)
 and unify_desc ?(loc = loc_none) env (t1 : typ) (t2 : typ) : unit =
+  (* if weak typer, return.  *)
+
 
   let t1 = unfold_alias env t1 in
   let t2 = unfold_alias env t2 in (* replaces the find operation for Union-find algorithm *)
