@@ -43,6 +43,18 @@ let var (x : string) : Var.var =
   variable_found x ;
   Var.var x
 
+
+(* partial functions local variables. *)
+
+let fresh_counter = ref 0
+
+let reset_fresh_counter () =
+  fresh_counter := 0
+
+let fresh_var () =
+  incr fresh_counter;
+  "_y" ^ string_of_int !fresh_counter
+
 (*#########################################################################*)
 (* ** Translate expressions *)
 
@@ -383,12 +395,7 @@ let rec split_fun_args t =
 
 
 (* Custom useful functions *)
-let atsign_inv (e : expression) : bool =
-  match e.pexp_desc with
-    | Pexp_ident {txt= Longident.Lident "@"} -> true
-    | _ -> false
-
-let infix_op_inv ~loc (e1 : expression) (exp_list : (arg_label * expression) list) : (expression * expression * expression) option =
+let infix_op_inv ~loc (exp_list : (arg_label * expression) list) : (expression * expression * expression) option =
   if not (List.for_all (fun (lbl, _) -> lbl = Nolabel) exp_list)
     then begin
       match List.find_opt (fun (lbl, _) -> not (lbl = Nolabel)) exp_list with
@@ -404,6 +411,11 @@ let infix_op_inv ~loc (e1 : expression) (exp_list : (arg_label * expression) lis
     end
   | _ -> None
 
+let is_wild_card (e : expression) : bool =
+  match e.pexp_desc with
+  | Pexp_ident {txt = Longident.Lident "__"; _} -> true
+  | _ -> false
+
 let recognize_infix_op ~loc (op : expression) (arg1 : trm) (arg2 : trm) : trm_desc =
   match op.pexp_desc with
   | Pexp_ident {txt = Longident.Lident s} ->
@@ -413,27 +425,6 @@ let recognize_infix_op ~loc (op : expression) (arg1 : trm) (arg2 : trm) : trm_de
     | _ -> unsupported ~loc "infix operation not yet handled"
     end
   | _ -> unsupported ~loc "operator is not an ident"
-
-
-let pvar_inv (e : expression) : bool =
-  match e.pexp_desc with
-    | Pexp_ident {txt= Longident.Lident "??"} -> true
-    | _ -> false
-
-let bool_op_inv (e : expression) : bool =
-  match e.pexp_desc with
-    | Pexp_ident {txt= Longident.Lident s} -> ( s = "&&" || s = "||" || s = "not")
-    | _ -> false
-
-let bool_op_inv_opt (e : expression) : string option =
-  match e.pexp_desc with
-    | Pexp_ident {txt= Longident.Lident s} -> Some s
-    | _ -> None
-
-let false_inv (e : expression) : bool =
-  match e.pexp_desc with
-  | Pexp_construct ({txt=Longident.Lident "false"},_) -> true
-  | _ -> false
 
 let list_inv_opt (e : expression) : (expression * expression) option =
   match e.pexp_desc with
@@ -469,11 +460,10 @@ let rec tr_exp (e : expression) : trm =
       trm_env = env_empty(* ;
       trm_annot = annot  *)} in
   match e.pexp_desc with
+  | Pexp_ident {txt=Longident.Lident "__"} ->
+    return (trm_desc_pat_wild ())
   | Pexp_ident lid_loc ->
-    (*Goal : look at the identifier, and write different variables -> either the ident is optional, and give a pattern var, or it is a specific ident (here __ -> Trm_pat_wild) *)
-    if lid_loc.txt = Longident.Lident "__" then
-       return (trm_desc_pat_wild ())
-    else return (trm_desc_var (var (tr_longident lid_loc.txt)))
+    return (trm_desc_var (var (tr_longident lid_loc.txt)))
   | Pexp_constant c ->
       let cst = tr_constant ~loc c in
       (* let (symbol, annot) =
@@ -520,57 +510,74 @@ let rec tr_exp (e : expression) : trm =
   end *)
 
   (* Recognize special syntax with at-symbol e.g. 't @_is p' *)
-  | Pexp_apply (e0, aes) when atsign_inv e0 ->
-    begin match infix_op_inv ~loc e0 aes with
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "@"; _}; _}, aes) ->
+    begin match infix_op_inv ~loc aes with
     | Some (e1, e2, e3) ->
-      (* if !Flags.verbose && !Flags.debug then
-        begin
-          let pr = Printast.expression 0 in
-          Format.printf "handling @ %a %a %a:\n" pr e1 pr e2 pr e3;
-          (*make task go.sh with "make typer; typer.exe test/..."
-
-          take as argument workspace folder + current path folder.
-          *)
-        end; *)
       let t1 = tr_exp e1 in
       let t3 = tr_exp e3 in
         return (recognize_infix_op ~loc e2 t1 t3)
     | _ -> unsupported ~loc "@-sign with no custom operator"
     end
 
-  | Pexp_apply (e0, aes) when pvar_inv e0 ->
+  (* Partial function definition *)
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "?!"; _}; _},
+    [(_,{pexp_desc = Pexp_apply (e0, aes)})]) ->
+
+
+    let fresh_vars = List.filter_map
+      (fun (_, e) -> if is_wild_card e then
+          Some (fresh_var (), mk_syntyp_none ())
+        else None) aes
+    in
+
+    let new_args = List.rev (fst (List.fold_left
+      (fun (new_args, fresh_vars) (_, ei) -> (* LATER: verify labels *)
+        if is_wild_card ei then
+          begin match fresh_vars with
+          | [] -> assert false
+          | (_yi, _)::fresh_vars' ->  ((trm_var _yi)::new_args, fresh_vars')
+          end
+        else
+          let ti = tr_exp ei in
+          (ti::new_args, fresh_vars)
+      )
+      ([], fresh_vars) aes)) in
+
+    let t0 = tr_exp e0 in
+
+    return (trm_desc_funs fresh_vars (return (trm_desc_apps t0 new_args)))
+
+    (* Pattern variables *)
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "??"; _}; _}, aes) ->
     begin match aes with
     | [(_, {pexp_desc = Pexp_ident lid_loc})] ->
       return (trm_desc_pat_var (var (tr_longident lid_loc.txt)))
     | _ -> unsupported ~loc "pattern variable but wrong argument"
     end
 
-  | Pexp_apply (e0, aes) when bool_op_inv e0 ->
-    begin match bool_op_inv_opt e0 with
-      | Some "not" ->
-        begin match aes with
-        | [(_, e)] ->
-            let t = tr_exp e in
-            return (trm_desc_not t)
-        | _ -> unsupported ~loc "expected 1 argument";
-        end
-      | Some "&&" ->
-        begin match aes with
-        | [(_, e1); (_, e2)] ->
-          let t1 = tr_exp e1 in
-          let t2 = tr_exp e2 in
-          return (trm_desc_and t1 t2)
-        | _ -> unsupported ~loc "expected 2 arguments";
-        end
-      | Some "||" ->
-        begin match aes with
-        | [(_, e1); (_, e2)] ->
-          let t1 = tr_exp e1 in
-          let t2 = tr_exp e2 in
-          return (trm_desc_or t1 t2)
-        | _ -> unsupported ~loc "expected 2 arguments";
-        end
-      | _ -> assert false (* It should be impossible to have an operator that is not handled here *)
+  (* Boolean operations *)
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "&&"; _}; _}, aes) ->
+    begin match aes with
+    | [(_, e1); (_, e2)] ->
+      let t1 = tr_exp e1 in
+      let t2 = tr_exp e2 in
+      return (trm_desc_and t1 t2)
+    | _ -> unsupported ~loc "expected 2 arguments";
+    end
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "||"; _}; _}, aes) ->
+    begin match aes with
+    | [(_, e1); (_, e2)] ->
+      let t1 = tr_exp e1 in
+      let t2 = tr_exp e2 in
+      return (trm_desc_or t1 t2)
+    | _ -> unsupported ~loc "expected 2 arguments";
+    end
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "not"; _}; _}, aes) ->
+    begin match aes with
+    | [(_, e)] ->
+        let t = tr_exp e in
+        return (trm_desc_not t)
+    | _ -> unsupported ~loc "expected 1 argument";
     end
 
   | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__switch"; _}; _}, [cases]) ->
@@ -581,8 +588,8 @@ let rec tr_exp (e : expression) : trm =
     let t_cases = List.map
       (fun e ->
         begin match case_inv_opt ~loc e with
-        | Some {pexp_desc=Pexp_apply (e0, aes); _} when atsign_inv e0 ->
-            begin match infix_op_inv ~loc e0 aes with
+        | Some {pexp_desc=Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "@"; _}; _}, aes); _} ->
+            begin match infix_op_inv ~loc aes with
             | Some (e1,{pexp_desc=(Pexp_ident {txt=Lident "_then"; _}); _}, e3) ->
               let t1 = tr_exp e1 in
               let t3 = tr_exp e3 in
@@ -608,8 +615,8 @@ let rec tr_exp (e : expression) : trm =
     (* fonction, qui prend une liste d'expressions, vérifie si ca a la forme case e1 then e2, si oui, traduits e1 et e2 et renvoie le couple (t1, t2) traduit *)
       (fun e ->
         begin match case_inv_opt ~loc e with
-        | Some {pexp_desc=Pexp_apply (e0, aes); _} when atsign_inv e0 ->
-            begin match infix_op_inv ~loc e0 aes with
+        | Some {pexp_desc=Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "@"; _}; _}, aes); _} ->
+            begin match infix_op_inv ~loc aes with
             | Some (e1,{pexp_desc=(Pexp_ident {txt=Lident "_then"; _}); _}, e3) ->
               let t1 = tr_exp e1 in
               let t3 = tr_exp e3 in
@@ -656,29 +663,25 @@ let rec tr_exp (e : expression) : trm =
       let cst = Cst_bool (b = "true") in
       return (trm_desc_cst cst)
 
-
-
   | Pexp_construct (c, None) ->
       return (trm_desc_constr (constr (tr_longident c.txt)) [])
   | Pexp_construct (c, Some ({pexp_desc = Pexp_tuple ts; _})) -> (* tuple is translated into several arguments *)
       (* add_tuple_arity (List.length ts) ; *)
       return (trm_desc_constr (constr (tr_longident c.txt)) (List.map tr_exp ts))
   (* We parse Some (__tuple (x,y)) as the application of Some to a single argment which is a tuple *)
+  (* LATER: remove, obsolete *)
   | Pexp_construct (c, Some {pexp_desc =
           Pexp_apply (
             {pexp_desc = Pexp_ident {txt = Longident.Lident "__tuple"; _}; _},
-            [(_, {pexp_desc = Pexp_tuple ts; _})]); (* TODO: repalce "_" with no-label *)
+            [(Nolabel, {pexp_desc = Pexp_tuple ts; _})]); (* TODO: repalce "_" with no-label *)
           _}) ->
       return (trm_desc_constr (constr (tr_longident c.txt)) [trm_tuple (List.map tr_exp ts)])
   | Pexp_construct (c, Some e) -> (* 1 single argument is translated into a singleton list *)
       return (trm_desc_constr (constr (tr_longident c.txt)) [tr_exp e])
 
-  | Pexp_tuple ts -> (* TODO: handle Pexp_tuple properly. No need to see this as a specific constructor. We just see a constructor as a label and a list of arguments applied to it. No need to worry. *)
-      (* In the tuple case, there is conceptually an infinite number of instances: one for each arity.
-       We can't add that many instances at once in the environment, so we add them lazily: each time
-       we see a new tuple, we check whether its associated instance is already declared.
-       This then enables users to define new overloaded instances of tuples. *)
+  | Pexp_tuple ts ->
       return (trm_tuple (List.map tr_exp ts)).trm_desc
+
 (*
        let i = List.length ts in
       add_tuple_arity i ;
@@ -720,9 +723,8 @@ let rec tr_exp (e : expression) : trm =
     let t2 = tr_exp e2 in
     return (trm_desc_while t1 t2)
 
-  | Pexp_assert e when false_inv e ->
+  | Pexp_assert {pexp_desc=Pexp_construct ({txt=Longident.Lident "false"},_)} ->
     return (trm_desc_assert_false ())
-
 
   (* TODO *)
   (* | Pexp_array
@@ -754,7 +756,9 @@ and tr_case (c : case) : pat * trm =
   let lhs =
     match c.pc_guard with
     | None -> lhs
-    | Some e -> failwith "Unsupported: guard inside match (Ocaml_to_ast.tr_case)\n"
+    | Some e ->
+      let guard = tr_exp e in
+      trm_pat_when lhs guard
   in
   let rhs = tr_exp c.pc_rhs in
   (lhs, rhs)
@@ -912,7 +916,7 @@ and tr_let (rf : rec_flag) (attrs : attributes) (vb : value_binding) : let_def l
 
 
 and tr_structure (s : structure) : topdefs =
-  List.concat_map tr_structure_item s
+  List.concat_map (fun si -> reset_fresh_counter (); tr_structure_item si) s
 
 and tr_structure_item (si : structure_item) : topdef list =
   let loc = si.pstr_loc in

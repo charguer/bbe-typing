@@ -156,8 +156,9 @@ let full
   let out_str_ocamlast =
     if !Flags.recompile && !Flags.expand then
       begin
-        let result = Printf.sprintf "%s" (Pprintast.string_of_structure typed_compiled_ocamlast)
-        in (Printf.printf "result : %s\n" result; result)
+        let result = Printf.sprintf "%s" (Pprintast.string_of_structure typed_compiled_ocamlast) in
+        if !Flags.verbose then Printf.printf "result : %s\n" result;
+        result
       end
     else ""
   in

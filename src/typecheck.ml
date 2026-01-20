@@ -387,7 +387,6 @@ let rec typecheck_trm_let_sch  ~loc ?(fully_resolved=false) rf (e : env) ((x, sy
         (sch, tvars_rhs, t1, e1)
     | Some syntyp ->
         let sch = syntyp.synsch_sch in
-        Printf.printf "Got sch = %s\n" (Ast_print.sch_to_string sch);
         if tvars_rhs <> [] then begin
           let xs1 = tvars_rhs in
           let xs2 = sch.sch_tvars in
@@ -436,7 +435,7 @@ and typecheck_let  ~loc (e : env) (b : let_def) : let_def * env * sch =
   let bind = b.let_def_bind in
   let return bind e t1 sch =
     let sch =
-      if not !Flags.weak_typer
+      if !Flags.weak_typer
       then (sch_of_nonpolymorphic_typ the_typ_top)
       else sch
     in
@@ -446,10 +445,7 @@ and typecheck_let  ~loc (e : env) (b : let_def) : let_def * env * sch =
     let t1 = typecheck_trm ~expected_typ:the_typ_unit e t1 in
     return bind e t1 (sch_of_nonpolymorphic_typ the_typ_unit)
   | Bind_var (x, synschopt) ->
-      (* This case handles a binding of the form [let x = t1 in t2].
-         It can be monomorphic or polymorphic (e.g. [let x : type a. a list = [] in t2]).
-         Note that the [let[@instance]] form is a sequence of such a let-binding, with a
-        [let[@register]. *)
+      (* This case handles a binding of the form [let x = t1 in t2]. *)
       let (t1, sch) =
         (* temp solution *)
         match synschopt with

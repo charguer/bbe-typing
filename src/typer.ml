@@ -170,8 +170,6 @@ type ocaml_ast = Parsetree.structure
 let _ =
   let inputfile = parse_command_line () in
 
-  Printf.printf "inputfile = %s\n" inputfile;
-
   (* Parse *)
   let infile = open_in inputfile in
   let lexbuf = Lexing.from_channel infile in

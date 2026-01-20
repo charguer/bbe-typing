@@ -110,7 +110,7 @@ let[@type_error "term conflicts with context"]  bbe_is_syntyp_fail = if true @_i
 let bbe_is_bind1 : bool = if true @_is ??x then x else false
 
 let bbe_is_bind2 : (bool * bool) = if (true @_is ??x) && (true @_is ??y) then (x, y) else (true, false)
-(* to test *)
+
 let[@type_error "unbound variable x"] bbe_is_bind_fail = if (true @_is ??x) && (true @_is ??y) then false else x
 
 
@@ -299,10 +299,6 @@ let hashtable_get tbl r f g =
     then f v
     else g ()
 
-(* #(f _ x) == (fun y -> f y x) *)
-
-(* __partial (....) instead of '#', or '?!' *)
-(* if r is Some (?!(list_get_opt tbl _) ??v) then *)
 
 (* for the demo : TODO YL: get match version that duplicates continuation *)
 
@@ -312,19 +308,6 @@ let hashtable_get tbl r f g =
  case (r @_is ((Some ??k) @_when ((list_get_opt tbl k) @_is (Some ??v)))
  case
 *)
-
-(* About inversors : *)
-
-
-
-
-
-
-(* ^ the two cases should behave the same *)
-
-
-
-
 
 (* Constructor inversion *)
 let bbe_is_bind_constr = if (Some true) @_is (Some ??x) then x else false
@@ -419,6 +402,25 @@ let even_opt n = if even n then (Some (n/2)) else None
 
 let testing_inv_and (type a) (t : int option) (f : int -> a) =
   if (t @_is (Some ??k)) && (k @_is (even_opt ??v)) then f v else f 0
+
+
+(* Partial operation *)
+
+(* #(f _ x) == (fun y -> f y x) *)
+
+(* __partial (....) instead of '#', or '?!' *)
+(* if r is Some (?!(list_get_opt tbl _) ??v) then *)
+
+(* ?! ok, mais le _ pas ok. c'est un pat. *)
+
+let proj1 x y = x
+let proj2 x y = y
+
+(* should have typed 'a -> ('b -> 'a) *)
+let partl_proj1 x = ?!(proj1 x __)
+
+(* should have typed 'a -> ('b -> 'a) *)
+let partr_proj1 y = ?!(proj1 __ y)
 
 (* TODO URGENT: test pattern inversion of custom constructors. *)
 
