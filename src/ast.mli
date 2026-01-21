@@ -271,13 +271,13 @@ and pat = trm (*temporary solution, hoping to remove the "pat" type and change "
   Constructor declaration implicitly adds into context correspoding inversors for pattern matching.
   Identically to OCaml pattern matching, they take a "return_type" as argument, and returns an option on the "argument list".
   Constructor inversors with no arguments are typed as boolean predicates, as they would return an option on "unit".
-  e.g : With the same example: "Pattern__A : forall a. a t -> bool" and "Pattern__B : forall a. a t -> (a * int) option".
+  e.g : With the same example: "__pattern_A : forall a. a t -> bool" and "__pattern_B : forall a. a t -> (a * int) option".
         Internally, we would have the representation :
-        Pattern__A => {sch_tvars = ["a"] ;
+        __pattern_A => {sch_tvars = ["a"] ;
                        sch_body = {typ_desc = Typ_constr ("->", [Typ_constr ("t", [a])])
                          typ_mark = _}
             }
-        Pattern__B => {sch_tvars = ["a"] ;
+        __pattern_B => {sch_tvars = ["a"] ;
              sch_body = {typ_desc = Typ_constr ("->", [Typ_constr ("t", [a]); Typ_constr ("int",[])  ,Typ_constr ("t", [a])])
                          typ_mark = _}
             }
@@ -396,7 +396,7 @@ type env_tconstr = (tconstr, tconstr_desc) Env.t
 type env = {
   env_var : env_var;
   env_tconstr : env_tconstr;
-  env_is_in_pattern : bool; (* Useful to recognize when to look for a "Pattern__" version. *)
+  env_is_in_pattern : bool; (* Useful to recognize when to look for a "__pattern_" version. *)
   (* For all constr name (capitalized functions), give its arity. *)
   (* Will include Some, None, and other builtin constructors as well *)
   (* env_constr : (var, int) Env.t *)

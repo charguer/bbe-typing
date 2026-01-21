@@ -690,10 +690,10 @@ let env_add_type_declaration (e : env) (td : Parsetree.type_declaration) : env *
       (* returns an environment in which all of the constructors have been added. *)
       List.fold_left (fun e (c, ty) ->
         (* Prototyping:
-          Goal: add all of the constructors to the environment, as well as their Pattern__ version.
+          Goal: add all of the constructors to the environment, as well as their __pattern_ version.
           - This means: add to environment (c : ty)
-          - break apart ty, according to the internal representation detailed in the Pattern__ explaination in ast.mli. to get [arguments] ty_ret.
-          - add to environment (Pattern__xxx : ty_ret -> (arguments) option
+          - break apart ty, according to the internal representation detailed in the __pattern_ explaination in ast.mli. to get [arguments] ty_ret.
+          - add to environment (__pattern_xxx : ty_ret -> (arguments) option
           Possible problems:
           I would probably need polymorphism at some point for the constructors. This means that (C : forall a. a -> a list). Have I correctly instantiated the variables/how do I get them?
           This should be solved if I can get info on the free variables of the typ ?
@@ -722,7 +722,7 @@ let env_add_type_declaration (e : env) (td : Parsetree.type_declaration) : env *
         (typ_arrow [t] (typ_option t))) in *)
         (* how do I get the tvar_rigid? *)
         let e = env_add_var e c (mk_sch var_names typ_of_constructor) in
-        let e = env_add_var e ("Pattern__" ^ c) (mk_sch var_names typ_of_inversor) in
+        let e = env_add_var e ("__pattern_" ^ c) (mk_sch var_names typ_of_inversor) in
         e)
         e.env_var (List.map (fun (c, ty) -> (constr_to_var c, ty)) cs)
         (* What does this function do that I can not do myself?  *)

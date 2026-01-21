@@ -35,8 +35,8 @@ let disable_check_cycle_on_resolution_attempts = ref false
 
 (* If disabled, do not write any output. *)
 let output = ref true
-let print_types = ref false
-let print_parsed = ref false
+let print_types = ref true
+let print_parsed = ref true
 
 (* If enabled, do a second pass and type it through the typechecker *)
 let recompile = ref true

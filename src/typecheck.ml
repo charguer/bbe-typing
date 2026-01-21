@@ -71,6 +71,12 @@ let mk_env_binds (bs : env_var) : env =
 
 (** * Custom functions, to be put elsewhere later *)
 
+let is_capitalized (s : string) : bool =
+  if String.length s = 0 then false
+  else
+    let c = String.get s 0 in
+    c >= 'A' && c <= 'Z'
+
 (** [merge_distinct e1 e2]: merges the environments e1 and e2, raising an error if there is shadowing *)
 let merge_distinct ~loc (e1 : env_var) (e2 : env_var) : env_var =
   Env.fold e2 (fun e k v ->
@@ -128,14 +134,14 @@ let tconstr_inv_bind (e : env_tconstr) (v : var) : tconstr_desc option =
    if it is found, returns 'Pattern_${v}', otherwise returns [v]. *)
 let try_read_pattern ~loc (ev : env_var) (v : varid) : varid =
   let flattened = Env.to_list ev in
-  let pattern_v = "Pattern__" ^ v in
+  let pattern_v = "__pattern_" ^ v in
 
   match List.find_opt (fun (pv, _) -> pv = pattern_v) flattened with
   | Some (pv, _)->
     if !Flags.verbose then Printf.printf "Found \"%s\"\n" pattern_v;
     pv
   | None ->
-    if !Flags.verbose then Printf.printf "variable %s does not have a \"Pattern__\" version\n" v;
+    if !Flags.verbose then Printf.printf "variable %s does not have a \"__pattern_\" version\n" v;
     begin match List.find_opt (fun (pv, _) -> pv = v) flattened with
     | Some (pv, _) -> pv
     | None -> raise (Error (Unbound_variable v, loc))
@@ -188,7 +194,6 @@ let is_synschopt_typ_top (s : synsch option) : bool =
 
   (* [typecheck_variable e v] looks up [v] in [e] to get its type. *)
 let typecheck_variable loc (e : env) (v : var) : typ =
-      (* if env_is_in_pattern  chercher d'abord "Pattern__" ^ v TODO *) (* AC *)
   let s =
     match Env.read_option e.env_var v with
     | None -> raise (Error (Unbound_variable v, loc)) (* SymbolName is a temporary solution. Later replace the type of Unbound_variable to var, or even string. *)
@@ -540,15 +545,16 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
 
   let result =
     (* If we are in 'pattern' mode, then variables are interpreted in the
-       module 'Pattern__' by default (at depth 1).
+       module '__pattern_' by default (at depth 1).
        If we see anything else than a variable, we no longer interpret
-       variables in the 'Pattern__' module. *)
+       variables in the '__pattern_' module. *)
     if e.env_is_in_pattern then
       match t.trm_desc with
       | Trm_var v ->
         let pat_v = try_read_pattern ~loc e.env_var v in
         let tyx = typecheck_variable loc e pat_v in
-        return tyx (Trm_var v)
+        let v' = if is_capitalized v then v else pat_v in (* transforms the variable into its "__pattern_" version, unless it is already a constructor *)
+        return tyx (Trm_var v')
       | _ -> typecheck_trm {e with env_is_in_pattern = false} t
     else
   begin
@@ -732,7 +738,7 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
   if !Flags.verbose && !Flags.debug then Printf.printf "Entering typecheck_bbe with :\n  %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e) *) (trm_to_string b);
 
   let loc = b.trm_loc in
-  let aux_ml ?(expected_typ:typ option) ?(env : env = e) (t : trm) : trm =
+  let aux_trm ?(expected_typ:typ option) ?(env : env = e) (t : trm) : trm =
     typecheck_trm ?expected_typ env t in
   let aux_bbe ?(env : env = e) (t : trm) : bbe =
     typecheck_bbe env t in
@@ -765,7 +771,7 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
         return (Trm_or (b1, b2)) b1n2
 
       | Trm_bbe_is (t, p) ->
-        let t = aux_ml t in
+        let t = aux_trm t in
         if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s\n" (trm_to_string t)(Ast_print.typ_to_string (typeof t)) (trm_to_string p) (Ast_print.typ_to_string p.trm_typ);
         let p = aux_pat ~expected_typ:(typeof t) (t.trm_typ) p in
         unify_or_error ~loc e (typeof t) (typeof p) (Mismatch_type_is (typeof t, typeof p)); (* In theory this is not useful anymore. Remove when all of the modifications are made *)
@@ -774,21 +780,19 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
 
         return (Trm_bbe_is (t, p)) (bindsof p)
 
-      (* simply returning aux_ml would not initialize trm_binds, meaning that the result term would be interpreted as a term, and not as a BBE by the "bindsof" function.
+      (* simply returning aux_trm would not initialize trm_binds, meaning that the result term would be interpreted as a term, and not as a BBE by the "bindsof" function.
         Instead, we wrap with the "return" function to initialize the result bindings to [Some {}] *)
-      | _ -> return (aux_ml ~expected_typ:the_typ_bool b).trm_desc (env_empty)
+      | _ -> return (aux_trm ~expected_typ:the_typ_bool b).trm_desc (env_empty)
   in
   if !Flags.verbose && !Flags.debug then Printf.printf "Exiting typecheck_bbe with :\n  %s\n" (trm_to_string result);
   result
 
-
-
 (* Note on constructor destruction and inversor patterns:
-  - Any defined constructor would implicitly define a destructor function, of the form "Pattern__XXX".
-  - For this reason, it is admitted that any constructor has its "Pattern__" counterpart, meaning that we can easily discriminate constructors from inversor functions.
-  - The "Pattern__" versions have an type that is "opposite" to the original constructor. (more details in [src/ast.mli])
+  - Any defined constructor would implicitly define a destructor function, of the form "__pattern_XXX".
+  - For this reason, it is admitted that any constructor has its "__pattern_" counterpart, meaning that we can easily discriminate constructors from inversor functions.
+  - The "__pattern_" versions have an type that is "opposite" to the original constructor. (more details in [src/ast.mli])
   pattern matching with inversion works this way :
-    1. Any application is firstly considered as a constructor application. We look for a "Pattern__" version.
+    1. Any application is firstly considered as a constructor application. We look for a "__pattern_" version.
       -> If we find it, consider it as the current application, otherwise use the original one (happens in the case of an inversor function application)
       -> If there any sub-pattern (>= 1), then assert that the return type is an option. Otherwise (= 0), assert it is the type bool.
       -> Propagate the expected types to the corresponding sub-patterns if any.
@@ -796,10 +800,9 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
     3. The result bindings of the pattern is the disjoint union of all of the sub-pattern bindings.
 *)
 
-(* typecheck_pat TODO change name. typecheck_pat -> typecheck_match pour le moment. Type pat -> match_pat ? *)
 and typecheck_pat ?(expected_typ:typ option) (e : env) (p : pat) : pat =
   let loc = p.trm_loc in
-  let _aux_ml ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
+  let aux_trm ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
     typecheck_trm ?expected_typ env t in
   let aux_bbe ?(env : env = e) (b : bbe) : bbe =
     typecheck_bbe env b in
@@ -837,18 +840,6 @@ and typecheck_pat ?(expected_typ:typ option) (e : env) (p : pat) : pat =
     return typ (Trm_cst cst) env_empty
 
   | Trm_tuple pl ->
-    (* let tys =
-      match typ_tuple_inv_opt (Repr.get_repr unfolded_exp_typ) with (* Hack : used get_repr to destruct deep in the unification tree, I don't know if this is good practice. TODO: think about this later.*)
-      | Some tys -> tys
-      | _ -> raise (Error (Wrong_pattern_constructor "tuple", loc))
-   in
-   *)
-(*     let pl =
-      if (List.length tys) <> (List.length pl) then
-        raise (Error (Mismatch_pattern_size ((List.length tys), (List.length pl)), loc))
-      else List.map2 (fun exp_ty p -> aux_pat ~expected_typ:exp_ty ~env:e p) tys pl
-    in
-*)
     let pl = List.map (aux_pat ~env:e) pl in
     let tys = List.map (fun p -> p.trm_typ) pl in
     let binds = List.map bindsof pl in
@@ -856,7 +847,7 @@ and typecheck_pat ?(expected_typ:typ option) (e : env) (p : pat) : pat =
     return (typ_tuple tys) (Trm_tuple pl) (env_merge_binds ~loc binds)
 
 
-    (* For predicate pattern and inversor pattern, we look in the table for a "Pattern__" version, that would indicate that the pattern is inversible. Meaning that there is a predefined function for destructing the construction. *)
+    (* For predicate pattern and inversor pattern, we look in the table for a "__pattern_" version, that would indicate that the pattern is inversible. Meaning that there is a predefined function for destructing the construction. *)
    (* Predicate pattern *)
   | Trm_var x ->
     let pat_x = try_read_pattern ~loc e.env_var x in
@@ -873,7 +864,7 @@ and typecheck_pat ?(expected_typ:typ option) (e : env) (p : pat) : pat =
 
    (* Inversor pattern *)
   | Trm_apps (t0, ps) ->
-    (* For the moment this is expected to work with "Pattern__XXX" written by hand.  *)
+    (* For the moment this is expected to work with "__pattern_XXX" written by hand.  *)
     assert (ps <> []);
     (* Kind of the same idea, give a "shape to fit", and do the typing. *)
     (* let typ = match expected_typ with Some ty -> ty | None -> typ_nameless() in *)
@@ -942,8 +933,28 @@ and typecheck_pat ?(expected_typ:typ option) (e : env) (p : pat) : pat =
   match tconstr_inv_bind e.env_tconstr v.varid_var with
     | None -> assert false
     | Some tconstr_desc ->  *)
+  (* assume it is a term, can it be something other than a predicate *)
+  (*  let typ = typ_nameless () in
+    let pat_typ = typecheck_variable loc e pat_x in
+    unify_or_error ~loc e (typ_arrow [typ] the_typ_bool) pat_typ (Unable_to_unify ((typ_arrow [typ] the_typ_bool), pat_typ));
+    return typ (Trm_var x) env_empty *) (*TODO : handle this *) (* can it be something else than a trm fun? *)
 
-  | _ -> raise (Error (Unsupported_term "\"Pattern not yet handled\"", loc))
+  (* In the case where this is not a pattern, we believe it is same to assume it is a trm_fun? What kind of other construct can we have?  *)
+  | t ->
+    let typ_exp = typ_of_some_or_nameless expected_typ in
+    let t' = aux_trm ~env:e ~expected_typ:(typ_arrow [typ_exp] the_typ_bool) p in
+    return typ_exp t'.trm_desc (env_empty)
+    (* if this is correctly typed, then return t', with no bindings. Since the bindings will be computed later?  *)
+    (* What are we expecting here? What is the expected type in fact?  *)
+    (* type of a pattern is the type of the value it matches against. Ok. Question now, what is the return value then? How do I know. This binds nothing my definition, but it has the typechecked typed : expected_typ -> option of something (this something being a typ_nameless I guess)  *)
+
+    (* But the expected type is arrow of something to something *)
+
+
+
+
+    (* In that case it is a term, that we hope to be of the type "T -> option (T)" *)
+
 
 (*Time to write a new typing judgement. For BBEs and for patterns.
 Function signature :

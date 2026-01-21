@@ -107,7 +107,7 @@ let rec free_vars_pat (env : varid list) (p : trm) : varid list =
 and free_vars (env : varid list) (t : trm) : varid list =
   match t.trm_desc with
   | Trm_var x ->
-      if List.mem x env || (is_capitalized x) then [] else [x]
+      if List.mem x env || (is_capitalized x) || (x = "__assert_false") || (String.starts_with ~prefix:"__pattern_" x) then [] else [x]
 
   | Trm_cst _ ->
       []
@@ -196,12 +196,14 @@ let vars_or_unit_args (env : varid list) : trm list =
 	| _ -> List.map trm_var_varid env
 
 let mk_duplicate ~loc (cont : trm) (body : trm -> trm) : trm =
-	let k = fresh_var () in
+	(* YL LATER: buggy code. Would find any possible free variables, since given an empty context. Only current solution would be to have during translation a list of all the currently bound variables. *)
+  (* let k = fresh_var () in
 	let k_var = trm_var_varid ~loc k in
 	let free_vars_cont = free_vars [] cont in
 	let k_call = trm_apps ~loc k_var (vars_or_unit_args free_vars_cont) in
 	let k_fun = trm_funs ~loc (vars_or_unit_fun free_vars_cont) cont in
-	trm_let ~loc Nonrecursive (k, None) k_fun (body k_call)
+	trm_let ~loc Nonrecursive (k, None) k_fun (body k_call) *)
+  body cont
 
 (* Main translation functions *)
 let rec comp_trm (t : trm) : trm =
@@ -442,11 +444,11 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
       let failure_case = (wildcard, u') in
       trm_match ~loc y_var [success_case; failure_case]
 
-  | Trm_apps ({ trm_desc = Trm_var _f; _ } as f_term, ps) ->
+  | Trm_apps (f, ps) ->
       (* Function pattern: (y |> f (p1, ..., pn) (u) (u')) ==> let x = [[f]] y in (x |> Some (p1, ..., pn) (u) (u')) *)
       let x = fresh_var () in
       let y_var = trm_var_varid ~loc y in
-      let f' = aux_trm f_term in
+      let f' = aux_trm f in
       let f_applied = trm_apps ~loc f' [y_var] in
       let some_constr = "Some" in
       let ps_pattern =
@@ -482,8 +484,14 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
       let t' = aux_pat y p u u' in
       trm_annot ~loc t' styp
   | _ ->
-      (* Non-pattern constructors should be errors *)
-      failwith (Printf.sprintf "comp_pat: unexpected pattern form %s\n" (trm_to_string ~style:style_debug p))
+    (* If this is not a pattern, then it is a term of the type xxx -> bool *)
+    let x = fresh_var () in
+    let y_var = trm_var_varid ~loc y in
+    let t' = aux_trm p in
+    let t_applied = trm_apps ~loc t' [y_var] in
+    let x_var = trm_var_varid ~loc x in
+    let body = trm_if ~loc x_var u u' in
+    trm_let ~loc Nonrecursive (x, None) t_applied body
 
 and comp_switch ~loc ~typ (cases : (bbe * trm) list) : trm =
   match cases with

@@ -413,14 +413,13 @@ let testing_inv_and (type a) (t : int option) (f : int -> a) =
 
 (* ?! ok, mais le _ pas ok. c'est un pat. *)
 
-let proj1 x y = x
-let proj2 x y = y
+let example_fun2 x y = x
+let partl_proj x = ?!(example_fun2 x __)
 
-(* should have typed 'a -> ('b -> 'a) *)
-let partl_proj1 x = ?!(proj1 x __)
+let partr_proj y = ?!(example_fun2 __ y)
 
-(* should have typed 'a -> ('b -> 'a) *)
-let partr_proj1 y = ?!(proj1 __ y)
+let example_funbig a b c d e f g = e
+let projbig b e g = ?!(example_funbig __ b __ __ e __ g)
 
 (* TODO URGENT: test pattern inversion of custom constructors. *)
 

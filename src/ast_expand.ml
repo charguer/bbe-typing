@@ -196,6 +196,11 @@ let expand_topdef (td : topdef) : structure_item =
       let prims = ext_def.external_def_def in
       pstr_primitive ~loc (value_description ~loc ~name:(Located.mk ~loc x) ~type_:ty ~prim:prims)
 
+let is_not_external s : bool =
+  match s.topdef_desc with
+  | Topdef_external _ -> false
+  | _ -> true
+
 let expand_program (p : program) : structure =
 
   let func : structure_item =
@@ -213,5 +218,6 @@ let expand_program (p : program) : structure =
       ~manifest:(Some (ptyp_var ~loc "a"))
   ]
   in
+  let filtered_p = List.filter (is_not_external) p in
 
-  func::(List.map expand_topdef p)
+  func::(List.map expand_topdef filtered_p)

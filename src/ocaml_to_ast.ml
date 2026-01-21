@@ -53,7 +53,7 @@ let reset_fresh_counter () =
 
 let fresh_var () =
   incr fresh_counter;
-  "_y" ^ string_of_int !fresh_counter
+  "__arg" ^ string_of_int !fresh_counter
 
 (*#########################################################################*)
 (* ** Translate expressions *)
