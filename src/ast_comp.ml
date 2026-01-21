@@ -205,6 +205,15 @@ let mk_duplicate ~loc (cont : trm) (body : trm -> trm) : trm =
 	trm_let ~loc Nonrecursive (k, None) k_fun (body k_call) *)
   body cont
 
+(* Accumulator to factorize function definition *)
+(* Actually useless, since ocaml's ast is currified by default *)
+(* let rec factorize_fun (t : trm) : varsyntyps * trm =
+  match t.trm_desc with
+  | Trm_funs (args, t') ->
+    let args', t'' = factorize_fun t' in
+    (args@args'), t''
+  | _ -> [] , t
+ *)
 (* Main translation functions *)
 let rec comp_trm (t : trm) : trm =
   let aux_trm = comp_trm in
@@ -213,96 +222,97 @@ let rec comp_trm (t : trm) : trm =
   let typ = t.trm_typ in
   match t.trm_desc with
   | Trm_var x ->
-      trm_var ~loc ~typ x
+    trm_var ~loc ~typ x
 
   | Trm_cst c ->
-      trm_cst ~loc ~typ c
+    trm_cst ~loc ~typ c
 
   | Trm_funs (args, t1) ->
-      let t1' = aux_trm t1 in
-      trm_funs ~loc ~typ args t1'
+    (* let args, t1 = factorize_fun t in *)
+    let t1' = aux_trm t1 in
+    trm_funs ~loc ~typ args t1'
 
   | Trm_if (b0, t1, t2) ->
-      let t1' = aux_trm t1 in
-      let t2' = aux_trm t2 in
-      aux_bbe b0 t1' t2'
+    let t1' = aux_trm t1 in
+    let t2' = aux_trm t2 in
+    aux_bbe b0 t1' t2'
 
   | Trm_let (ld, t2) ->
-      let t2' = aux_trm t2 in
-      let ld' = comp_let_def ld in
-      trm_let_def ~loc ~typ ld' t2'
+    let t2' = aux_trm t2 in
+    let ld' = comp_let_def ld in
+    trm_let_def ~loc ~typ ld' t2'
 
   | Trm_apps (t0, ts) ->
-      let t0' = aux_trm t0 in
-      let ts' = List.map aux_trm ts in
-      trm_apps ~loc ~typ t0' ts'
+    let t0' = aux_trm t0 in
+    let ts' = List.map aux_trm ts in
+    trm_apps ~loc ~typ t0' ts'
 
   | Trm_annot (t1, sty) ->
-      let t1' = aux_trm t1 in
-      trm_annot ~loc ~typ t1' sty
+    let t1' = aux_trm t1 in
+    trm_annot ~loc ~typ t1' sty
 
   | Trm_forall (n, t1) ->
-      let t1' = aux_trm t1 in
-      trm_forall ~loc ~typ n t1'
+    let t1' = aux_trm t1 in
+    trm_forall ~loc ~typ n t1'
 
   | Trm_match (_t0, _pts) ->
-      (* As specified, match should not be used at this point *)
-      trm_apps ~loc ~typ (trm_var_varid ~loc "assert") [trm_bool ~loc false]
+    (* As specified, match should not be used at this point *)
+    trm_apps ~loc ~typ (trm_var_varid ~loc "assert") [trm_bool ~loc false]
 
   | Trm_tuple ts ->
-      let ts' = List.map aux_trm ts in
-      trm_tuple ~loc ~typ ts'
+    let ts' = List.map aux_trm ts in
+    trm_tuple ~loc ~typ ts'
 
   | Trm_not t1 ->
-      let t1' = aux_trm t1 in
-      trm_not ~loc ~typ t1'
+    let t1' = aux_trm t1 in
+    trm_not ~loc ~typ t1'
 
   | Trm_and (t1, t2) ->
-      let t1' = aux_trm t1 in
-      let t2' = aux_trm t2 in
-      trm_and ~loc ~typ t1' t2'
+    let t1' = aux_trm t1 in
+    let t2' = aux_trm t2 in
+    trm_and ~loc ~typ t1' t2'
 
   | Trm_or (t1, t2) ->
-      let t1' = aux_trm t1 in
-      let t2' = aux_trm t2 in
-      trm_or ~loc ~typ t1' t2'
+    let t1' = aux_trm t1 in
+    let t2' = aux_trm t2 in
+    trm_or ~loc ~typ t1' t2'
 
   | Trm_switch cases ->
-      comp_switch ~loc ~typ cases
+    comp_switch ~loc ~typ cases
 
   | Trm_while (b1, t2) ->
-      let loop_name = "__my_loop" in
-      let loop_var = trm_var_varid ~loc loop_name in
-      let t2' = aux_trm t2 in
-      let loop_call = trm_apps ~loc loop_var [trm_unit ~loc ()] in
-      let seq = trm_seq ~loc t2' loop_call in
-      let unit_syntyp = mk_syntyp_unit () in
-      let body = aux_bbe b1 seq (trm_unit ~loc ()) in
-      let unit_type ~loc =
-        ptyp_constr ~loc (Located.mk ~loc (Lident "unit")) []
-      in
-      let unit_to_unit_type : core_type =
-        let loc = Location.none in
-        ptyp_arrow ~loc Nolabel (unit_type ~loc) (unit_type ~loc)
-      in
-      (* Instead of using typ to styp, just build the styp by hand *)
-      let loop_fun = trm_funs ~loc [(fresh_var (), unit_syntyp)] body in
-			(* let unit_styp = unit_syntyp.syntyp_syntax in *)
-			(* let let_typ = typ_to_styp (typ_arrow [the_typ_unit] the_typ_unit) in *)
-      trm_let ~loc Recursive (loop_name, Some (synsch_of_nonpolymorphic_typ (mk_syntyp unit_to_unit_type))) loop_fun loop_call
+    let loop_name = "__my_loop" in
+    let loop_var = trm_var_varid ~loc loop_name in
+    let t2' = aux_trm t2 in
+    let loop_call = trm_apps ~loc loop_var [trm_unit ~loc ()] in
+    let seq = trm_seq ~loc t2' loop_call in
+    let unit_syntyp = mk_syntyp_unit () in
+    let body = aux_bbe b1 seq (trm_unit ~loc ()) in
+    let unit_type ~loc =
+      ptyp_constr ~loc (Located.mk ~loc (Lident "unit")) []
+    in
+    let unit_to_unit_type : core_type =
+      let loc = Location.none in
+      ptyp_arrow ~loc Nolabel (unit_type ~loc) (unit_type ~loc)
+    in
+    (* Instead of using typ to styp, just build the styp by hand *)
+    let loop_fun = trm_funs ~loc [(fresh_var (), unit_syntyp)] body in
+    (* let unit_styp = unit_syntyp.syntyp_syntax in *)
+    (* let let_typ = typ_to_styp (typ_arrow [the_typ_unit] the_typ_unit) in *)
+    trm_let ~loc Recursive (loop_name, Some (synsch_of_nonpolymorphic_typ (mk_syntyp unit_to_unit_type))) loop_fun loop_call
 
   (* Non-term constructors should be errors *)
   | Trm_bbe_is _ ->
-      failwith "comp_trm: Trm_bbe_is is not a term"
+    failwith "comp_trm: Trm_bbe_is is not a term"
 
   | Trm_pat_var _ ->
-      failwith "comp_trm: Trm_pat_var is not a term"
+    failwith "comp_trm: Trm_pat_var is not a term"
 
   | Trm_pat_wild ->
-      failwith "comp_trm: Trm_pat_wild is not a term"
+    failwith "comp_trm: Trm_pat_wild is not a term"
 
   | Trm_pat_when _ ->
-      failwith "comp_trm: Trm_pat_when is not a term"
+    failwith "comp_trm: Trm_pat_when is not a term"
 
 and comp_bbe (b : bbe) (u : trm) (u' : trm) : trm =
   let aux_trm = comp_trm in
@@ -311,45 +321,45 @@ and comp_bbe (b : bbe) (u : trm) (u' : trm) : trm =
   let loc = b.trm_loc in
   match b.trm_desc with
   | Trm_bbe_is (t1, p2) ->
-      (match t1.trm_desc with
-       | Trm_var y ->
-           aux_pat y p2 u u'
-       | _ ->
-           let y = fresh_var () in
-           let t1' = aux_trm t1 in
-           let body = aux_pat y p2 u u' in
-           trm_let ~loc Nonrecursive (y, None) t1' body)
+    (match t1.trm_desc with
+      | Trm_var y ->
+        aux_pat y p2 u u'
+      | _ ->
+        let y = fresh_var () in
+        let t1' = aux_trm t1 in
+        let body = aux_pat y p2 u u' in
+        trm_let ~loc Nonrecursive (y, None) t1' body)
 
   | Trm_not b1 ->
-      (* [[not b]] (u) (u') ==> [[b]] (u') (u) *)
-      aux_bbe b1 u' u
+    (* [[not b]] (u) (u') ==> [[b]] (u') (u) *)
+    aux_bbe b1 u' u
 
   | Trm_and (b1, b2) ->
-      (* [[b1 && b2]] (u) (u') ==> let k () = u' in [[b1]] ([[b2]] (u) (k ())) (k ()) *)
-      if is_duplicated_continuation u' then
-        let inner = aux_bbe b2 u u' in
-        aux_bbe b1 inner u'
-      else
-		let body k =
-        	let inner = aux_bbe b2 u k in
-        	aux_bbe b1 inner k
-				in
-				mk_duplicate ~loc u' body
+    (* [[b1 && b2]] (u) (u') ==> let k () = u' in [[b1]] ([[b2]] (u) (k ())) (k ()) *)
+    if is_duplicated_continuation u' then
+      let inner = aux_bbe b2 u u' in
+      aux_bbe b1 inner u'
+    else
+		  let body k =
+        let inner = aux_bbe b2 u k in
+        aux_bbe b1 inner k
+      in
+      mk_duplicate ~loc u' body
   | Trm_or (b1, b2) ->
-      (* [[b1 || b2]] (u) (u') ==> let k () = u in [[b1]] (k ()) ([[b2]] (k ()) (u')) *)
-      if is_duplicated_continuation u then
-        let inner = aux_bbe b2 u u' in
-        aux_bbe b1 u inner
-      else
-        let body k =
-					let inner = aux_bbe b2 k u' in
-        	aux_bbe b1 k inner
-				in
-        mk_duplicate ~loc u body
+    (* [[b1 || b2]] (u) (u') ==> let k () = u in [[b1]] (k ()) ([[b2]] (k ()) (u')) *)
+    if is_duplicated_continuation u then
+      let inner = aux_bbe b2 u u' in
+      aux_bbe b1 u inner
+    else
+      let body k =
+        let inner = aux_bbe b2 k u' in
+        aux_bbe b1 k inner
+      in
+      mk_duplicate ~loc u body
   | _ ->
-      (* Boolean term case: [[t]] (u) (u') ==> if [[t]] then u else u' *)
-      let t' = aux_trm b in
-      trm_if ~loc t' u u'
+    (* Boolean term case: [[t]] (u) (u') ==> if [[t]] then u else u' *)
+    let t' = aux_trm b in
+    trm_if ~loc t' u u'
 
 and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
   let aux_trm = comp_trm in
@@ -358,131 +368,132 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
   let loc = p.trm_loc in
   match p.trm_desc with
   | Trm_pat_wild ->
-      (* (y |> _ (u) (u')) ==> u *)
-      u
+    (* (y |> _ (u) (u')) ==> u *)
+    u
 
   | Trm_pat_var x ->
-      (* (y |> ??x (u) (u')) ==> let x = y in u *)
-      let y_var = trm_var_varid ~loc y in
-      trm_let ~loc Nonrecursive (x, None) y_var u
+    (* (y |> ??x (u) (u')) ==> let x = y in u *)
+    let y_var = trm_var_varid ~loc y in
+    trm_let ~loc Nonrecursive (x, None) y_var u
 
   | Trm_and (p1, p2) ->
-      (* (y |> (p1 & p2) (u) (u')) ==> let k () = u' in (y |> [[p1]] (y |> [[p2]] (u) (k ())) (k ())) *)
-      if is_duplicated_continuation u' then
-        let inner = aux_pat y p2 u u' in
-        aux_pat y p1 inner u'
-      else
-				let body k =
-	        let inner = aux_pat y p2 u k in
-  	      aux_pat y p1 inner k
-				in
-        mk_duplicate ~loc u' body
+    (* (y |> (p1 & p2) (u) (u')) ==> let k () = u' in (y |> [[p1]] (y |> [[p2]] (u) (k ())) (k ())) *)
+    if is_duplicated_continuation u' then
+      let inner = aux_pat y p2 u u' in
+      aux_pat y p1 inner u'
+    else
+      let body k =
+        let inner = aux_pat y p2 u k in
+        aux_pat y p1 inner k
+      in
+      mk_duplicate ~loc u' body
 
   | Trm_or (p1, p2) ->
-      (* (y |> (p1 | p2) (u) (u')) ==> let k () = u in (y |> [[p1]] (k ()) (y |> [[p2]] (k ()) (u'))) *)
-      if is_duplicated_continuation u then
-        let inner = aux_pat y p2 u u' in
-        aux_pat y p1 u inner
-      else
-				let body k =
-					let inner = aux_pat y p2 k u' in
-					aux_pat y p1 k inner
-				in
-        mk_duplicate ~loc u body
+    (* (y |> (p1 | p2) (u) (u')) ==> let k () = u in (y |> [[p1]] (k ()) (y |> [[p2]] (k ()) (u'))) *)
+    if is_duplicated_continuation u then
+      let inner = aux_pat y p2 u u' in
+      aux_pat y p1 u inner
+    else
+      let body k =
+        let inner = aux_pat y p2 k u' in
+        aux_pat y p1 k inner
+      in
+      mk_duplicate ~loc u body
 
   | Trm_not p1 ->
-      (* (y |> (not p) (u) (u')) ==> (y |> [[p]] (u') (u)) *)
-      aux_pat y p1 u' u
+    (* (y |> (not p) (u) (u')) ==> (y |> [[p]] (u') (u)) *)
+    aux_pat y p1 u' u
 
   | Trm_pat_when (p1, b2) ->
-      (* (y |> (p when b) (u) (u')) ==> let k () = u' in (y |> [[p]] ([[b]] (u) (k ())) (k ())) *)
-      if is_duplicated_continuation u' then
-        let inner = aux_bbe b2 u u' in
-        aux_pat y p1 inner u'
-      else
-				let body k =
-					let inner = aux_bbe b2 u k in
-        	aux_pat y p1 inner k
-				in
-        mk_duplicate ~loc u' body
+    (* (y |> (p when b) (u) (u')) ==> let k () = u' in (y |> [[p]] ([[b]] (u) (k ())) (k ())) *)
+    if is_duplicated_continuation u' then
+      let inner = aux_bbe b2 u u' in
+      aux_pat y p1 inner u'
+    else
+      let body k =
+        let inner = aux_bbe b2 u k in
+        aux_pat y p1 inner k
+      in
+      mk_duplicate ~loc u' body
 
   | Trm_var constr_name when is_capitalized constr_name ->
-      (* Constructor without arguments: (y |> C (u) (u')) ==> match y with C -> u | _ -> u' *)
-      let y_var = trm_var_varid ~loc y in
-      let success_pat = trm_var ~loc constr_name in
-      let success_case = (success_pat, u) in
-      let wildcard = trm_pat_wild ~loc () in
-      let failure_case = (wildcard, u') in
-      trm_match ~loc y_var [success_case; failure_case]
+    (* Constructor without arguments: (y |> C (u) (u')) ==> match y with C -> u | _ -> u' *)
+    let y_var = trm_var_varid ~loc y in
+    let success_pat = trm_var ~loc constr_name in
+    let success_case = (success_pat, u) in
+    let wildcard = trm_pat_wild ~loc () in
+    let failure_case = (wildcard, u') in
+    trm_match ~loc y_var [success_case; failure_case]
 
   | Trm_var f ->
-      (* Non-capitalized variable: boolean predicate *)
-      (* (y |> g (u) (u')) ==> let x = [[g]] y in if x then u else u' *)
-      let x = fresh_var () in
-      let y_var = trm_var_varid ~loc y in
-      let f_term = trm_var ~loc f in
-      let f' = aux_trm f_term in
-      let f_applied = trm_apps ~loc f' [y_var] in
-      let x_var = trm_var_varid ~loc x in
-      let body = trm_if ~loc x_var u u' in
-      trm_let ~loc Nonrecursive (x, None) f_applied body
+    (* Non-capitalized variable: boolean predicate *)
+    (* (y |> g (u) (u')) ==> let x = [[g]] y in if x then u else u' *)
+    let x = fresh_var () in
+    let y_var = trm_var_varid ~loc y in
+    let f_term = trm_var ~loc f in
+    let f' = aux_trm f_term in
+    let f_applied = trm_apps ~loc f' [y_var] in
+    let x_var = trm_var_varid ~loc x in
+    let body = trm_if ~loc x_var u u' in
+    trm_let ~loc Nonrecursive (x, None) f_applied body
 
   | Trm_apps ({ trm_desc = Trm_var constr_name; _ }, ps) when is_capitalized constr_name ->
-      (* Constructor with arguments: (y |> C (p1, ..., pn) (u) (u')) ==>
-         match y with C (x1, ..., xn) -> [[(x1 is p1) && ... && (xn is pn)]] (u) (u') | _ -> u' *)
-      let y_var = trm_var_varid ~loc y in
-      let fresh_vars = List.map (fun _ -> fresh_var ()) ps in
-      let pat_vars = List.map (fun x -> trm_pat_var ~loc x) fresh_vars in
-      let match_pat = trm_apps ~loc (trm_var ~loc constr_name) pat_vars in
-      let is_checks = List.map2 (fun x p ->
-        trm_bbe_is ~loc (trm_var_varid ~loc x) p
-      ) fresh_vars ps in
-      let combined = trm_ands ~loc is_checks in
-      let success_body = aux_bbe combined u u' in
-      let success_case = (match_pat, success_body) in
-      let wildcard = trm_pat_wild ~loc () in
-      let failure_case = (wildcard, u') in
-      trm_match ~loc y_var [success_case; failure_case]
+    (* Constructor with arguments: (y |> C (p1, ..., pn) (u) (u')) ==>
+        match y with C (x1, ..., xn) -> [[(x1 is p1) && ... && (xn is pn)]] (u) (u') | _ -> u' *)
+    let y_var = trm_var_varid ~loc y in
+    let fresh_vars = List.map (fun _ -> fresh_var ()) ps in
+    let pat_vars = List.map (fun x -> trm_pat_var ~loc x) fresh_vars in
+    let match_pat = trm_apps ~loc (trm_var ~loc constr_name) pat_vars in
+    let is_checks = List.map2 (fun x p ->
+      trm_bbe_is ~loc (trm_var_varid ~loc x) p
+    ) fresh_vars ps in
+    let combined = trm_ands ~loc is_checks in
+    let success_body = aux_bbe combined u u' in
+    let success_case = (match_pat, success_body) in
+    let wildcard = trm_pat_wild ~loc () in
+    let failure_case = (wildcard, u') in
+    trm_match ~loc y_var [success_case; failure_case]
 
   | Trm_apps (f, ps) ->
-      (* Function pattern: (y |> f (p1, ..., pn) (u) (u')) ==> let x = [[f]] y in (x |> Some (p1, ..., pn) (u) (u')) *)
-      let x = fresh_var () in
-      let y_var = trm_var_varid ~loc y in
-      let f' = aux_trm f in
-      let f_applied = trm_apps ~loc f' [y_var] in
-      let some_constr = "Some" in
-      let ps_pattern =
-        match ps with
-        | [p_single] -> p_single
-        | _ -> { (List.hd ps) with trm_desc = Trm_tuple ps }
-      in
-      let some_pattern = trm_apps ~loc (trm_var_varid ~loc some_constr) [ps_pattern] in
-      let body = aux_pat x some_pattern u u' in
-      trm_let ~loc Nonrecursive (x, None) f_applied body
+    (* Function pattern: (y |> f (p1, ..., pn) (u) (u')) ==> let x = [[f]] y in (x |> Some (p1, ..., pn) (u) (u')) *)
+    let x = fresh_var () in
+    let y_var = trm_var_varid ~loc y in
+    let f' = aux_trm f in
+    let f_applied = trm_apps ~loc f' [y_var] in
+    let some_constr = "Some" in
+    let ps_pattern =
+      match ps with
+      | [p_single] -> p_single
+      | _ -> { (List.hd ps) with trm_desc = Trm_tuple ps }
+    in
+    let some_pattern = trm_apps ~loc (trm_var_varid ~loc some_constr) [ps_pattern] in
+    let body = aux_pat x some_pattern u u' in
+    trm_let ~loc Nonrecursive (x, None) f_applied body
 
   | Trm_tuple ps ->
-      (* Tuple pattern: (y |> (p1, ..., pn) (u) (u')) ==> let (x1, ..., xn) = y in [[(x1 is p1) && ... && (xn is pn)]] (u) (u') *)
-      let y_var = trm_var_varid ~loc y in
-      let fresh_vars = List.map (fun _ -> fresh_var ()) ps in
-      let pat_vars = List.map (fun x -> trm_pat_var ~loc x) fresh_vars in
-      let tuple_pat = trm_tuple ~loc pat_vars in
-      let is_checks = List.map2 (fun x p ->
-        trm_bbe_is ~loc (trm_var_varid ~loc x) p
-      ) fresh_vars ps in
-      let combined = trm_ands ~loc is_checks in
-      let body = aux_bbe combined u u' in
-      trm_match ~loc y_var [(tuple_pat, body)]
+    (* Tuple pattern: (y |> (p1, ..., pn) (u) (u')) ==> let (x1, ..., xn) = y in [[(x1 is p1) && ... && (xn is pn)]] (u) (u') *)
+    let y_var = trm_var_varid ~loc y in
+    let fresh_vars = List.map (fun _ -> fresh_var ()) ps in
+    let pat_vars = List.map (fun x -> trm_pat_var ~loc x) fresh_vars in
+    let tuple_pat = trm_tuple ~loc pat_vars in
+    let is_checks = List.map2 (fun x p ->
+      trm_bbe_is ~loc (trm_var_varid ~loc x) p
+    ) fresh_vars ps in
+    let combined = trm_ands ~loc is_checks in
+    let body = aux_bbe combined u u' in
+    trm_match ~loc y_var [(tuple_pat, body)]
 
   | Trm_cst c ->
-      (* Constant pattern: (y |> c (u) (u')) ==> if (y = c) then u else u' *)
-      let y_var = trm_var_varid ~loc y in
-      let c_term = trm_cst ~loc c in
-      let eq = trm_apps ~loc (trm_var_varid ~loc "=") [y_var; c_term] in
-      trm_if ~loc eq u u'
+    (* Constant pattern: (y |> c (u) (u')) ==> if (y = c) then u else u' *)
+    let y_var = trm_var_varid ~loc y in
+    let c_term = trm_cst ~loc c in
+    let eq = trm_apps ~loc (trm_var_varid ~loc "=") [y_var; c_term] in
+    trm_if ~loc eq u u'
 
   | Trm_annot (p, styp) ->
-      let t' = aux_pat y p u u' in
-      trm_annot ~loc t' styp
+    let t' = aux_pat y p u u' in
+    trm_annot ~loc t' styp
+
   | _ ->
     (* If this is not a pattern, then it is a term of the type xxx -> bool *)
     let x = fresh_var () in
