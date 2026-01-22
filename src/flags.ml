@@ -2,8 +2,8 @@
 (** Global flags to change the behavior of the program.
   They are only modified in Typer. **)
 
-let debug = ref true
-let verbose = ref true
+let debug = ref false
+let verbose = ref false
 
 let quiet = ref false
 
@@ -43,6 +43,9 @@ let recompile = ref true
 
 (* If enabled, compile back to ocaml *)
 let expand = ref true
+
+(* Very specific and temporary flag, to remove the first line of expanded version for a presentation *)
+let presentation = ref true
 
 (* Replace overloaded variables by the corresponding instance. *)
 let instantiate = ref false

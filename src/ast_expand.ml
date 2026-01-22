@@ -220,4 +220,5 @@ let expand_program (p : program) : structure =
   in
   let filtered_p = List.filter (is_not_external) p in
 
-  func::(List.map expand_topdef filtered_p)
+  if !Flags.presentation then (List.map expand_topdef filtered_p)
+  else func::(List.map expand_topdef p)
