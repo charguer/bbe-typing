@@ -2,5 +2,7 @@
 _build
 *.exe
 test/*
+_opam/*
+*.opam
 *.txt
 src/flags.ml
