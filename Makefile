@@ -6,6 +6,9 @@ all: typer tests
 typer:
 	$(MAKE) -C src typer
 
+ppx:
+	make -C src ppx
+
 debug:
 	make -C src debug
 

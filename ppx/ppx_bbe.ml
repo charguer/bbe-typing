@@ -38,4 +38,4 @@ let transform_impl (str : structure) : structure =
 let () =
   Driver.register_transformation
     ~impl:transform_impl
-    "ppx_rewriter"
+    "ppx_bbe"

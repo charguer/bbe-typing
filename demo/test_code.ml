@@ -50,7 +50,8 @@ let double_table_application_v2 =
   double_table_apply_v2 3 table1 table2 (fun v -> (print_endline (string_of_int v); 1))
 
 let double_table_application_v3 =
-  double_table_apply_v3 3 table1 table2 (fun v -> (print_endline (string_of_int v); 1))
+  double_table_apply_v3 3 table1 table2
+    (fun v -> (print_endline (string_of_int v); 1))
 
 
 
@@ -94,40 +95,3 @@ let double_table_application_v3 =
 
 (* command:
 ./typer.exe unit_test_debug.ml; ocamlc unit_test_debug_expanded.ml; ./a.out *)
-
-
-(*
-(* Feature focus 2 *)
-external a_big_expression : int = ""
-external list_mem : int list -> int -> bool = ""
-external list_get_opt : int list -> int -> int option = ""
-
-let ocaml_hashtable_get1 t r f =
-  match r with
-  | Some k when list_mem t k ->
-    let v = list_get_opt t k in
-    f v
-  | _ ->
-    a_big_expression
-
-let ocaml_hashtable_get2 t r f =
-  let cont () =
-    a_big_expression in
-  match r with
-  | Some k ->
-    begin match list_get_opt t k with
-      | Some v -> f v
-      | _ -> cont ()
-    end
-  | _ ->
-    cont ()
-
-
-(* TODO YL: replace with 2 get opts, with two tables, in all of the above examples  *)
-let hashtable_get h1 h2 k1 f =
-  if (r @_is (Some ??k2)) && ((list_get_opt t k2) @_is (Some ??v))
-    then f v
-    else a_big_expression
-
-
- *)

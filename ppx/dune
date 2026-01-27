@@ -1,0 +1,4 @@
+(executable
+  (name ppx_bbe)
+  (libraries ppxlib typer_lib_core ppxlib.runner)
+  (modules ppx_bbe))

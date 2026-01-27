@@ -6,3 +6,5 @@ _opam/*
 *.opam
 *.txt
 src/flags.ml
+*/a.out
+

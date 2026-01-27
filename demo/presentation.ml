@@ -1,3 +1,6 @@
+(* Extending OCaml's Pattern Matching with binding boolean expressions *)
+(* Yanni Lefki and Arthur Charguéraud *)
+
 (* -------------------------------------------------------------- *)
 (* binding in boolean expressions (rust if-let) *)
 
@@ -17,7 +20,7 @@ let double_table_apply t1 t2 k1 f =
 
 (* space *)
 
-(* Our language (idealized syntax) *)
+(* In our language (in an idealized syntax, not our PPX syntax) *)
 let double_table_apply t1 t2 k1 f =
   if   ((find_opt t1 k1) is Some ?k2)
     && ((find_opt t2 k2) is Some ?v) then f v
@@ -29,18 +32,18 @@ let double_table_apply t1 t2 k1 f =
 (* binding in while loop conditions *)
 
 (* Regular OCaml *)
-let demo_pop q =
+let demo_pop q f =
   while not (Queue.empty q) do
-    let x = Queue.pop q in
-    ...
+    let x = Queue.take q in
+    f x
   done
 
 (* space *)
 
 (* Our language (idealized syntax) *)
-let demo_pop q =
+let demo_pop q f =
   while ((Queue.take_opt q) is (Some ?x)) do
-    ...
+    f x
   done
 
 (* space *)
@@ -53,7 +56,7 @@ type trm =
   | Trm_if of trm * trm * trm
   | ...
 
-(* Automatically generated curried-style constructors *)
+(* Let us present constructors as functions for uniformity with smart constructors *)
 let trm_bool (b : bool) = Trm_bool b
 let trm_if t1 t2 t3 = Trm_if (t1, t2, t3)
 
@@ -67,23 +70,23 @@ let trm_and t1 t2 = trm_if t1 t2 (trm_bool false)
 let demo_match t =
   match t with
   | Trm_if (t1,t2,t3) -> ... (* standard ocaml *)
-  | trm_if t1 t2 t3 -> ... (* feasible using Rocq-style syntax *)
   | trm_and t1 t2 -> ... (* desirable yet not possible *)
 
 (* We need to register custom smart deconstructors that can appear in patterns *)
 
-(* Automatically generated smart deconstructors *)
+(* In pattern position, [trm_bool] is interpreted as [__pattern_trm_bool]. *)
+
 let __pattern_trm_bool (t : trm) : bool option =
   match t with Trm_bool ?b -> Some b | _ -> None
+
 let __pattern_trm_if (t : trm) : (trm * trm * trm) option =
   match t with Trm_if (?t1, ?t2, ?t3) -> Some (t1, t2, t3) | _ -> None
 
-(* User-provided smart constructor for [trm_and].
-   In pattern position, [trm_if] is interpreted as [__pattern_trm_if]. *)
 let __pattern_trm_and (t : trm) : (trm * trm) option =
   if t is (trm_if (?t1, ?t2, trm_bool false)) then Some (t1, t2) else None
 
-(* Example use case of [pattern_trm_and], to match [t1 && t2 && t3] *)
+(* Example use case of [pattern_trm_and], to match both
+   [(t1 && t2) && t3] and [t1 && (t2 && t3)] *)
 
 let demo_trm_and (t : trm) =
   if t is (   trm_and (?t1, trm_and (?t2,?t3))
@@ -93,20 +96,32 @@ let demo_trm_and (t : trm) =
 
 
 (* -------------------------------------------------------------- *)
-(* implementing bucket lookup with views *)
+(* Implementing bucket lookup with predicates *)
 
-(* Code OCaml *)
 type ('a, 'b) bucket =
     Nil
   | Cons of 'a * 'b * ('a, 'b) bucket
 
+(* Code idiomatique OCaml *)
 let rec lookup_table_opt k t =
   match t with
   | Cons (k1, v, _) when k = k1 -> Some v
   | Cons (_, _, t') -> lookup_table_opt k t'
   | _ -> None
 
-(* Our language (idealized syntax) *)
+(* Same using predicate patterns: boolean functions *)
+(* [?!(f _ a _)] is short for [fun x y -> f x a y] *)
+(* In particular, [?!(_ = k)] is short for [fun x -> x = k] *)
+
+let rec lookup_table_opt (k : int) (t : (int, int) bucket) : int option =
+  match t with
+  | Cons (?!(_ = k), ?v, _) -> Some v
+  | Cons (_, _, ?t') -> lookup_table_opt k t'
+  | _ -> None
+  end
+
+(* -------------------------------------------------------------- *)
+(* Same with a switch *)
 
 let rec lookup_table_opt (k : int) (t : (int, int) bucket) : int option =
   switch
@@ -115,9 +130,16 @@ let rec lookup_table_opt (k : int) (t : (int, int) bucket) : int option =
     case true then None
   end
 
+(* Same with cascade of if *)
+
+let rec lookup_table_opt (k : int) (t : (int, int) bucket) : int option =
+  if t is Cons (?!(_ = k), ?v, _) then Some v
+  else if t is Cons (_, _, ?t') then lookup_table_opt k t'
+  else if true then None
+  else raise Match_failure
 
 (* -------------------------------------------------------------- *)
-(* implementing bucket lookup with views *)
+(* Exploring expressiveness: revisiting bucket lookup with views *)
 
 (* recall binding boolean expression version *)
 let double_table_apply t1 t2 k1 f =
@@ -130,8 +152,7 @@ let double_table_apply t1 t2 k1 f =
 
 (* we see the second find_opt as a view that filters k2 *)
 let double_table_apply_v2 t1 t2 k1 f =
-  if   (find_opt t1 k1)
-    is Some (?!(find_opt t1 _) ?v)
+  if (find_opt t1 k1) is Some (?!(find_opt t1 _) ?v)
     then f v
     else a_big_expression
 
