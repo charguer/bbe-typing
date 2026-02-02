@@ -1,4 +1,5 @@
-(executable
-  (name ppx_bbe)
-  (libraries ppxlib typer_lib_core ppxlib.runner)
-  (modules ppx_bbe))
+(library
+ (name ppx_bbe)
+ (kind ppx_rewriter)
+ (libraries ppxlib typer_lib)
+)

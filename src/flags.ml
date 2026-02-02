@@ -2,12 +2,12 @@
 (** Global flags to change the behavior of the program.
   They are only modified in Typer. **)
 
-let debug = ref false
-let verbose = ref false
+let debug = ref true
+let verbose = ref true
 
 let quiet = ref false
 
-let continue_on_error = ref false
+let continue_on_error = ref true
 
 (* If enabled, the typer will stop unifying types, and only verify variable scopes *)
 let weak_typer = ref false

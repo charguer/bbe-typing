@@ -37,13 +37,12 @@ let double_table_apply_v2 k1 t1 t2 f =
   | _ -> a_big_expression
 
 let double_table_apply_v3 k1 t1 t2 f =
-  let _x1 = (fun __arg1 -> lookup_table_opt __arg1 t1) k1 in
-  match _x1 with
+  match lookup_table_opt k1 t1 with
   | Some _x2 ->
-      let _x3 = (fun __arg2 -> lookup_table_opt __arg2 t2) _x2 in
-      (match _x3 with
-        | Some _x4 -> let v = _x4 in f v
-        | _ -> a_big_expression)
+    begin match lookup_table_opt _x2 t2 with
+      | Some v -> f v
+      | _ -> a_big_expression
+    end
   | _ -> a_big_expression
 
 let (table1 : _) = Cons (2, 200, (Cons (3, 300, Nil)))

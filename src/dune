@@ -6,15 +6,6 @@
   (modules typer)
 )
 
-; (library
-;  (name ppx_bbe)
-;  (kind ppx_rewriter)
-;  (libraries ppxlib typer_lib)
-
-; ;  (modules ppx_bbe)
-;   (modules_without_implementation ast)
-; )
-
 (library
  (modes byte native)
  (name typer_lib)

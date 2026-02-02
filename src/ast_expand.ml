@@ -43,6 +43,9 @@ let rec expand_trm (t : trm) : expression =
   | Trm_var x when x = "__assert_false" ->
       pexp_assert ~loc (ebool ~loc false)
 
+  | Trm_var constr_name when is_capitalized constr_name ->
+      pexp_construct ~loc (Located.mk ~loc (Lident constr_name)) None
+
   | Trm_var x ->
       pexp_ident ~loc (Located.mk ~loc (Lident x))
 
@@ -218,7 +221,19 @@ let expand_program (p : program) : structure =
       ~manifest:(Some (ptyp_var ~loc "a"))
   ]
   in
+
+ (*  let open_stdlib : structure_item =
+  let loc = Location.none in
+  Ast_builder.Default.pstr_open ~loc
+    (Ast_builder.Default.open_infos
+       ~loc
+       ~expr:
+         (Ast_builder.Default.pmod_ident ~loc
+            (Located.lident ~loc "Stdlib"))
+       ~override:Fresh)
+  in *)
+
   let filtered_p = List.filter (is_not_external) p in
 
-  if !Flags.presentation then (List.map expand_topdef filtered_p)
+  if !Flags.presentation then (* open_stdlib:: *)(List.map expand_topdef filtered_p)
   else func::(List.map expand_topdef p)

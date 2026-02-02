@@ -1,12 +1,7 @@
+open Typer_lib
 open Ppxlib
-open Ast_builder.Default
-open Asttypes
 open Parsetree
 open Ast_fix
-open Ast_aux
-open Tools
-open Ast_print
-open PPrint
 
 let transform_impl (str : structure) : structure =
 

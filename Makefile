@@ -1,8 +1,8 @@
 
 .PHONY: all typer
 
-all: typer tests
-	
+all: typer ppx
+
 typer:
 	$(MAKE) -C src typer
 
@@ -15,8 +15,8 @@ debug:
 chk:
 	make -C test chk
 
-tests:
-	make -C test run
+# tests:
+# 	make -C test run
 
 clean:
 	rm -f typer.exe src/typer.exe
