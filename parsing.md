@@ -127,3 +127,12 @@ Implementation details:
           ]
     ]
   ```
+Implementation details for labels: 
+We expect an attribute of the form "if[@label L] b then t1 else t2".
+The attribute is at the "expression" level, in the same layer as Pexp_ifthenelse. 
+
+For already existing expressions, we've made the effort to add label as an attribute as not to break usability.
+But for new constructs, such as blocks, switches etc. We've decided to create a new keyword.
+
+
+The same thing for while, functions, and blocks.

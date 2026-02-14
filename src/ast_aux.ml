@@ -7,6 +7,7 @@ open Ast_fix
 
 let env_empty : env = {
   env_var = Env.empty () ;
+  env_label = Env.empty () ;
   env_tconstr = Env.empty () ;
   env_is_in_pattern = false ;
 }

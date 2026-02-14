@@ -385,6 +385,15 @@ and program = topdefs
   (see definition of type [symbol]). *)
 type env_var = (var, sch) Env.t (* LATER: rename to env_symbol? *)
 
+type label = string
+type kind =
+  | LblBlock
+  | LblFun
+  | LblLoop
+  | LblBranch
+
+type env_label = ((kind * label), sch option) Env.t
+
 (** An [env_tconstr] is a typing environment for type constructors (e.g. [list]):
    it associates a type constructor descriptor ([tconstr_desc])
    to every type constructor name (e.g., [list], [array]) *)
@@ -395,6 +404,7 @@ type env_tconstr = (tconstr, tconstr_desc) Env.t
     constructors of arity zero), and type constructors. *)
 type env = {
   env_var : env_var;
+  env_label : env_label; (* ça va casser des trucs *)
   env_tconstr : env_tconstr;
   env_is_in_pattern : bool; (* Useful to recognize when to look for a "__pattern_" version. *)
   (* For all constr name (capitalized functions), give its arity. *)
