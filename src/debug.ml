@@ -46,13 +46,14 @@ let print_low_level_trm =
         | Cst_string s -> sprintf {|"%s"|} (String.escaped s)
         | Cst_unit () -> "()" in
       sprintf "Cst %s" c
-    | Trm_funs (xs, t) ->
-      sprintf "Funs ([%s], %s)"
+    | Trm_funs (l, xs, t) ->
+      sprintf "Funs%s ([%s], %s)"
+        (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l)
         (String.concat " ; " (List.map (fun (x, sty) ->
           sprintf "(%s : %s)" (print_var x) (print_low_level_syntyp sty)) xs))
         (aux t)
-    | Trm_if (t1, t2, t3) ->
-        sprintf "IfThenElse (%s, %s, %s)" (aux t1) (aux t2) (aux t3)
+    | Trm_if (l, t1, t2, t3) ->
+        sprintf "IfThenElse%s (%s, %s, %s)" (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l) (aux t1) (aux t2) (aux t3)
 
     | Trm_let ({ let_def_body = t1 ; _ }, t2) -> sprintf "Let (%s, %s)" (aux t1) (aux t2)
     | Trm_apps (t, ts) ->
@@ -62,8 +63,9 @@ let print_low_level_trm =
     | Trm_annot (t, sty) ->
       sprintf "Annot (%s, %s)" (aux t) (print_low_level_syntyp sty)
     | Trm_forall (a, t) -> sprintf "Forall (%s, %s)" (print_tconstr a) (aux t)
-    | Trm_match (t, pts) ->
-      sprintf "Match (%s, [%s])"
+    | Trm_match (l, t, pts) ->
+      sprintf "Match%s (%s, [%s])"
+        (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l)
         (aux t)
         (String.concat " ; " (List.map (fun (_p, t) -> "_ -> " ^ aux t) pts))
     | Trm_tuple ts ->
@@ -72,9 +74,10 @@ let print_low_level_trm =
     | Trm_not t -> sprintf "Not %s" (aux t)
     | Trm_and (t1, t2) -> sprintf "And (%s, %s)" (aux t1) (aux t2)
     | Trm_or (t1, t2) -> sprintf "Or (%s, %s)" (aux t1) (aux t2)
-    | Trm_while (b, t) -> sprintf "While (%s, %s)" (aux b) (aux t)
-    | Trm_switch cases ->
-      sprintf "Switch [%s]"
+    | Trm_while (l, b, t) -> sprintf "While%s (%s, %s)" (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l) (aux b) (aux t)
+    | Trm_switch (l, cases) ->
+      sprintf "Switch%s [%s]"
+        (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l)
         (String.concat "\n"
           (List.map (fun (b, t) -> (sprintf "| case %s then %s" (aux b) (aux t)))
         cases))

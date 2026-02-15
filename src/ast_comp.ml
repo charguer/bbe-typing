@@ -112,11 +112,11 @@ and free_vars (env : varid list) (t : trm) : varid list =
   | Trm_cst _ ->
       []
 
-  | Trm_funs (args, t1) ->
+  | Trm_funs (_, args, t1) ->
       let bound = bound_vars_varsyntyps args in
       free_vars (bound @ env) t1
 
-  | Trm_if (b, t1, t2) ->
+  | Trm_if (_, b, t1, t2) ->
       free_vars env b @ free_vars env t1 @ free_vars env t2
 
   | Trm_let (ld, t2) ->
@@ -136,7 +136,7 @@ and free_vars (env : varid list) (t : trm) : varid list =
   | Trm_forall (_ty, t1) ->
       free_vars env t1
 
-  | Trm_match (t0, pts) ->
+  | Trm_match (_, t0, pts) ->
       let fv_t0 = free_vars env t0 in
       let fv_branches = List.concat (List.map (fun (p, t) ->
         let bound_p = bound_vars_pat p in
@@ -154,12 +154,12 @@ and free_vars (env : varid list) (t : trm) : varid list =
   | Trm_and (t1, t2) | Trm_or (t1, t2) ->
       free_vars env t1 @ free_vars env t2
 
-  | Trm_switch cases ->
+  | Trm_switch (_, cases) ->
       List.concat (List.map (fun (b, t) ->
         free_vars env b @ free_vars env t
       ) cases)
 
-  | Trm_while (b, t1) ->
+  | Trm_while (_, b, t1) ->
       free_vars env b @ free_vars env t1
 
   | Trm_bbe_is (t1, p) ->
@@ -227,12 +227,12 @@ let rec comp_trm (t : trm) : trm =
   | Trm_cst c ->
     trm_cst ~loc ~typ c
 
-  | Trm_funs (args, t1) ->
+  | Trm_funs (_, args, t1) ->
     (* let args, t1 = factorize_fun t in *)
     let t1' = aux_trm t1 in
     trm_funs ~loc ~typ args t1'
 
-  | Trm_if (b0, t1, t2) ->
+  | Trm_if (_, b0, t1, t2) ->
     let t1' = aux_trm t1 in
     let t2' = aux_trm t2 in
     aux_bbe b0 t1' t2'
@@ -255,7 +255,7 @@ let rec comp_trm (t : trm) : trm =
     let t1' = aux_trm t1 in
     trm_forall ~loc ~typ n t1'
 
-  | Trm_match (_t0, _pts) ->
+  | Trm_match (_, _t0, _pts) ->
     (* As specified, match should not be used at this point *)
     trm_apps ~loc ~typ (trm_var_varid ~loc "assert") [trm_bool ~loc false]
 
@@ -277,10 +277,10 @@ let rec comp_trm (t : trm) : trm =
     let t2' = aux_trm t2 in
     trm_or ~loc ~typ t1' t2'
 
-  | Trm_switch cases ->
+  | Trm_switch (_, cases) ->
     comp_switch ~loc ~typ cases
 
-  | Trm_while (b1, t2) ->
+  | Trm_while (_, b1, t2) ->
     let loop_name = "__my_loop" in
     let loop_var = trm_var_varid ~loc loop_name in
     let t2' = aux_trm t2 in

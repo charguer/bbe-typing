@@ -314,7 +314,7 @@ let typecheck_variable loc (e : env) (v : var) : typ =
     The [t] corresponds to the body, e.g. [(fun (type a) (x:a) -> x)].
 
     The synschopt must be internalized before the call. *)
-let rec typecheck_trm_let_sch  ~loc ?(fully_resolved=false) rf (e : env) ((x, synschopt) : varsynschopt) (t : trm) : trm * sch =
+let rec typecheck_trm_let_sch ~loc ?(fully_resolved=false) rf (e : env) ((x, synschopt) : varsynschopt) (t : trm) : trm * sch =
   (* First, we extract the "forall" quantifiers at the head of [t]. *)
   let (tvars_rhs, t1) = trm_foralls_inv t in
   (* Add the universally quantified types into the environment. *)
@@ -341,7 +341,7 @@ let rec typecheck_trm_let_sch  ~loc ?(fully_resolved=false) rf (e : env) ((x, sy
             let rec aux t =
               let loc = t.trm_loc in
               match t.trm_desc with
-              | Trm_funs (xs, t0) ->
+              | Trm_funs (_l, xs, t0) ->
                 let xs =
                   List.map (fun (x, sty) ->
                     let sty = syntyp_internalize e1 sty in
@@ -356,7 +356,7 @@ let rec typecheck_trm_let_sch  ~loc ?(fully_resolved=false) rf (e : env) ((x, sy
                 let sty = syntyp_internalize e1 sty in
                 let typ = sty.syntyp_typ in
                 Some (typ, trm_annot ~loc ~typ t0 sty)
-              | Trm_match (t0, pts) ->
+              | Trm_match (_l, t0, pts) ->
                 (* In a pattern-matching, we just look for any type annotation in the branches. *)
                 begin match
                   List.find_mapi (fun i (_p, t) ->
@@ -365,7 +365,7 @@ let rec typecheck_trm_let_sch  ~loc ?(fully_resolved=false) rf (e : env) ((x, sy
                 | Some (i, (typ, t')) ->
                   Some (typ, trm_match ~loc ~typ t0 (List.update_nth i (fun (p, _t) -> (p, t')) pts))
                 end
-              | Trm_if (t0, t1, t2) ->
+              | Trm_if (_l, t0, t1, t2) ->
                 (* Similarly, we just need one type annotation for if-statements. *)
                 begin match aux t1 with
                 | Some (typ, t1') -> Some (typ, trm_if ~loc ~typ t0 t1' t2)
@@ -569,7 +569,7 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
         We are here examining the constant argument of this symbol. *)
       return (typ_constant c) (Trm_cst c)
 
-  | Trm_funs (args, t1) ->
+  | Trm_funs (_l, args, t1) ->
       (* First, we refine the syntactic type annotations into typechecker types. *)
       let args = List.map (fun (arg, sty) -> (arg, syntyp_internalize e sty)) args in
       (* Second, we build the extended environment *)
@@ -580,7 +580,7 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       (* TODO: try simpler *)
       let t1 = aux ~env:e2 t1 in
       let typ = typ_arrow (List.map (fun (arg, sty) -> sty.syntyp_typ) args) (typeof t1) in
-      return typ (Trm_funs (args, t1))
+      return typ (Trm_funs (_l, args, t1))
 
       (* let ty_res =
         let ty = (* ty is the type of the function *)
@@ -601,14 +601,14 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       (* here we avoid the creation of a flexible that is immediately unified *)
       return typ (Trm_funs (args, t1)) *)
 
-  | Trm_if (b, t1, t2) ->
+  | Trm_if (_l, b, t1, t2) ->
       let b = aux_bbe b in
       (* TODO: the intersection between the two environments *)
       let t1 = aux ~env:(env_extend ~loc e (bindsof b)) t1 in
       let t2 = aux t2 in
       (* if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s \n %s : %s\n" (trm_to_string b)(Ast_print.typ_to_string b.trm_typ) (trm_to_string t1) (Ast_print.typ_to_string t1.trm_typ) (trm_to_string t2) (Ast_print.typ_to_string t2.trm_typ); *)
       unify_or_error ~loc e (typeof t1) (typeof t2) (Branches_mismatch_if (typeof t1, typeof t2));
-      return (typeof t2) (Trm_if (b,t1,t2))
+      return (typeof t2) (Trm_if (_l, b,t1,t2))
 
   | Trm_let (b, t2) ->
       let (b, e, _sch) = typecheck_let ~loc e b in
@@ -663,7 +663,7 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
     (* This constructor should only appear at let-definitions. *)
     raise (Error (Unsupported_term "Trm_forall", loc))
 
-  | Trm_match (t0, pts) ->
+  | Trm_match (_l, t0, pts) ->
     let t0 = aux t0 in
     let tyr = typ_nameless () in
     let pts =
@@ -672,7 +672,7 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
         let ei = env_extend ~loc e (bindsof pi) in
         let ti = aux ~env:ei ~expected_typ:tyr ti in
         (pi, ti)) pts in
-    return tyr (Trm_match (t0, pts))
+    return tyr (Trm_match (_l, t0, pts))
 
   | Trm_tuple ts ->
     (* LATER: could test
@@ -700,7 +700,7 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
     let t1 = aux t1 in
     let t2 = aux t2 in
     return the_typ_bool (Trm_or (t1, t2))
-  | Trm_switch cases ->
+  | Trm_switch (_l, cases) ->
     let type_case (b, t) =
       let b = aux_bbe b in
       let e = env_extend ~loc e (bindsof b) in
@@ -715,13 +715,13 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       (*  *)
     cases;
 
-    return ty_ret (Trm_switch cases)
+    return ty_ret (Trm_switch (_l, cases))
 
-  | Trm_while (b, t) ->
+  | Trm_while (_l, b, t) ->
     let b = aux_bbe b in
     let e = env_extend ~loc e (bindsof b) in
     let t = aux ~expected_typ:the_typ_unit ~env:e t in
-    return the_typ_unit (Trm_while (b, t))
+    return the_typ_unit (Trm_while (_l, b, t))
 
   | _ -> failwith "unexpected construct in typecheck_trm"
   (* | Trm_bbe_is _ -> raise (Error (Unsupported_term "Trm_bbe_is", loc))

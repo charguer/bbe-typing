@@ -170,6 +170,8 @@ type let_def = {
   let_def_body : trm0;
 }
 
+type label = string
+
 (* List of functions to modify/list of dependencies when changing trm_desc:
   - src/debug.ml: [print_low_level_trm] function
   - src/ast_aux.ml: [trm_iter] and [trm_map] functions
@@ -197,20 +199,20 @@ type let_def = {
 type trm_desc =
   | Trm_var of varid
   | Trm_cst of cst
-  | Trm_funs of varsyntyps * trm          (* fun (x1 : tyn) ... (xn : tyn) -> trm_body *)
-  | Trm_if of trm * trm * trm             (* if t1 then t2 else t3 *)
+  | Trm_funs of (label option) * varsyntyps * trm          (* fun (x1 : tyn) ... (xn : tyn) -> trm_body *)
+  | Trm_if of (label option) * trm * trm * trm             (* if t1 then t2 else t3 *)
   (* Check lower for comments on the "trm_let" representation.  *)
   | Trm_let of let_def * trm              (* [t1 ; t2], [let rec x = t1 in t2], [let[@register (+) _ = t1 in t2]] *)
   | Trm_apps of trm * trms                (* Application. Partial application is not allowed. *)
   | Trm_annot of trm * syntyp             (* (t : ty) *)
   | Trm_forall of tvar_rigid * trm        (* fun (type a) -> t *)
-  | Trm_match of trm * (pat * trm) list   (* match t with p1 -> t1 | ... | pn -> tn *)
+  | Trm_match of (label option) * trm * (pat * trm) list   (* match t with p1 -> t1 | ... | pn -> tn *)
   | Trm_tuple of trm list
   | Trm_not of trm (* TODO: not, and, or could be fun *)
   | Trm_and of trm * trm
   | Trm_or of trm * trm
-  | Trm_switch of (bbe * trm) list
-  | Trm_while of bbe * trm
+  | Trm_switch of (label option) * (bbe * trm) list
+  | Trm_while of (label option) * bbe * trm
   (*BBE constructions*)
   | Trm_bbe_is of trm * pat
   (*Pattern constructions*)
@@ -385,7 +387,6 @@ and program = topdefs
   (see definition of type [symbol]). *)
 type env_var = (var, sch) Env.t (* LATER: rename to env_symbol? *)
 
-type label = string
 type kind =
   | LblBlock
   | LblFun

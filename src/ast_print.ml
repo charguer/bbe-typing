@@ -560,7 +560,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
 
   | Trm_var varid -> varid_to_doc ~style varid
 
-  | Trm_funs (xs_raw, t1) ->
+  | Trm_funs (_l, xs_raw, t1) ->
     (* fun (x1 : ty1) ... : tyr -> t *)
     let xs = List.map fst xs_raw in
     let xs = List.map print_var_parens xs in
@@ -602,7 +602,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
       aux t1
     ]
 
-  | Trm_if (t0, t1, t2) ->
+  | Trm_if (_l, t0, t1, t2) ->
       let s0 =
         if style.style_binds <> BindsNone then (* In this case, the style is either "BindsToplevel" or "BindsAll" *)
           with_bindings ~style t0
@@ -620,10 +620,10 @@ and trm_to_doc_raw ~style (t : trm) : doc =
       ^^ blank 1
       ^^ aux t2
 
-  | Trm_let ({ let_def_bind = Bind_anon; let_def_body = { trm_desc = Trm_funs (xs, t1); _ }; _ }, t2) ->
+  | Trm_let ({ let_def_bind = Bind_anon; let_def_body = { trm_desc = Trm_funs (_l, xs, t1); _ }; _ }, t2) ->
       failwith "functions cannot appear as first argument of a trm_seq"
 
-  | Trm_let ({ let_def_bind = Bind_var f; let_def_body = { trm_desc = Trm_funs (xs, t1); _ }; let_def_rec }, t2) ->
+  | Trm_let ({ let_def_bind = Bind_var f; let_def_body = { trm_desc = Trm_funs (_l, xs, t1); _ }; let_def_rec }, t2) ->
       let isrec =
         match let_def_rec with
         | Recursive -> true
@@ -739,7 +739,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
         ^^ blank 1
         ^^ parens (aux t1)
 
-  | Trm_match (t0, pts) ->
+  | Trm_match (_l, t0, pts) ->
       string "begin match"
         ^^ blank 1
         ^^ aux t0
@@ -805,7 +805,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
     ^^ string "||"
     ^^ blank 1
     ^^ d2
-  | Trm_switch cases ->
+  | Trm_switch (_l, cases) ->
     let case_to_doc (b1, t2) =
       let d1 =
         if style.style_binds = BindsAll then
@@ -829,7 +829,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
     )
 
 
-  | Trm_while (b1, t2) ->
+  | Trm_while (_l, b1, t2) ->
     (* has the form: [while "e1" do "e2" done] *)
     let d1 =
       if style.style_binds <> BindsNone then
