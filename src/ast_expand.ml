@@ -52,11 +52,11 @@ let rec expand_trm (t : trm) : expression =
   | Trm_cst c ->
       expand_cst ~loc c
 
-  | Trm_funs (args, t1) ->
+  | Trm_funs (_, args, t1) ->
       let e1 = aux t1 in
       expand_funs ~loc args e1
 
-  | Trm_if (t0, t1, t2) ->
+  | Trm_if (_, t0, t1, t2) ->
       let e0 = aux t0 in (* note that at this point this is a term, no more bbe *)
       let e1 = aux t1 in
       let e2 = aux t2 in
@@ -89,7 +89,7 @@ let rec expand_trm (t : trm) : expression =
       let type_name = (print_tvar_rigid n) in
       pexp_newtype ~loc (Located.mk ~loc type_name) t1'
 
-  | Trm_match (t0, pts) ->
+  | Trm_match (_, t0, pts) ->
       let t0' = aux t0 in
       let cases = List.map (fun (p, t) ->
         let p' = expand_pattern p in

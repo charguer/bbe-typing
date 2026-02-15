@@ -483,12 +483,12 @@ let trm_desc_var_varid varid : trm_desc =
 let trm_desc_var (x : var) : trm_desc =
   trm_desc_var_varid (create_varid x)
 
-let trm_desc_funs ?label (xs : varsyntyps) (t : trm) : trm_desc =
+let trm_desc_funs (l : label option) (xs : varsyntyps) (t : trm) : trm_desc =
   assert (xs <> []) ;
-  Trm_funs (label, xs, t)
+  Trm_funs (l, xs, t)
 
-let trm_desc_if ?label (t0 : trm) (t1 : trm) (t2 : trm) : trm_desc =
-  Trm_if (label, t0, t1, t2)
+let trm_desc_if (l : label option) (t0 : trm) (t1 : trm) (t2 : trm) : trm_desc =
+  Trm_if (l, t0, t1, t2)
 
 let trm_desc_let_def (l : let_def) (t2 : trm) : trm_desc =
   Trm_let (l, t2)
@@ -510,8 +510,8 @@ let trm_desc_seq (t1 : trm) (t2 : trm) : trm_desc =
 let trm_desc_apps (t0 : trm) (ts : trms) : trm_desc =
   Trm_apps (t0, ts)
 
-let trm_desc_match ?label (t : trm) (pts : (pat * trm) list) : trm_desc =
-  Trm_match (label, t, pts)
+let trm_desc_match (l : label option) (t : trm) (pts : (pat * trm) list) : trm_desc =
+  Trm_match (l, t, pts)
 
 let trm_desc_tuple (ts : trm list) : trm_desc =
   Trm_tuple ts
@@ -525,11 +525,11 @@ let trm_desc_and (t1 : trm) (t2 : trm) : trm_desc =
 let trm_desc_or (t1 : trm) (t2 : trm) : trm_desc =
   Trm_or (t1, t2)
 
-let trm_desc_switch ?label (cases : (bbe * trm) list) : trm_desc =
-  Trm_switch (label, cases)
+let trm_desc_switch (l : label option) (cases : (bbe * trm) list) : trm_desc =
+  Trm_switch (l, cases)
 
-let trm_desc_while ?label (b : bbe) (t : trm) : trm_desc =
-  Trm_while (label, b, t)
+let trm_desc_while (l : label option) (b : bbe) (t : trm) : trm_desc =
+  Trm_while (l, b, t)
 
 
 (* ** Smart constructors for bbe trm descriptors*)
@@ -585,15 +585,15 @@ let trm_var ?loc ?typ (* ?annot *) (x : var) : trm =
 let trm_var_varid ?loc ?typ (* ?annot *) varid : trm =
   mktrm ?loc ?typ (* ?annot *) (trm_desc_var_varid varid)
 
-let trm_funs ?loc ?typ ?label (* ?annot *) (xs : varsyntyps) (t : trm) : trm =
-  mktrm ?loc ?typ (* ?annot *) (trm_desc_funs xs t)
+let trm_funs ?loc ?typ (l : label option) (* ?annot *) (xs : varsyntyps) (t : trm) : trm =
+  mktrm ?loc ?typ (* ?annot *) (trm_desc_funs l xs t)
 
-let trm_funs_if_non_empty ?loc ?typ ?label (* ?annot *) (xs : varsyntyps) (t : trm) : trm =
+let trm_funs_if_non_empty ?loc ?typ (l : label option) (* ?annot *) (xs : varsyntyps) (t : trm) : trm =
   if xs = [] then t
-  else trm_funs ?loc ?typ ?label (* ?annot *) xs t
+  else trm_funs ?loc ?typ l (* ?annot *) xs t
 
-let trm_if ?loc ?typ (* ?annot *) ?label (t0 : trm) (t1 : trm) (t2 : trm) : trm =
-  mktrm ?loc ?typ (* ?annot *) (trm_desc_if ?label t0 t1 t2)
+let trm_if ?loc ?typ (* ?annot *) (l : label option) (t0 : trm) (t1 : trm) (t2 : trm) : trm =
+  mktrm ?loc ?typ (* ?annot *) (trm_desc_if l t0 t1 t2)
 
 let trm_let ?loc ?typ (* ?annot *) (r : rec_flag) (x : varsynschopt) (t1 : trm) (t2 : trm) : trm =
   mktrm ?loc ?typ (* ?annot *) (trm_desc_let r x t1 t2)
@@ -616,8 +616,8 @@ let trm_annot ?loc ?typ (* ?annot *) (t : trm) (aty : syntyp) : trm =
 let trm_forall ?loc ?typ (* ?annot *) (ty : tvar_rigid) (t : trm) : trm =
   mktrm ?loc ?typ (* ?annot *) (Trm_forall (ty, t))
 
-let trm_match ?loc ?typ (* ?annot *) ?label (t : trm) (pts : (pat * trm) list) : trm =
-  mktrm ?loc ?typ (* ?annot *) (trm_desc_match ?label t pts)
+let trm_match ?loc ?typ (* ?annot *) (l : label option) (t : trm) (pts : (pat * trm) list) : trm =
+  mktrm ?loc ?typ (* ?annot *) (trm_desc_match l t pts)
 
 let trm_foralls ?loc ?typ (tys : tvar_rigid list) (t : trm) : trm =
   if tys = [] then t
@@ -682,11 +682,11 @@ let trm_desc_constr ?loc ?typ (c : constr) (ts : trms) : trm_desc =
 let trm_constr ?loc ?typ (* ?annot *) (c : constr) (ts : trms) : trm =
   mktrm ?loc ?typ (* ?annot *) (trm_desc_constr ?loc ?typ c ts)
 
-let trm_switch ?loc ?typ (* ?annot *) ?label (cases : (bbe * trm) list) : trm =
-  mktrm ?loc ?typ (trm_desc_switch ?label cases)
+let trm_switch ?loc ?typ (* ?annot *) (l : label option) (cases : (bbe * trm) list) : trm =
+  mktrm ?loc ?typ (trm_desc_switch l cases)
 
-let trm_while ?loc ?typ (* ?annot *) ?label (b : bbe) (t : trm) : trm =
-  mktrm ?loc ?typ (trm_desc_while ?label b t)
+let trm_while ?loc ?typ (* ?annot *) (l : label option) (b : bbe) (t : trm) : trm =
+  mktrm ?loc ?typ (trm_desc_while l b t)
 
 (* ** Smart constructors for bbes *)
 let trm_bbe_is ?loc ?typ (* ?annot *) (t : trm) (p : pat) : trm =
@@ -1272,10 +1272,10 @@ let rec trm_map_typ f t =
   let typ = t.trm_typ in
   match t.trm_desc with
   | Trm_var varid -> trm_var_varid ~loc ~typ varid (*  { varid with varid_typ = f varid.varid_typ } *)
-  | Trm_funs (label, vs, t) -> trm_funs ~loc ~typ ~label (List.map (fun (x, sty) -> (x, f_syntyp sty)) vs) (aux t)
+  | Trm_funs (l, vs, t) -> trm_funs ~loc ~typ l (List.map (fun (x, sty) -> (x, f_syntyp sty)) vs) (aux t)
   | Trm_annot (t, sty) -> trm_annot ~loc ~typ (aux t) (f_syntyp sty)
-  | Trm_match (t, pts) ->
-    trm_match ~loc ~typ (aux t) (List.map (fun (p, t) -> (aux p, aux t)) pts)
+  | Trm_match (l, t, pts) ->
+    trm_match ~loc ~typ l (aux t) (List.map (fun (p, t) -> (aux p, aux t)) pts)
 (*     trm_match ~loc ~typ (aux t) (List.map (fun (p, t) ->
       (pat_map_typ f p, aux t)) pts) *)
   | Trm_let ({ let_def_rec = rf ; let_def_bind = Bind_var (x, synschopt) ; let_def_body = t1 }, t2) ->

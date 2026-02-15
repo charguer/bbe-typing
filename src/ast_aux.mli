@@ -65,20 +65,20 @@ val trm_desc_unit : unit -> trm_desc
 val trm_desc_var : var -> trm_desc
 (* val trm_desc_var_symbol : ?typ:typ0 -> ?resolution:varid_resolution -> symbol -> trm_desc
  *)
-val trm_desc_funs : varsyntyps -> trm -> trm_desc
+val trm_desc_funs : label option -> varsyntyps -> trm -> trm_desc
 val trm_desc_constr : ?loc:loc -> ?typ:typ -> constr -> trms -> trm_desc
-val trm_desc_if : trm -> trm -> trm -> trm_desc
+val trm_desc_if : label option -> trm -> trm -> trm -> trm_desc
 val trm_desc_let : rec_flag -> varsynschopt -> trm -> trm -> trm_desc
 val trm_desc_let_def : let_def -> trm -> trm_desc
 val trm_desc_seq : trm -> trm -> trm_desc
 val trm_desc_apps : trm -> trms -> trm_desc
-val trm_desc_match : trm -> (pat * trm) list -> trm_desc
+val trm_desc_match : label option -> trm -> (pat * trm) list -> trm_desc
 val trm_desc_tuple : trm list -> trm_desc
 val trm_desc_not : trm -> trm_desc
 val trm_desc_and : trm -> trm -> trm_desc
 val trm_desc_or : trm -> trm -> trm_desc
-val trm_desc_while : bbe -> trm -> trm_desc
-val trm_desc_switch : (bbe * trm) list -> trm_desc
+val trm_desc_while : label option -> bbe -> trm -> trm_desc
+val trm_desc_switch : label option -> (bbe * trm) list -> trm_desc
 
 val trm_desc_bbe_is : trm -> pat -> trm_desc
 
@@ -105,9 +105,9 @@ val trm_var : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) var -> trm
 val trm_var_varid : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) varid -> trm
 val trm_tuple : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm list -> trm
 
-val trm_funs : ?loc:loc -> ?typ:typ -> label -> (* ?annot:annot -> *) varsyntyps -> trm -> trm (* Doesn't work if the list is empty: use [trm_funs_if_non_empty] in such cases. *)
+val trm_funs : ?loc:loc -> ?typ:typ -> label option -> (* ?annot:annot -> *) varsyntyps -> trm -> trm (* Doesn't work if the list is empty: use [trm_funs_if_non_empty] in such cases. *)
 val trm_constr : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) constr -> trms -> trm
-val trm_if : ?loc:loc -> ?typ:typ -> label -> (* ?annot:annot -> *) trm -> trm -> trm -> trm
+val trm_if : ?loc:loc -> ?typ:typ -> label option -> (* ?annot:annot -> *) trm -> trm -> trm -> trm
 val trm_let : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) rec_flag -> varsynschopt -> trm -> trm -> trm
 val trm_let_def : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) let_def -> trm -> trm
 val trm_seq : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
@@ -115,13 +115,13 @@ val trm_apps : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trms -> trm
 val trm_annot : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> syntyp -> trm
 val trm_forall : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) tvar_rigid -> trm -> trm
 val trm_foralls : ?loc:loc -> ?typ:typ -> tvar_rigid list -> trm -> trm (* Works even if the list is empty. *)
-val trm_match : ?loc:loc -> ?typ:typ -> label -> (* ?annot:annot -> *) trm -> (pat * trm) list -> trm
+val trm_match : ?loc:loc -> ?typ:typ -> label option -> (* ?annot:annot -> *) trm -> (pat * trm) list -> trm
 
 val trm_not : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm
 val trm_and : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
 val trm_or : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
-val trm_while : ?loc:loc -> ?typ:typ -> label -> (* ?annot:annot -> *) bbe -> trm -> trm
-val trm_switch : ?loc:loc -> ?typ:typ -> label -> (* ?annot:annot -> *) (bbe * trm) list -> trm
+val trm_while : ?loc:loc -> ?typ:typ -> label option -> (* ?annot:annot -> *) bbe -> trm -> trm
+val trm_switch : ?loc:loc -> ?typ:typ -> label option -> (* ?annot:annot -> *) (bbe * trm) list -> trm
 
 
 
@@ -143,7 +143,7 @@ val trm_pat_when : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) pat -> bbe -> t
 
 
 (* Like [trm_funs], but simply returns the body if no arguments are provided. *)
-val trm_funs_if_non_empty : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) varsyntyps -> trm -> trm
+val trm_funs_if_non_empty : ?loc:loc -> ?typ:typ -> label option -> (* ?annot:annot -> *) varsyntyps -> trm -> trm
 (* Like [trm_tuple], but accepts any list (return the one term if there is only one, and unit
    if there are none). *)
 val trm_tuple_flex : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm list -> trm

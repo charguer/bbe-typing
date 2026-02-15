@@ -127,8 +127,127 @@ Implementation details:
           ]
     ]
   ```
+
+Syntax choices: 
+  - For already existing constructs, adding label is done with attributes. (e.g., "if[@label L] b then t1 else t2" or "(if b then t1 else t2)[@label L]")
+  - For new constructs (such as exit, next or block), we use a new syntax, that expect a label as argument. (e.g., '__block "L" e' where e is an OCaml expression, or '__exit "L" e')
+
+```
+"pexp_attributes": 
+[
+  [
+    {
+      "type": "string Asttypes.loc",
+      "txt": "label",
+      "loc": {
+        "type": "Location.t",
+        "loc_start": {
+          "type": "Lexing.position",
+          "pos_fname": "",
+          "pos_lnum": 1,
+          "pos_bol": 0,
+          "pos_cnum": 7
+        },
+        "loc_end": {
+          "type": "Lexing.position",
+          "pos_fname": "",
+          "pos_lnum": 1,
+          "pos_bol": 0,
+          "pos_cnum": 12
+        },
+        "loc_ghost": false
+      }
+    },
+    {
+      "type": "PStr",
+      "structure": [
+        {
+          "type": "structure_item",
+          "pstr_desc": {
+            "type": "Pstr_eval",
+            "expression": {
+              "type": "expression",
+              "pexp_desc": {
+                "type": "Pexp_construct",
+                "id_loc": {
+                  "type": "Longident.t Asttypes.loc",
+                  "txt": {
+                    "type": "Lident",
+                    "li": "L"
+                  },
+                  "loc": {
+                    "type": "Location.t",
+                    "loc_start": {
+                      "type": "Lexing.position",
+                      "pos_fname": "",
+                      "pos_lnum": 1,
+                      "pos_bol": 0,
+                      "pos_cnum": 13
+                    },
+                    "loc_end": {
+                      "type": "Lexing.position",
+                      "pos_fname": "",
+                      "pos_lnum": 1,
+                      "pos_bol": 0,
+                      "pos_cnum": 14
+                    },
+                    "loc_ghost": false
+                  }
+                },
+                "expression": {
+                  "type": "None"
+                }
+              },
+              "pexp_loc": {
+                "type": "Location.t",
+                "loc_start": {
+                  "type": "Lexing.position",
+                  "pos_fname": "",
+                  "pos_lnum": 1,
+                  "pos_bol": 0,
+                  "pos_cnum": 13
+                },
+                "loc_end": {
+                  "type": "Lexing.position",
+                  "pos_fname": "",
+                  "pos_lnum": 1,
+                  "pos_bol": 0,
+                  "pos_cnum": 14
+                },
+                "loc_ghost": false
+              },
+              "pexp_attributes": []
+            },
+            "attributes": []
+          },
+          "pstr_loc": {
+            "type": "Location.t",
+            "loc_start": {
+              "type": "Lexing.position",
+              "pos_fname": "",
+              "pos_lnum": 1,
+              "pos_bol": 0,
+              "pos_cnum": 13
+            },
+            "loc_end": {
+              "type": "Lexing.position",
+              "pos_fname": "",
+              "pos_lnum": 1,
+              "pos_bol": 0,
+              "pos_cnum": 14
+            },
+            "loc_ghost": false
+          }
+        }
+      ]
+    }
+  ]
+]
+```
+
+
 Implementation details for labels: 
-We expect an attribute of the form "if[@label L] b then t1 else t2".
+
 The attribute is at the "expression" level, in the same layer as Pexp_ifthenelse. 
 
 For already existing expressions, we've made the effort to add label as an attribute as not to break usability.

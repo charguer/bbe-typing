@@ -55,6 +55,13 @@ let fresh_var () =
   incr fresh_counter;
   "__arg" ^ string_of_int !fresh_counter
 
+
+let fresh_match_counter = ref 0
+
+let fresh_match_var () =
+  incr fresh_match_counter;
+  "__v" ^ string_of_int !fresh_match_counter
+
 (*#########################################################################*)
 (* ** Translate expressions *)
 
@@ -438,16 +445,48 @@ let accumulate_arguments_list (cases : expression) : expression list =
     | None -> List.rev acc
   in aux [] cases
 
+(*  -> "__case", applied to 1 arg.
+ -> "@", applied to 2 args.
+ -> "b1", and "_then t1".
+ *)
 let case_inv_opt ~loc (e : expression) : expression option =
   begin match e.pexp_desc with
   | Pexp_apply ({pexp_desc=Pexp_ident{txt=Longident.Lident "__case"; _}; _}, [(Nolabel, e)]) ->
     Some e
   | _ -> None
   end
-(*  -> "__case", applied to 1 arg.
- -> "@", applied to 2 args.
- -> "b1", and "_then t1".
- *)
+
+let recognize_switch_case ~loc (e : expression) : expression * expression =
+  begin match case_inv_opt ~loc e with
+  | Some {pexp_desc=Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "@"; _}; _}, aes); _} ->
+      begin match infix_op_inv ~loc aes with
+      | Some (e1,{pexp_desc=(Pexp_ident {txt=Lident "_then"; _}); _}, e3) ->
+        (* let t1 = tr_exp e1 in
+        let t3 = tr_exp e3 in *)
+        (e1, e3)
+      | _ -> unsupported ~loc "argument in case not in '@_then' format"
+      end
+  | _ -> unsupported ~loc "argument in switch not in 'case' format"
+  end
+
+
+(**
+  [label_attribute_inv attrs] checks whether an attribute list contains label related attributes.
+  Returns [None] if it does not, or [Some L] if it does, L being the corresponding label*)
+let label_attribute_inv (attrs : attributes) : label option =
+  match attrs with
+  | [{attr_name={txt = "label"}; attr_payload}] ->
+    begin match attr_payload with
+    | PStr [{pstr_desc=Pstr_eval ({pexp_desc= Pexp_constant (Pconst_string (l, _, _))}, [])}] -> Some l
+    | _ -> None
+    end
+  | _ -> None
+
+let label_argument_inv (e : expression) : label option =
+  match e.pexp_desc with
+    | Pexp_constant (Pconst_string (l, _, _)) -> Some l
+    | _ -> None
+
 (** End of custom functions  *)
 
 let rec tr_exp (e : expression) : trm =
@@ -481,24 +520,26 @@ let rec tr_exp (e : expression) : trm =
         trm_let_def ~loc l t) t2 (List.rev lets)
   | Pexp_let (rf, vbs, e) -> unsupported ~loc "mutual let defs"
   | Pexp_fun _ | Pexp_function _ ->
-
-      let (xs,(*  local_instances, *) e1) =
-         match pexp_fun_get_annotated_args_body e with
-         | None -> assert false
-         | Some res -> res in
-      let t1 = tr_exp e1 in
-      (* let t2 = add_local_instances local_instances t1 in  *)
-      return (trm_desc_funs xs t1) (* YL: Note : if something broke it is probably here... *)
+    let l = label_attribute_inv e.pexp_attributes in
+    let (xs,(*  local_instances, *) e1) =
+        match pexp_fun_get_annotated_args_body e with
+        | None -> assert false
+        | Some res -> res in
+    let t1 = tr_exp e1 in
+    (* let t2 = add_local_instances local_instances t1 in  *)
+    return (trm_desc_funs l xs t1) (* YL: Note : if something broke it is probably here... *)
   | Pexp_ifthenelse (e1, e2, Some e3) ->
-      let t1 = tr_exp e1 in
-      let t2 = tr_exp e2 in
-      let t3 = tr_exp e3 in
-      return (Trm_if (t1, t2, t3))
+    let l = label_attribute_inv e.pexp_attributes in
+    let t1 = tr_exp e1 in
+    let t2 = tr_exp e2 in
+    let t3 = tr_exp e3 in
+    return (Trm_if (l, t1, t2, t3))
   | Pexp_ifthenelse (e1, e2, None) ->
-      let t1 = tr_exp e1 in
-      let t2 = tr_exp e2 in
-      return (Trm_if (t1, t2, trm_unit ()))
-      (* LATER: trm_desc_fixs *)
+    let l = label_attribute_inv e.pexp_attributes in
+    let t1 = tr_exp e1 in
+    let t2 = tr_exp e2 in
+    return (Trm_if (l, t1, t2, trm_unit ()))
+    (* LATER: trm_desc_fixs *)
 
   (* YL : low effort/low priority TODO. Function to see BBEs as terms with a wrapper that deletes its bindings. *)
   (* Recognize sugar 'boolof b' *)
@@ -520,6 +561,7 @@ let rec tr_exp (e : expression) : trm =
     end
 
   (* Partial function definition *)
+  (* We decide that partial functions do no expect labels *)
   | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "?!"; _}; _},
     [(_,{pexp_desc = Pexp_apply (e0, aes)})]) ->
 
@@ -545,7 +587,7 @@ let rec tr_exp (e : expression) : trm =
 
     let t0 = tr_exp e0 in
 
-    return (trm_desc_funs fresh_vars (return (trm_desc_apps t0 new_args)))
+    return (trm_desc_funs None fresh_vars (return (trm_desc_apps t0 new_args)))
 
     (* Pattern variables *)
   | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "??"; _}; _}, aes) ->
@@ -581,53 +623,50 @@ let rec tr_exp (e : expression) : trm =
     end
 
   | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__switch"; _}; _}, [cases]) ->
-    (* Folding on cases with an accumulator *)
-    (* I want to match recursively the cases. with an accumulator *)
     let (_, cases) = cases in
     let cases = accumulate_arguments_list cases in
-    let t_cases = List.map
-      (fun e ->
-        begin match case_inv_opt ~loc e with
-        | Some {pexp_desc=Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "@"; _}; _}, aes); _} ->
-            begin match infix_op_inv ~loc aes with
-            | Some (e1,{pexp_desc=(Pexp_ident {txt=Lident "_then"; _}); _}, e3) ->
-              let t1 = tr_exp e1 in
-              let t3 = tr_exp e3 in
-              (t1, t3)
-            | _ -> unsupported ~loc "argument in case not in '@_then' format"
-            end
-        | _ -> unsupported ~loc "argument in switch not in 'case' format"
-        end
-      ) cases in
+    let e_cases = List.map (recognize_switch_case ~loc) cases in
+    let t_cases = List.map (fun (e1, e2) -> let t1 = tr_exp e1 in let t2 = tr_exp e2 in (t1, t2)) e_cases in
+    return (trm_desc_switch None t_cases)
 
-    return (trm_desc_switch t_cases)
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__switch"; _}; _}, [label; cases]) ->
+    let (_, label) = label in
+    let l = label_argument_inv label in
+
+    let (_, cases) = cases in
+    let cases = accumulate_arguments_list cases in
+    let e_cases = List.map (recognize_switch_case ~loc) cases in
+    let t_cases = List.map (fun (e1, e2) -> let t1 = tr_exp e1 in let t2 = tr_exp e2 in (t1, t2)) e_cases in
+    return (trm_desc_switch l t_cases)
 
   | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__match"; _}; _}, [e0; cases]) ->
-    (* Folding on cases with an accumulator *)
-    (* I want to match recursively the cases. with an accumulator *)
-    (* Add a : let __v = t1 in ...  *)
+    let v_name = fresh_match_var () in
+    let v = trm_var_varid v_name in
 
     let (_, e0) = e0 in
     let t0 = tr_exp e0 in
     let (_, cases) = cases in
     let cases = accumulate_arguments_list cases in
-    let t_cases = List.map
-    (* fonction, qui prend une liste d'expressions, vérifie si ca a la forme case e1 then e2, si oui, traduits e1 et e2 et renvoie le couple (t1, t2) traduit *)
-      (fun e ->
-        begin match case_inv_opt ~loc e with
-        | Some {pexp_desc=Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "@"; _}; _}, aes); _} ->
-            begin match infix_op_inv ~loc aes with
-            | Some (e1,{pexp_desc=(Pexp_ident {txt=Lident "_then"; _}); _}, e3) ->
-              let t1 = tr_exp e1 in
-              let t3 = tr_exp e3 in
-              (trm_bbe_is t0 t1, t3)
-            | _ -> unsupported ~loc "argument in case not in '@_then' format"
-            end
-        | _ -> unsupported ~loc "argument in switch not in 'case' format"
-        end
-      ) cases in
+    let e_cases = List.map (recognize_switch_case ~loc) cases in
+    let t_cases = List.map (fun (e1, e2) -> let t1 = tr_exp e1 in let t2 = tr_exp e2 in (trm_bbe_is v t1, t2)) e_cases in
 
-    return (trm_desc_let Nonrecursive ("__v", None) t0 (trm_switch t_cases))
+    return (trm_desc_let Nonrecursive (v_name, None) t0 (trm_switch None t_cases))
+
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__match"; _}; _}, [label; e0; cases]) ->
+    let (_, label) = label in
+    let l = label_argument_inv label in
+
+    let v_name = fresh_match_var () in
+    let v = trm_var_varid v_name in
+
+    let (_, e0) = e0 in
+    let t0 = tr_exp e0 in
+    let (_, cases) = cases in
+    let cases = accumulate_arguments_list cases in
+    let e_cases = List.map (recognize_switch_case ~loc) cases in
+    let t_cases = List.map (fun (e1, e2) -> let t1 = tr_exp e1 in let t2 = tr_exp e2 in (trm_bbe_is v t1, t2)) e_cases in
+
+    return (trm_desc_let Nonrecursive (v_name, None) t0 (trm_switch l t_cases))
 
   | Pexp_apply (e0, aes) ->
     let is_labeled lbl =
@@ -716,12 +755,14 @@ let rec tr_exp (e : expression) : trm =
 
  *)
   | Pexp_match (e, cs) ->
-    return (trm_desc_match (tr_exp e) (List.map tr_case cs))
+    let l = label_attribute_inv e.pexp_attributes in
+    return (trm_desc_match l (tr_exp e) (List.map tr_case cs))
 
   | Pexp_while (e1, e2) ->
+    let l = label_attribute_inv e.pexp_attributes in
     let t1 = tr_exp e1 in
     let t2 = tr_exp e2 in
-    return (trm_desc_while t1 t2)
+    return (trm_desc_while l t1 t2)
 
   | Pexp_assert {pexp_desc=Pexp_construct ({txt=Longident.Lident "false"},_)} ->
     return (trm_desc_assert_false ())
@@ -798,7 +839,7 @@ and tr_let (rf : rec_flag) (attrs : attributes) (vb : value_binding) : let_def l
   let body = tr_exp body in
 (*   let body = add_local_instances local_instances body in *)
   (* The variable [full_body] includes all parameters (including the implicit ones). *)
-  let fun_body = trm_funs_if_non_empty ~loc args body in
+  let fun_body = trm_funs_if_non_empty ~loc None args body in
 (*   let full_body =
     trm_funs_if_non_empty ~loc (List.map (fun (x, _sym, ty) -> (x, ty)) implicits) fun_body in *)
   (* The variable [full_def] also includes the for-alls quantifiers. *)

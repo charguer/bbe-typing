@@ -230,7 +230,7 @@ let rec comp_trm (t : trm) : trm =
   | Trm_funs (_, args, t1) ->
     (* let args, t1 = factorize_fun t in *)
     let t1' = aux_trm t1 in
-    trm_funs ~loc ~typ args t1'
+    trm_funs ~loc ~typ None args t1'
 
   | Trm_if (_, b0, t1, t2) ->
     let t1' = aux_trm t1 in
@@ -296,7 +296,7 @@ let rec comp_trm (t : trm) : trm =
       ptyp_arrow ~loc Nolabel (unit_type ~loc) (unit_type ~loc)
     in
     (* Instead of using typ to styp, just build the styp by hand *)
-    let loop_fun = trm_funs ~loc [(fresh_var (), unit_syntyp)] body in
+    let loop_fun = trm_funs ~loc None [(fresh_var (), unit_syntyp)] body in
     (* let unit_styp = unit_syntyp.syntyp_syntax in *)
     (* let let_typ = typ_to_styp (typ_arrow [the_typ_unit] the_typ_unit) in *)
     trm_let ~loc Recursive (loop_name, Some (synsch_of_nonpolymorphic_typ (mk_syntyp unit_to_unit_type))) loop_fun loop_call
@@ -359,7 +359,7 @@ and comp_bbe (b : bbe) (u : trm) (u' : trm) : trm =
   | _ ->
     (* Boolean term case: [[t]] (u) (u') ==> if [[t]] then u else u' *)
     let t' = aux_trm b in
-    trm_if ~loc t' u u'
+    trm_if ~loc None t' u u'
 
 and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
   let aux_trm = comp_trm in
@@ -423,7 +423,7 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
     let success_case = (success_pat, u) in
     let wildcard = trm_pat_wild ~loc () in
     let failure_case = (wildcard, u') in
-    trm_match ~loc y_var [success_case; failure_case]
+    trm_match ~loc None y_var [success_case; failure_case]
 
   | Trm_var f ->
     (* Non-capitalized variable: boolean predicate *)
@@ -434,7 +434,7 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
     let f' = aux_trm f_term in
     let f_applied = trm_apps ~loc f' [y_var] in
     let x_var = trm_var_varid ~loc x in
-    let body = trm_if ~loc x_var u u' in
+    let body = trm_if ~loc None x_var u u' in
     trm_let ~loc Nonrecursive (x, None) f_applied body
 
   | Trm_apps ({ trm_desc = Trm_var constr_name; _ }, ps) when is_capitalized constr_name ->
@@ -452,7 +452,7 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
     let success_case = (match_pat, success_body) in
     let wildcard = trm_pat_wild ~loc () in
     let failure_case = (wildcard, u') in
-    trm_match ~loc y_var [success_case; failure_case]
+    trm_match ~loc None y_var [success_case; failure_case]
 
   | Trm_apps (f, ps) ->
     (* Function pattern: (y |> f (p1, ..., pn) (u) (u')) ==> let x = [[f]] y in (x |> Some (p1, ..., pn) (u) (u')) *)
@@ -481,14 +481,14 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
     ) fresh_vars ps in
     let combined = trm_ands ~loc is_checks in
     let body = aux_bbe combined u u' in
-    trm_match ~loc y_var [(tuple_pat, body)]
+    trm_match ~loc None y_var [(tuple_pat, body)]
 
   | Trm_cst c ->
     (* Constant pattern: (y |> c (u) (u')) ==> if (y = c) then u else u' *)
     let y_var = trm_var_varid ~loc y in
     let c_term = trm_cst ~loc c in
     let eq = trm_apps ~loc (trm_var_varid ~loc "=") [y_var; c_term] in
-    trm_if ~loc eq u u'
+    trm_if ~loc None eq u u'
 
   | Trm_annot (p, styp) ->
     let t' = aux_pat y p u u' in
@@ -501,7 +501,7 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
     let t' = aux_trm p in
     let t_applied = trm_apps ~loc t' [y_var] in
     let x_var = trm_var_varid ~loc x in
-    let body = trm_if ~loc x_var u u' in
+    let body = trm_if ~loc None x_var u u' in
     trm_let ~loc Nonrecursive (x, None) t_applied body
 
 and comp_switch ~loc ~typ (cases : (bbe * trm) list) : trm =

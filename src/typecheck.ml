@@ -341,7 +341,7 @@ let rec typecheck_trm_let_sch ~loc ?(fully_resolved=false) rf (e : env) ((x, syn
             let rec aux t =
               let loc = t.trm_loc in
               match t.trm_desc with
-              | Trm_funs (_l, xs, t0) ->
+              | Trm_funs (l, xs, t0) ->
                 let xs =
                   List.map (fun (x, sty) ->
                     let sty = syntyp_internalize e1 sty in
@@ -350,29 +350,29 @@ let rec typecheck_trm_let_sch ~loc ?(fully_resolved=false) rf (e : env) ((x, syn
                 | None -> None
                 | Some (tyr, t0) ->
                   let ty = typ_arrow (List.map (fun (_x, sty) -> sty.syntyp_typ) xs) tyr in
-                  Some (ty, trm_funs ~loc ~typ:ty xs t0)
+                  Some (ty, trm_funs ~loc ~typ:ty l xs t0)
                 end
               | Trm_annot (t0, sty) ->
                 let sty = syntyp_internalize e1 sty in
                 let typ = sty.syntyp_typ in
                 Some (typ, trm_annot ~loc ~typ t0 sty)
-              | Trm_match (_l, t0, pts) ->
+              | Trm_match (l, t0, pts) ->
                 (* In a pattern-matching, we just look for any type annotation in the branches. *)
                 begin match
                   List.find_mapi (fun i (_p, t) ->
                     Option.map (fun r -> (i, r)) (aux t)) pts with
                 | None -> None
                 | Some (i, (typ, t')) ->
-                  Some (typ, trm_match ~loc ~typ t0 (List.update_nth i (fun (p, _t) -> (p, t')) pts))
+                  Some (typ, trm_match ~loc ~typ l t0 (List.update_nth i (fun (p, _t) -> (p, t')) pts))
                 end
-              | Trm_if (_l, t0, t1, t2) ->
+              | Trm_if (l, t0, t1, t2) ->
                 (* Similarly, we just need one type annotation for if-statements. *)
                 begin match aux t1 with
-                | Some (typ, t1') -> Some (typ, trm_if ~loc ~typ t0 t1' t2)
+                | Some (typ, t1') -> Some (typ, trm_if ~loc ~typ l t0 t1' t2)
                 | None ->
                   match aux t2 with
                   | None -> None
-                  | Some (typ, t2') -> Some (typ, trm_if ~loc ~typ t0 t1 t2')
+                  | Some (typ, t2') -> Some (typ, trm_if ~loc ~typ l t0 t1 t2')
                 end
               | Trm_let (let_def, t0) ->
                 begin match aux t0 with
