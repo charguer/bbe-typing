@@ -421,6 +421,21 @@ let partr_proj y = ?!(example_fun2 __ y)
 let example_funbig a b c d e f g = e
 let projbig b e g = ?!(example_funbig __ b __ __ e __ g)
 
+(* Label constructs *)
+
+let if_label = if[@label "L1"] true then false else true
+let while_label = while[@label "L2"] false do () done
+let block_label = __block "L3" false
+let match_label = __match "L4" true []
+let switch_label = __switch "L5" []
+
+let simple_block_exit =
+  __block "L1" (
+    __exit "L1" false; true)
+
+let simple_if_next_1 = if[@label "L"] (2 @_is ??x) then next "L"; x else 3
+let simple_if_next_2 = if[@label "L"] (2 @_is ??x) then __next "L" else 3
+
 (* TODO URGENT: test pattern inversion of custom constructors. *)
 
   (*

@@ -474,8 +474,10 @@ let recognize_switch_case ~loc (e : expression) : expression * expression =
   [label_attribute_inv attrs] checks whether an attribute list contains label related attributes.
   Returns [None] if it does not, or [Some L] if it does, L being the corresponding label*)
 let label_attribute_inv (attrs : attributes) : label option =
+  Debug.log "visiting label_attribute_inv, of size %n\n" (List.length attrs);
   match attrs with
   | [{attr_name={txt = "label"}; attr_payload}] ->
+    Debug.log "label_attribute_inv: got a label attribute";
     begin match attr_payload with
     | PStr [{pstr_desc=Pstr_eval ({pexp_desc= Pexp_constant (Pconst_string (l, _, _))}, [])}] -> Some l
     | _ -> None
@@ -514,12 +516,14 @@ let rec tr_exp (e : expression) : trm =
           assert false (* In OCaml, boolean and units are dealt as constructors and not constants. See Pexp_construct below. *) in *)
       return (trm_desc_cst cst)
   | Pexp_let (rf, [vb], e2) ->
-      let lets = tr_let rf e.pexp_attributes vb in
-      let t2 = tr_exp e2 in
-      List.fold_left (fun t l ->
-        trm_let_def ~loc l t) t2 (List.rev lets)
+    (* TODO: bugged, needing a way to get the attribute as element. *)
+    let lets = tr_let rf e.pexp_attributes vb in
+    let t2 = tr_exp e2 in
+    List.fold_left (fun t l ->
+      trm_let_def ~loc l t) t2 (List.rev lets)
   | Pexp_let (rf, vbs, e) -> unsupported ~loc "mutual let defs"
   | Pexp_fun _ | Pexp_function _ ->
+    Debug.log "visiting Pexp_fun or Pexp_function";
     let l = label_attribute_inv e.pexp_attributes in
     let (xs,(*  local_instances, *) e1) =
         match pexp_fun_get_annotated_args_body e with
@@ -527,7 +531,8 @@ let rec tr_exp (e : expression) : trm =
         | Some res -> res in
     let t1 = tr_exp e1 in
     (* let t2 = add_local_instances local_instances t1 in  *)
-    return (trm_desc_funs l xs t1) (* YL: Note : if something broke it is probably here... *)
+    Printf.printf "returning a function here";
+    return (trm_desc_funs l xs t1)
   | Pexp_ifthenelse (e1, e2, Some e3) ->
     let l = label_attribute_inv e.pexp_attributes in
     let t1 = tr_exp e1 in
@@ -644,6 +649,8 @@ let rec tr_exp (e : expression) : trm =
     let t_cases = List.map (fun (e1, e2) -> let t1 = tr_exp e1 in let t2 = tr_exp e2 in (t1, t2)) e_cases in
     return (trm_desc_switch (Some lbl) t_cases)
 
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__switch"; _}; _}, _) -> unsupported ~loc "__switch expects either 1 or 2 arguments"
+
   | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__match"; _}; _}, [e0; cases]) ->
     let v_name = fresh_match_var () in
     let v = trm_var_varid v_name in
@@ -678,7 +685,16 @@ let rec tr_exp (e : expression) : trm =
 
     return (trm_desc_let Nonrecursive (v_name, None) t0 (trm_switch (Some lbl) t_cases))
 
-  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__block"; _}; _}, [label; e0]) ->
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__match"; _}; _}, _) -> unsupported ~loc "__switch expects either 2 or 3 arguments"
+
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__block"; _}; _}, aes) ->
+    let (label, e0) =
+      begin match aes with
+      | [label; e0] -> (label, e0)
+      | _ -> unsupported ~loc "__block expects 2 arguments"
+    end
+    in
+
     let (_, label) = label in
     let lbl =
       begin match label_argument_inv label with
@@ -691,7 +707,13 @@ let rec tr_exp (e : expression) : trm =
     let t0 = tr_exp e0 in
     return (trm_desc_block lbl t0)
 
-  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__exit"; _}; _}, [label; e0]) ->
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__exit"; _}; _}, aes) ->
+    let (label, e0) =
+      begin match aes with
+      | [label; e0] -> (label, e0)
+      | _ -> unsupported ~loc "__exit expects 2 arguments"
+      end
+    in
     let (_, label) = label in
     let lbl =
       begin match label_argument_inv label with
@@ -704,7 +726,13 @@ let rec tr_exp (e : expression) : trm =
     let t0 = tr_exp e0 in
     return (trm_desc_exit lbl t0)
 
-  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__return"; _}; _}, [label; e0]) ->
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__return"; _}; _}, aes) ->
+    let (label, e0) =
+      begin match aes with
+      | [label; e0] -> (label, e0)
+      | _ -> unsupported ~loc "__return expects 2 arguments"
+      end
+    in
     let (_, label) = label in
     let lbl =
       begin match label_argument_inv label with
@@ -717,7 +745,13 @@ let rec tr_exp (e : expression) : trm =
     let t0 = tr_exp e0 in
     return (trm_desc_return lbl t0)
 
-  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__break"; _}; _}, [label]) ->
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__break"; _}; _}, aes) ->
+    let label =
+      begin match aes with
+      | [label] -> label
+      | _ -> unsupported ~loc "__break expects 2 arguments"
+      end
+    in
     let (_, label) = label in
     let lbl =
       begin match label_argument_inv label with
@@ -727,7 +761,13 @@ let rec tr_exp (e : expression) : trm =
     in
     return (trm_desc_break lbl)
 
-  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__continue"; _}; _}, [label]) ->
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__continue"; _}; _}, aes) ->
+    let label =
+      begin match aes with
+      | [label] -> label
+      | _ -> unsupported ~loc "__break expects 2 arguments"
+      end
+    in
     let (_, label) = label in
     let lbl =
       begin match label_argument_inv label with
@@ -737,7 +777,13 @@ let rec tr_exp (e : expression) : trm =
     in
     return (trm_desc_continue lbl)
 
-  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__next"; _}; _}, [label]) ->
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__next"; _}; _}, aes) ->
+    let label =
+      begin match aes with
+      | [label] -> label
+      | _ -> unsupported ~loc "__break expects 2 arguments"
+      end
+    in
     let (_, label) = label in
     let lbl =
       begin match label_argument_inv label with
@@ -916,9 +962,11 @@ and tr_let (rf : rec_flag) (attrs : attributes) (vb : value_binding) : let_def l
     List.concat_map (fun (x, attrs) ->
       List.map (fun (sym, loc) -> (x, sym, loc)) (get_all_local_instances attrs)) args in *)
   let body = tr_exp body in
+  (* Debug.log "Visiting body inside letdef: %s" (Ast_print.trm_to_string ~style:Ast_print.style_debug body); *)
 (*   let body = add_local_instances local_instances body in *)
   (* The variable [full_body] includes all parameters (including the implicit ones). *)
-  let fun_body = trm_funs_if_non_empty ~loc None args body in
+  let l = label_attribute_inv attrs in
+  let fun_body = trm_funs_if_non_empty ~loc l args body in
 (*   let full_body =
     trm_funs_if_non_empty ~loc (List.map (fun (x, _sym, ty) -> (x, ty)) implicits) fun_body in *)
   (* The variable [full_def] also includes the for-alls quantifiers. *)

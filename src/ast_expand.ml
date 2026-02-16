@@ -1,3 +1,5 @@
+(** Final pass, translates DSL into OCaml AST *)
+
 open Ppxlib
 open Ast_builder.Default
 open Asttypes

@@ -1,3 +1,5 @@
+(** First translation pass, decodes derived constructs, and simplifies syntax *)
+
 open Asttypes
 open Parsetree
 open Var

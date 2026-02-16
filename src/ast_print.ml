@@ -560,7 +560,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
 
   | Trm_var varid -> varid_to_doc ~style varid
 
-  | Trm_funs (_l, xs_raw, t1) ->
+  | Trm_funs (l, xs_raw, t1) ->
     (* fun (x1 : ty1) ... : tyr -> t *)
     let xs = List.map fst xs_raw in
     let xs = List.map print_var_parens xs in
@@ -596,19 +596,19 @@ and trm_to_doc_raw ~style (t : trm) : doc =
         separate (blank 1) (List.map string xs)
       end in
     separate (blank 1) [
-      string "fun";
+      string (sprintf "fun%s" (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l));
       args;
       string "->";
       aux t1
     ]
 
-  | Trm_if (_l, t0, t1, t2) ->
+  | Trm_if (l, t0, t1, t2) ->
       let s0 =
         if style.style_binds <> BindsNone then (* In this case, the style is either "BindsToplevel" or "BindsAll" *)
           with_bindings ~style t0
         else aux t0
       in
-         string "if"
+         string (sprintf "if%s" (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l))
       ^^ blank 1
       ^^ s0
       ^^ blank 1
@@ -739,8 +739,8 @@ and trm_to_doc_raw ~style (t : trm) : doc =
         ^^ blank 1
         ^^ parens (aux t1)
 
-  | Trm_match (_l, t0, pts) ->
-      string "begin match"
+  | Trm_match (l, t0, pts) ->
+      string (sprintf "begin match%s" (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l))
         ^^ blank 1
         ^^ aux t0
         ^^ blank 1
@@ -805,7 +805,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
     ^^ string "||"
     ^^ blank 1
     ^^ d2
-  | Trm_switch (_l, cases) ->
+  | Trm_switch (l, cases) ->
     let case_to_doc (b1, t2) =
       let d1 =
         if style.style_binds = BindsAll then
@@ -821,14 +821,14 @@ and trm_to_doc_raw ~style (t : trm) : doc =
       ^^ blank 1
       ^^ d2
     in
-       string "switch"
+       string (sprintf "switch%s" (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l))
     ^^ blank 1
     ^^ enclose (lbracket ^^ hardline) (hardline ^^ rbracket) (
       separate (semi ^^ hardline)
       (List.map case_to_doc cases)
     )
 
-  | Trm_while (_l, b1, t2) ->
+  | Trm_while (l, b1, t2) ->
     (* has the form: [while "e1" do "e2" done] *)
     let d1 =
       if style.style_binds <> BindsNone then
@@ -836,7 +836,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
       aux b1
     in
     let d2 = aux t2 in
-       string "while"
+       string (sprintf "while%s" (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l))
     ^^ blank 1
     ^^ parens d1
     ^^ blank 1
@@ -880,7 +880,6 @@ and trm_to_doc_raw ~style (t : trm) : doc =
     ^^ string lbl
     ^^ blank 1
     ^^ d
-
 
   | Trm_bbe_is (t1, p2) ->
       let d1 = aux t1 in
