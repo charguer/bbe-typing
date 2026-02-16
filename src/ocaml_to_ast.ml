@@ -631,13 +631,18 @@ let rec tr_exp (e : expression) : trm =
 
   | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__switch"; _}; _}, [label; cases]) ->
     let (_, label) = label in
-    let l = label_argument_inv label in
+    let lbl =
+      begin match label_argument_inv label with
+      | Some lbl -> lbl
+      | None -> unsupported ~loc "Expected to have a valid label in string format"
+      end
+    in
 
     let (_, cases) = cases in
     let cases = accumulate_arguments_list cases in
     let e_cases = List.map (recognize_switch_case ~loc) cases in
     let t_cases = List.map (fun (e1, e2) -> let t1 = tr_exp e1 in let t2 = tr_exp e2 in (t1, t2)) e_cases in
-    return (trm_desc_switch l t_cases)
+    return (trm_desc_switch (Some lbl) t_cases)
 
   | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__match"; _}; _}, [e0; cases]) ->
     let v_name = fresh_match_var () in
@@ -654,7 +659,12 @@ let rec tr_exp (e : expression) : trm =
 
   | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__match"; _}; _}, [label; e0; cases]) ->
     let (_, label) = label in
-    let l = label_argument_inv label in
+    let lbl =
+      begin match label_argument_inv label with
+      | Some lbl -> lbl
+      | None -> unsupported ~loc "Expected to have a valid label in string format"
+      end
+    in
 
     let v_name = fresh_match_var () in
     let v = trm_var_varid v_name in
@@ -666,7 +676,76 @@ let rec tr_exp (e : expression) : trm =
     let e_cases = List.map (recognize_switch_case ~loc) cases in
     let t_cases = List.map (fun (e1, e2) -> let t1 = tr_exp e1 in let t2 = tr_exp e2 in (trm_bbe_is v t1, t2)) e_cases in
 
-    return (trm_desc_let Nonrecursive (v_name, None) t0 (trm_switch l t_cases))
+    return (trm_desc_let Nonrecursive (v_name, None) t0 (trm_switch (Some lbl) t_cases))
+
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__block"; _}; _}, [label; e0]) ->
+    let (_, label) = label in
+    let lbl =
+      begin match label_argument_inv label with
+      | Some lbl -> lbl
+      | None -> unsupported ~loc "Expected to have a valid label in string format"
+      end
+    in
+
+    let (_, e0) = e0 in
+    let t0 = tr_exp e0 in
+    return (trm_desc_block lbl t0)
+
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__exit"; _}; _}, [label; e0]) ->
+    let (_, label) = label in
+    let lbl =
+      begin match label_argument_inv label with
+      | Some lbl -> lbl
+      | None -> unsupported ~loc "Expected to have a valid label in string format"
+      end
+    in
+
+    let (_, e0) = e0 in
+    let t0 = tr_exp e0 in
+    return (trm_desc_exit lbl t0)
+
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__return"; _}; _}, [label; e0]) ->
+    let (_, label) = label in
+    let lbl =
+      begin match label_argument_inv label with
+      | Some lbl -> lbl
+      | None -> unsupported ~loc "Expected to have a valid label in string format"
+      end
+    in
+
+    let (_, e0) = e0 in
+    let t0 = tr_exp e0 in
+    return (trm_desc_return lbl t0)
+
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__break"; _}; _}, [label]) ->
+    let (_, label) = label in
+    let lbl =
+      begin match label_argument_inv label with
+      | Some lbl -> lbl
+      | None -> unsupported ~loc "Expected to have a valid label in string format"
+      end
+    in
+    return (trm_desc_break lbl)
+
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__continue"; _}; _}, [label]) ->
+    let (_, label) = label in
+    let lbl =
+      begin match label_argument_inv label with
+      | Some lbl -> lbl
+      | None -> unsupported ~loc "Expected to have a valid label in string format"
+      end
+    in
+    return (trm_desc_continue lbl)
+
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__next"; _}; _}, [label]) ->
+    let (_, label) = label in
+    let lbl =
+      begin match label_argument_inv label with
+      | Some lbl -> lbl
+      | None -> unsupported ~loc "Expected to have a valid label in string format"
+      end
+    in
+    return (trm_desc_next lbl)
 
   | Pexp_apply (e0, aes) ->
     let is_labeled lbl =

@@ -828,7 +828,6 @@ and trm_to_doc_raw ~style (t : trm) : doc =
       (List.map case_to_doc cases)
     )
 
-
   | Trm_while (_l, b1, t2) ->
     (* has the form: [while "e1" do "e2" done] *)
     let d1 =
@@ -847,6 +846,41 @@ and trm_to_doc_raw ~style (t : trm) : doc =
     ^^ d2
     ^^ hardline
     ^^ string "done"
+
+  | Trm_exit (lbl, t) ->
+    let d = aux t in
+       string "__exit"
+    ^^ blank 1
+    ^^ string lbl
+    ^^ blank 1
+    ^^ d
+  | Trm_return (lbl, t) ->
+    let d = aux t in
+       string "__return"
+    ^^ blank 1
+    ^^ string lbl
+    ^^ blank 1
+    ^^ d
+  | Trm_break lbl ->
+       string "__break"
+    ^^ blank 1
+    ^^ string lbl
+  | Trm_continue lbl ->
+       string "__continue"
+    ^^ blank 1
+    ^^ string lbl
+  | Trm_next lbl ->
+       string "__next"
+    ^^ blank 1
+    ^^ string lbl
+  | Trm_block (lbl, t) ->
+    let d = aux t in
+       string "__block"
+    ^^ blank 1
+    ^^ string lbl
+    ^^ blank 1
+    ^^ d
+
 
   | Trm_bbe_is (t1, p2) ->
       let d1 = aux t1 in

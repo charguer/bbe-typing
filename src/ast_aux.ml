@@ -531,6 +531,24 @@ let trm_desc_switch (l : label option) (cases : (bbe * trm) list) : trm_desc =
 let trm_desc_while (l : label option) (b : bbe) (t : trm) : trm_desc =
   Trm_while (l, b, t)
 
+let trm_desc_block (lbl : label) (t : trm) : trm_desc =
+  Trm_block (lbl, t)
+
+let trm_desc_exit (lbl : label) (t : trm) : trm_desc =
+  Trm_exit (lbl, t)
+
+let trm_desc_return (lbl : label) (t : trm) : trm_desc =
+  Trm_return (lbl, t)
+
+let trm_desc_break (lbl : label) : trm_desc =
+  Trm_break lbl
+
+let trm_desc_continue (lbl : label) : trm_desc =
+  Trm_continue lbl
+
+let trm_desc_next (lbl : label) : trm_desc =
+  Trm_next lbl
+
 
 (* ** Smart constructors for bbe trm descriptors*)
 let trm_desc_bbe_is (t : trm) (p : pat) : trm_desc =
@@ -687,6 +705,25 @@ let trm_switch ?loc ?typ (* ?annot *) (l : label option) (cases : (bbe * trm) li
 
 let trm_while ?loc ?typ (* ?annot *) (l : label option) (b : bbe) (t : trm) : trm =
   mktrm ?loc ?typ (trm_desc_while l b t)
+
+let trm_block ?loc ?typ (* ?annot *) (lbl : label) (t : trm) : trm =
+  mktrm ?loc ?typ (trm_desc_block lbl t)
+
+let trm_exit ?loc ?typ (* ?annot *) (lbl : label) (t : trm) : trm =
+  mktrm ?loc ?typ (trm_desc_exit lbl t)
+
+let trm_return ?loc ?typ (* ?annot *) (lbl : label) (t : trm) : trm =
+  mktrm ?loc ?typ (trm_desc_return lbl t)
+
+let trm_break ?loc ?typ (* ?annot *) (lbl : label) : trm =
+  mktrm ?loc ?typ (trm_desc_break lbl)
+
+let trm_continue ?loc ?typ (* ?annot *) (lbl : label) : trm =
+  mktrm ?loc ?typ (trm_desc_continue lbl)
+
+let trm_next ?loc ?typ (* ?annot *) (lbl : label) : trm =
+  mktrm ?loc ?typ (trm_desc_next lbl)
+
 
 (* ** Smart constructors for bbes *)
 let trm_bbe_is ?loc ?typ (* ?annot *) (t : trm) (p : pat) : trm =
@@ -1081,6 +1118,9 @@ let trm_iter (f : trm -> unit) (t : trm) : unit =
   | Trm_pat_var _
   | Trm_var _
   | Trm_pat_wild
+  | Trm_break _
+  | Trm_continue _
+  | Trm_next _
   | Trm_cst _ -> ()
   | Trm_funs (_, _, t) -> f t
   | Trm_if (_, t1, t2, t3) -> List.iter f [t1; t2; t3]
@@ -1095,6 +1135,9 @@ let trm_iter (f : trm -> unit) (t : trm) : unit =
   | Trm_or (t1, t2) -> List.iter f [t1; t2]
   | Trm_switch (_, cases) -> List.iter (fun (b, k) -> f b; f k) cases
   | Trm_while (_, b, t) -> List.iter f [b; t]
+  | Trm_exit (_, t) -> f t
+  | Trm_return (_, t) -> f t
+  | Trm_block (_, t) -> f t
   | Trm_bbe_is (t, p) -> List.iter f [t; p]
   | Trm_pat_when (p, b) -> List.iter f [p; b]
 
@@ -1107,6 +1150,9 @@ let trm_map (f : trm -> trm) (t : trm) : trm =
   | Trm_pat_var _
   | Trm_var _
   | Trm_pat_wild
+  | Trm_break _
+  | Trm_continue _
+  | Trm_next _
   | Trm_cst _ -> t
   | Trm_funs (l, vs, t1) ->
     let t2 = f t1 in
@@ -1169,6 +1215,18 @@ let trm_map (f : trm -> trm) (t : trm) : trm =
     let t2' = f t2 in
     if b1 == b1' && t2 == t2' then t
     else trm_while ~loc ~typ l (* ~annot *) b1' t2'
+  | Trm_exit (lbl, t) ->
+    let t' = f t in
+    if t' == t then t
+    else trm_exit ~loc ~typ lbl t'
+  | Trm_return (lbl, t) ->
+    let t' = f t in
+    if t' == t then t
+    else trm_return ~loc ~typ lbl t'
+  | Trm_block (lbl, t) ->
+    let t' = f t in
+    if t' == t then t
+    else trm_block ~loc ~typ lbl t'
   | Trm_bbe_is (t1, p1) ->
     let t1' = f t1 in
     let p1' = f p1 in

@@ -177,6 +177,7 @@ type label = string
   - src/ast_aux.ml: [trm_iter] and [trm_map] functions
   - src/typecheck.ml: [typecheck_trm], [typecheck_bbe] and [typecheck_pat] functions
   - src/ast_print.ml: [trm_to_doc_raw] function
+  - src/ast_comp.ml: [free_vars] function
 
   There is also a need to add smart constructors and inversors in ast_aux.ml
 *)
@@ -213,6 +214,13 @@ type trm_desc =
   | Trm_or of trm * trm
   | Trm_switch of (label option) * (bbe * trm) list
   | Trm_while of (label option) * bbe * trm
+  | Trm_block of label * trm
+  (*Exception handling constructions*)
+  | Trm_exit of label * trm
+  | Trm_return of label * trm
+  | Trm_break of label
+  | Trm_continue of label
+  | Trm_next of label
   (*BBE constructions*)
   | Trm_bbe_is of trm * pat
   (*Pattern constructions*)
@@ -393,7 +401,7 @@ type kind =
   | LblLoop
   | LblBranch
 
-type env_label = ((kind * label), sch option) Env.t
+type env_label = ((kind * label), typ option) Env.t
 
 (** An [env_tconstr] is a typing environment for type constructors (e.g. [list]):
    it associates a type constructor descriptor ([tconstr_desc])

@@ -83,10 +83,19 @@ let merge_distinct ~loc (e1 : env_var) (e2 : env_var) : env_var =
     (if (Env.mem e1 k) then raise (Error (Expected_bindings, loc));
     (Env.add e k v))) e1
 
-(** [env_extend e1 e2]: adds the bindings of binds inside e1.*)
+(** [env_extend e1 binds]: adds the bindings of binds inside e1.*)
 let env_extend ~loc (e1 : env) (binds : env) : env = (* TODO: env_bbe = env_var, and binds/"eb" has type env_bbe *)
   assert (Env.size binds.env_tconstr = 0); (* it is assumed no expression can bind type constructors *) (* why is that? I mean how can there be extension of tconstr in binds? *)
   {e1 with env_var = (merge_distinct ~loc e1.env_var binds.env_var)}
+
+(** [env_extend_label e1 k l s]: adds label informations corresponding to k, l and s inside e1.*)
+let env_extend_label ~loc (e1 : env) (k : kind) (l : label option) (sty : typ option) : env =
+  (* TODO: remove ~loc, and change error message *)
+  Option.fold
+    ~none:e1
+    ~some:(fun lbl -> {e1 with env_label = (if (Env.mem e1.env_label (k, lbl)) then raise (Error (Expected_bindings, loc)); (Env.add e1.env_label (k, lbl) sty))})
+    l
+
 
 let env_merge_binds ~loc (bl : env list) : env =
   let ev = env_empty in
@@ -113,6 +122,9 @@ let env_intersect ~loc (curr_env : env) (b1 : env) (b2 : env) : env =
 
 let env_singleton (v : varid) (ty : typ) : env =
   env_add_var (env_empty) v (sch_of_nonpolymorphic_typ ty)
+
+let empty_labels (e : env) : env =
+  {e with env_label = Env.empty ()}
 
 let typ_constant = function
   | Cst_bool _ -> the_typ_bool
@@ -170,6 +182,17 @@ let is_synschopt_typ_top (s : synsch option) : bool =
   match s with
   | None -> false
   | Some synsch -> is_sch_typ_top synsch.synsch_sch
+
+let unify_or_error_options (e : env) (sty : typ option) (sty' : typ option) : unit =
+  match sty, sty' with
+  | Some ty, Some ty' -> unify_or_error e ty ty' (Unable_to_unify (ty, ty'))
+  | None, None -> ()
+  | _, _ -> raise (Error (Expected_bindings, loc_none))
+
+let check_label_or_error ~loc (e : env) (k : kind) (lbl : label) (sty : typ option) : unit =
+  match Env.read_option e.env_label (k, lbl) with
+  | Some sty' -> unify_or_error_options e sty sty'
+  | _ -> raise (Error (Mismatch_label_type lbl, loc))
 
 (** End of custom functions *)
 
@@ -569,7 +592,7 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
         We are here examining the constant argument of this symbol. *)
       return (typ_constant c) (Trm_cst c)
 
-  | Trm_funs (_l, args, t1) ->
+  | Trm_funs (l, args, t1) ->
       (* First, we refine the syntactic type annotations into typechecker types. *)
       let args = List.map (fun (arg, sty) -> (arg, syntyp_internalize e sty)) args in
       (* Second, we build the extended environment *)
@@ -577,10 +600,11 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       let e2 = List.fold_left (fun e (x, it) -> env_add_var e x it) e env_items in
       (* Third, we type the body, in the extended environment *)
 
+      let e2 = empty_labels e2 in
       (* TODO: try simpler *)
       let t1 = aux ~env:e2 t1 in
       let typ = typ_arrow (List.map (fun (arg, sty) -> sty.syntyp_typ) args) (typeof t1) in
-      return typ (Trm_funs (_l, args, t1))
+      return typ (Trm_funs (l, args, t1))
 
       (* let ty_res =
         let ty = (* ty is the type of the function *)
@@ -601,14 +625,15 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       (* here we avoid the creation of a flexible that is immediately unified *)
       return typ (Trm_funs (args, t1)) *)
 
-  | Trm_if (_l, b, t1, t2) ->
+  | Trm_if (l, b, t1, t2) ->
       let b = aux_bbe b in
       (* TODO: the intersection between the two environments *)
-      let t1 = aux ~env:(env_extend ~loc e (bindsof b)) t1 in
+      let e1 = env_extend_label ~loc (env_extend ~loc e (bindsof b)) LblBranch l None in
+      let t1 = aux ~env:e1 t1 in
       let t2 = aux t2 in
       (* if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s \n %s : %s\n" (trm_to_string b)(Ast_print.typ_to_string b.trm_typ) (trm_to_string t1) (Ast_print.typ_to_string t1.trm_typ) (trm_to_string t2) (Ast_print.typ_to_string t2.trm_typ); *)
       unify_or_error ~loc e (typeof t1) (typeof t2) (Branches_mismatch_if (typeof t1, typeof t2));
-      return (typeof t2) (Trm_if (_l, b,t1,t2))
+      return (typeof t2) (Trm_if (l, b,t1,t2))
 
   | Trm_let (b, t2) ->
       let (b, e, _sch) = typecheck_let ~loc e b in
@@ -663,8 +688,10 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
     (* This constructor should only appear at let-definitions. *)
     raise (Error (Unsupported_term "Trm_forall", loc))
 
-  | Trm_match (_l, t0, pts) ->
+  | Trm_match (l, t0, pts) ->
     let t0 = aux t0 in
+
+    let e = env_extend_label ~loc e LblBranch l None in
     let tyr = typ_nameless () in
     let pts =
       List.map (fun (pi, ti) ->
@@ -672,7 +699,7 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
         let ei = env_extend ~loc e (bindsof pi) in
         let ti = aux ~env:ei ~expected_typ:tyr ti in
         (pi, ti)) pts in
-    return tyr (Trm_match (_l, t0, pts))
+    return tyr (Trm_match (l, t0, pts))
 
   | Trm_tuple ts ->
     (* LATER: could test
@@ -700,7 +727,9 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
     let t1 = aux t1 in
     let t2 = aux t2 in
     return the_typ_bool (Trm_or (t1, t2))
-  | Trm_switch (_l, cases) ->
+  | Trm_switch (l, cases) ->
+    let ty_ret = typ_of_some_or_nameless expected_typ in
+    let e = env_extend_label ~loc e LblBranch l None in
     let type_case (b, t) =
       let b = aux_bbe b in
       let e = env_extend ~loc e (bindsof b) in
@@ -708,20 +737,54 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
       (b, t)
     in
     let cases = List.map type_case cases in
-    let ty_ret = typ_of_some_or_nameless expected_typ in
+
     List.iter (fun (_, t) ->
       let ty = typeof t in
       unify_or_error ~loc e ty_ret ty (Mismatch_type_switch (ty_ret, ty)))
-      (*  *)
     cases;
 
-    return ty_ret (Trm_switch (_l, cases))
+    return ty_ret (Trm_switch (l, cases))
 
-  | Trm_while (_l, b, t) ->
+  | Trm_while (l, b, t) ->
     let b = aux_bbe b in
     let e = env_extend ~loc e (bindsof b) in
+    let e = env_extend_label ~loc e LblLoop l None in
     let t = aux ~expected_typ:the_typ_unit ~env:e t in
-    return the_typ_unit (Trm_while (_l, b, t))
+    return the_typ_unit (Trm_while (l, b, t))
+
+  | Trm_block (lbl, t) ->
+    let ty_ret = typ_of_some_or_nameless expected_typ in
+    let e = env_extend_label ~loc e LblBlock (Some lbl) (Some ty_ret) in
+    let t = aux ~env:e t in
+    return ty_ret (Trm_block (lbl, t))
+
+  | Trm_exit (lbl, t) ->
+    (* verify that there is indeed a branch of label in F. *)
+    let t = aux t in
+    let ty_ret = typ_of_some_or_nameless expected_typ in
+    check_label_or_error ~loc e LblBlock lbl (Some (typeof t));
+    return ty_ret (Trm_exit (lbl, t))
+
+  | Trm_return (lbl, t) ->
+    let t = aux t in
+    let ty_ret = typ_of_some_or_nameless expected_typ in
+    check_label_or_error ~loc e LblFun lbl (Some (typeof t));
+    return ty_ret (Trm_return (lbl, t))
+
+  | Trm_break lbl ->
+    let ty_ret = typ_of_some_or_nameless expected_typ in
+    check_label_or_error ~loc e LblLoop lbl None;
+    return ty_ret (Trm_break lbl)
+
+  | Trm_continue lbl ->
+    let ty_ret = typ_of_some_or_nameless expected_typ in
+    check_label_or_error ~loc e LblLoop lbl None;
+    return ty_ret (Trm_continue lbl)
+
+  | Trm_next lbl ->
+    let ty_ret = typ_of_some_or_nameless expected_typ in
+    check_label_or_error ~loc e LblBranch lbl None;
+    return ty_ret (Trm_next lbl)
 
   | _ -> failwith "unexpected construct in typecheck_trm"
   (* | Trm_bbe_is _ -> raise (Error (Unsupported_term "Trm_bbe_is", loc))
@@ -734,7 +797,10 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
   Concluding on type : %s\n " (trm_to_string result) (Ast_print.typ_to_string result.trm_typ);
   result
 
-and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a "bindsof" function *)
+and typecheck_bbe (e : env) (b : bbe) : bbe =
+  (* A pattern in typechecked without labels *)
+  let e = empty_labels e in
+
   if !Flags.verbose && !Flags.debug then Printf.printf "Entering typecheck_bbe with :\n  %s\n" (* (Ast_print.env_to_string ~style:Ast_print.style_debug e) *) (trm_to_string b);
 
   let loc = b.trm_loc in
@@ -801,6 +867,9 @@ and typecheck_bbe (e : env) (b : bbe) : bbe = (* TODO Remove the env, and add a 
 *)
 
 and typecheck_pat ?(expected_typ:typ option) (e : env) (p : pat) : pat =
+  (* A pattern in typechecked without labels *)
+  let e = empty_labels e in
+
   let loc = p.trm_loc in
   let aux_trm ?(env : env = e) ?(expected_typ:typ option) (t : trm) : trm =
     typecheck_trm ?expected_typ env t in

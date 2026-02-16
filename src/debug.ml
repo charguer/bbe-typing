@@ -81,6 +81,14 @@ let print_low_level_trm =
         (String.concat "\n"
           (List.map (fun (b, t) -> (sprintf "| case %s then %s" (aux b) (aux t)))
         cases))
+    | Trm_block (l, t) -> sprintf "Block (%s, %s)" l (aux t)
+
+    | Trm_exit (l, t) -> sprintf "Exit (%s, %s)" l (aux t)
+    | Trm_return (l, t) -> sprintf "Return (%s, %s)" l (aux t)
+    | Trm_break l -> sprintf "Break %s" l
+    | Trm_continue l -> sprintf "Continue %s" l
+    | Trm_next l -> sprintf "Next %s" l
+
     | Trm_bbe_is (t, p) -> sprintf "Is (%s, %s)" (aux t) (aux p)
     | Trm_pat_var varid -> sprintf "PVar %s" varid
     | Trm_pat_wild -> sprintf "Wildcard"

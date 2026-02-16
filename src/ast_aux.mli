@@ -79,6 +79,12 @@ val trm_desc_and : trm -> trm -> trm_desc
 val trm_desc_or : trm -> trm -> trm_desc
 val trm_desc_while : label option -> bbe -> trm -> trm_desc
 val trm_desc_switch : label option -> (bbe * trm) list -> trm_desc
+val trm_desc_block : label -> trm -> trm_desc
+val trm_desc_exit : label -> trm -> trm_desc
+val trm_desc_return : label -> trm -> trm_desc
+val trm_desc_break : label -> trm_desc
+val trm_desc_continue : label -> trm_desc
+val trm_desc_next : label -> trm_desc
 
 val trm_desc_bbe_is : trm -> pat -> trm_desc
 
@@ -122,8 +128,13 @@ val trm_and : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
 val trm_or : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
 val trm_while : ?loc:loc -> ?typ:typ -> label option -> (* ?annot:annot -> *) bbe -> trm -> trm
 val trm_switch : ?loc:loc -> ?typ:typ -> label option -> (* ?annot:annot -> *) (bbe * trm) list -> trm
+val trm_block : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) label -> trm -> trm
 
-
+val trm_exit : ?loc:loc -> ?typ:typ -> label -> trm -> trm
+val trm_return : ?loc:loc -> ?typ:typ -> label -> trm -> trm
+val trm_break : ?loc:loc -> ?typ:typ -> label -> trm
+val trm_continue : ?loc:loc -> ?typ:typ -> label -> trm
+val trm_next : ?loc:loc -> ?typ:typ -> label -> trm
 
 (* val trm_or : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
 val trm_or : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm

@@ -123,6 +123,8 @@ let rec expand_trm (t : trm) : expression =
   | Trm_pat_wild -> failwith "expand_trm: Trm_pat_wild is not a term"
   | Trm_pat_when _ -> failwith "expand_trm: Trm_pat_when is not a term"
 
+  | _ -> failwith "TODO: implement expansion of all exception handling constructs"
+
 and expand_let_def ~loc (ld : let_def) (t2 : expression) : expression =
   let rec_flag = ld.let_def_rec in
   let body = expand_trm ld.let_def_body in

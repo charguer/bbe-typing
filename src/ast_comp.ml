@@ -109,8 +109,10 @@ and free_vars (env : varid list) (t : trm) : varid list =
   | Trm_var x ->
       if List.mem x env || (is_capitalized x) || (x = "__assert_false") || (String.starts_with ~prefix:"__pattern_" x) then [] else [x]
 
-  | Trm_cst _ ->
-      []
+  | Trm_cst _
+  | Trm_break _
+  | Trm_continue _
+  | Trm_next _ -> []
 
   | Trm_funs (_, args, t1) ->
       let bound = bound_vars_varsyntyps args in
@@ -161,6 +163,10 @@ and free_vars (env : varid list) (t : trm) : varid list =
 
   | Trm_while (_, b, t1) ->
       free_vars env b @ free_vars env t1
+
+  | Trm_block (_, t) -> free_vars env t
+  | Trm_exit (_, t) -> free_vars env t
+  | Trm_return (_, t) -> free_vars env t
 
   | Trm_bbe_is (t1, p) ->
       free_vars env t1 @ free_vars_pat env p
@@ -313,6 +319,8 @@ let rec comp_trm (t : trm) : trm =
 
   | Trm_pat_when _ ->
     failwith "comp_trm: Trm_pat_when is not a term"
+
+  | _ -> failwith "comp_trm: exception handling constructs not yet handled"
 
 and comp_bbe (b : bbe) (u : trm) (u' : trm) : trm =
   let aux_trm = comp_trm in
