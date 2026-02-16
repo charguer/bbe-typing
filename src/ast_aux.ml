@@ -549,6 +549,10 @@ let trm_desc_continue (lbl : label) : trm_desc =
 let trm_desc_next (lbl : label) : trm_desc =
   Trm_next lbl
 
+let trm_desc_raise (ex : except) : trm_desc =
+  Trm_raise ex
+let trm_desc_try (t1 : trm) (ex : except) (t2 : trm) : trm_desc =
+  Trm_try (t1, ex, t2)
 
 (* ** Smart constructors for bbe trm descriptors*)
 let trm_desc_bbe_is (t : trm) (p : pat) : trm_desc =
@@ -724,6 +728,10 @@ let trm_continue ?loc ?typ (* ?annot *) (lbl : label) : trm =
 let trm_next ?loc ?typ (* ?annot *) (lbl : label) : trm =
   mktrm ?loc ?typ (trm_desc_next lbl)
 
+let trm_raise ?loc ?typ (* ?annot *) (ex : except) : trm =
+  mktrm ?loc ?typ (trm_desc_raise ex)
+let trm_try ?loc ?typ (* ?annot *) (t1 : trm) (ex : except) (t2 : trm) : trm =
+  mktrm ?loc ?typ (trm_desc_try t1 ex t2)
 
 (* ** Smart constructors for bbes *)
 let trm_bbe_is ?loc ?typ (* ?annot *) (t : trm) (p : pat) : trm =
@@ -1113,6 +1121,11 @@ let typ_of (t : trm) : typ = (* TODO: should we put get_repr here ? or in a wrap
 
 (** * Iterators on trm *)
 
+let ex_iter (f : trm -> unit) (ex : except) : unit =
+  match ex with
+  | (_, Some t) -> f t
+  | _ -> ()
+
 let trm_iter (f : trm -> unit) (t : trm) : unit =
   match t.trm_desc with
   | Trm_pat_var _
@@ -1138,9 +1151,19 @@ let trm_iter (f : trm -> unit) (t : trm) : unit =
   | Trm_exit (_, t) -> f t
   | Trm_return (_, t) -> f t
   | Trm_block (_, t) -> f t
+  | Trm_raise (_, Some t) -> f t
+  | Trm_raise ex -> ex_iter f ex
+  | Trm_try (t1, ex, t2) -> f t1; ex_iter f ex; f t2
   | Trm_bbe_is (t, p) -> List.iter f [t; p]
   | Trm_pat_when (p, b) -> List.iter f [p; b]
 
+let ex_map (f : trm -> trm) (ex : except) : except =
+  match ex with
+  | (lbl, Some t) ->
+    let t' = f t in
+    if t' == t then ex
+    else (lbl, Some t')
+  | _ -> ex
 
 let trm_map (f : trm -> trm) (t : trm) : trm =
   let loc = t.trm_loc in
@@ -1215,18 +1238,28 @@ let trm_map (f : trm -> trm) (t : trm) : trm =
     let t2' = f t2 in
     if b1 == b1' && t2 == t2' then t
     else trm_while ~loc ~typ l (* ~annot *) b1' t2'
-  | Trm_exit (lbl, t) ->
-    let t' = f t in
-    if t' == t then t
-    else trm_exit ~loc ~typ lbl t'
-  | Trm_return (lbl, t) ->
-    let t' = f t in
-    if t' == t then t
-    else trm_return ~loc ~typ lbl t'
-  | Trm_block (lbl, t) ->
-    let t' = f t in
-    if t' == t then t
-    else trm_block ~loc ~typ lbl t'
+  | Trm_exit (lbl, t1) ->
+    let t1' = f t1 in
+    if t1' == t1 then t
+    else trm_exit ~loc ~typ lbl t1'
+  | Trm_return (lbl, t1) ->
+    let t1' = f t1 in
+    if t1' == t1 then t
+    else trm_return ~loc ~typ lbl t1'
+  | Trm_block (lbl, t1) ->
+    let t1' = f t1 in
+    if t1' == t1 then t
+    else trm_block ~loc ~typ lbl t1'
+  | Trm_raise ex ->
+    let ex' = ex_map f ex in
+    if ex' == ex then t
+    else trm_raise ex'
+  | Trm_try (t1, ex, t2) ->
+    let t1' = f t1 in
+    let ex' = ex_map f ex in
+    let t2' = f t2 in
+    if t1' == t1 && ex' == ex && t2' == t2 then t
+    else trm_try t1' ex' t2'
   | Trm_bbe_is (t1, p1) ->
     let t1' = f t1 in
     let p1' = f p1 in

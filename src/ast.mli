@@ -171,7 +171,7 @@ type let_def = {
 }
 
 type label = string
-
+type except = label * (trm0 option)
 (* List of functions to modify/list of dependencies when changing trm_desc:
   - src/debug.ml: [print_low_level_trm] function
   - src/ast_aux.ml: [trm_iter] and [trm_map] functions
@@ -221,6 +221,10 @@ type trm_desc =
   | Trm_break of label
   | Trm_continue of label
   | Trm_next of label
+  | Trm_raise of except
+  (* Note that the trm in the exception (in the case of Exit), will BE a pattern (as trivially simple as possible but still) *)
+  | Trm_try of trm * except * trm
+
   (*BBE constructions*)
   | Trm_bbe_is of trm * pat
   (*Pattern constructions*)

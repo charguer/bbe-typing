@@ -76,7 +76,7 @@ let rec bound_vars_pat (p : trm) : varid list =
   | _ ->
       []
 
-(** [free_vars_pat env p] computes free variables in a pattern *)
+(* (** [free_vars_pat env p] computes free variables in a pattern *)
 let rec free_vars_pat (env : varid list) (p : trm) : varid list =
   match p.trm_desc with
   | Trm_pat_wild | Trm_pat_var _ | Trm_cst _ ->
@@ -103,9 +103,9 @@ let rec free_vars_pat (env : varid list) (p : trm) : varid list =
       []
 
   | _ ->
-      []
+      [] *)
 
-(** [free_vars env t] computes the list of free variables in term [t] *)
+(* (** [free_vars env t] computes the list of free variables in term [t] *)
 and free_vars (env : varid list) (t : trm) : varid list =
   match t.trm_desc with
   | Trm_var x ->
@@ -180,9 +180,9 @@ and free_vars (env : varid list) (t : trm) : varid list =
       []
 
   | Trm_pat_when (p, b) ->
-      free_vars_pat env p @ free_vars env b
+      free_vars_pat env p @ free_vars env b *)
 
-(** [free_vars_let_def env ld] computes free variables in a let definition *)
+(* (** [free_vars_let_def env ld] computes free variables in a let definition *)
 and free_vars_let_def (env : varid list) (ld : let_def) : varid list =
   let env' = if ld.let_def_rec = Recursive then
     match ld.let_def_bind with
@@ -192,7 +192,7 @@ and free_vars_let_def (env : varid list) (ld : let_def) : varid list =
     env
   in
   free_vars env' ld.let_def_body
-
+ *)
 let vars_or_unit_fun (env : varid list) : (varid * syntyp) list =
 	match env with
 	| [] -> [(fresh_var (), mk_syntyp_unit ())]
@@ -308,6 +308,21 @@ let rec comp_trm (t : trm) : trm =
     (* let unit_styp = unit_syntyp.syntyp_syntax in *)
     (* let let_typ = typ_to_styp (typ_arrow [the_typ_unit] the_typ_unit) in *)
     trm_let ~loc Recursive (loop_name, Some (synsch_of_nonpolymorphic_typ (mk_syntyp unit_to_unit_type))) loop_fun loop_call
+
+  (* TODO-list:
+  1. if labels => implement try-with
+  2. blocks => same
+  3. exit/next => raise *)
+
+  (*Trm_raise exception
+  type exception =
+  | Exit of label * trm
+  | Next of label *)
+
+  (* Automatic generation of try with will need generation of fresh variables. So a new fresh generator I guess? I could make one on the side, only for this, since it does not require that many variables anyway (linear in the number of (if / blocks) *)
+
+  (* Notes: raise is an intermediate only representation, it is not expected to be built for the moment.  *)
+  (* Takes as argument either Exit or Next -> make it into a type, with list of possible exceptions, raised with specific constructs (DSL only anyway) *)
 
   (* Non-term constructors should be errors *)
   | Trm_bbe_is _ ->
