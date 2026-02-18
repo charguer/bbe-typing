@@ -423,7 +423,11 @@ let projbig b e g = ?!(example_funbig __ b __ __ e __ g)
 
 (* Label constructs *)
 
-let if_label = if[@label "L1"] true then false else true
+(* label --> lbl *)
+(* block : begin end annoté? *)
+(* lbl partout pour les noeuds des structures *)
+(* notation exit, next etc c'est bien *)
+(* let if_label = if[@label "L1"] true then false else true
 let while_label = while[@label "L2"] false do () done
 let block_label = __block "L3" false
 let match_label = __match "L4" true []
@@ -432,102 +436,7 @@ let switch_label = __switch "L5" []
 let simple_block_exit =
   __block "L1" (
     __exit "L1" false; true)
-
-let simple_if_next_1 = if[@label "L"] (2 @_is ??x) then next "L"; x else 3
-let simple_if_next_2 = if[@label "L"] (2 @_is ??x) then __next "L" else 3
-
-(* TODO URGENT: test pattern inversion of custom constructors. *)
-
-  (*
-  if (o is Some ??n) && (even n) then f() else g()
-
-  let r = (o is Some ??n) && (even n) in
-  if r then f() else g()
-
-  if (o is Some ??n) && (even n) then f' n else g ()
-
-   let r = (o is Some ??n) && (even n) in
-   if r then (* n not in scope *) else g()
-
-   let r () = if (o is Some ??n) && (even n) then Some ?n else None in
-   if () is r(??n) then f' n else g()
-
-   same with syntactic sugar:
-
-   let r () = Pattern.make ((o is Some ??n) && (even n)) in
-   if r(??n) then f' n else g()
-
-     Pattern.make would take the ??XX in the order of AST-traversal, and put them in "then Some"
-
-     si on met "p" en position de bbe, ça veut dire
-     () is p
-
-
-   let r o = Pattern.make ((o is Some ??n) && (even n)) in
-   if o @_is r(??n) then f' n else g()
-
-
-
-
-  *)
-
-
-  (* sucre pour "if b then true else false" *)
-
-
-
-(*
-
-let bbe_and : int = if x1 @_is Some ??a && x2 @_is Some ??b then a + b else -1
-
-
-
-let bbe_not : int = if not (x1 @_is Some ??d) then -1 else d
-(*Expected to fail*)
-let bbe_is_bind_fail : int = if not (x1 @_is Some ??d) then d else -1
-
-let z1 = Some (Some 2)
-
-
-let some_even (x : int option) : int option = if x @_is (Some ??a @_when (a @_is even)) then Some a else None
-let div_4_inv (x : int option) : int option = if x @_is (Some ??a @_when (a @_is div_4)) then Some a else None
-
-let rest_div_4 (x : int option) : int option = if x @_is Some ??a then a mod 4 else None
-
-let pat_pred : bool = if 2 @_is even then true else false
-let x3 : int option = Some 14
-let pat_view : int = if x3 @_is div_4_inv ??a then a else -1
-
-let pat_and : bool = if 4 @_is (even &&& div_4) then true else false
-let pat_and_bind : (int * int) option = if x3 @_is (some_even ??a &&& rest_div_4 ??b) then Some (a, b) else None
-let pat_or : bool = if 2 @_is (even or div_4) then true else false
-let pat_or_bind : int option = if x3 @_is (some_even ??a ||| rest_div_4 ??a) then Some a else None
-
-(*Expected to fail*)
-let pat_or_bind_fail : int option = if x3 @_is (some_even ??a ||| rest_div_4 ??b) then Some a else None
-
-let pat_not : int option = if x3 @_is not (Some ??x) then None else x
-(*Expected to fail*)
-let pat_not : int option = if x3 @_is not (Some ??x) then x else x
-
-let pat_as : int = if z1 @_is Some ((Some ??x) @_as ??y) && y @_is some_even ??z then z else -1
-
-
-let empty_switch (type a) : a = switch []
-let nonempty_switch : unit = switch [
-  case y1 @_is None @_then ();
-  case y2 @_is None @_then ()
-]
-
-let nonempty_switch_bind : int = switch [
-  case y1 @_is Some ??x @_then x;
-  case y2 @_is None @_then -1
-]
-
-let nonempty_switch_bind : int = switch [
-  case y1 @_is Some ??x @_then begin
-      x;
-    end
-  case y2 @_is None @_then -1
-]
  *)
+
+let simple_if_next_1 = if[@label "L"] (2 @_is ??x) then __next "L"; x else 3
+let simple_if_next_2 = if[@label "L"] (2 @_is ??x) then __next "L" else 3

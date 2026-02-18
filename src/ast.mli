@@ -171,7 +171,7 @@ type let_def = {
 }
 
 type label = string
-type except = label * (trm0 option)
+type except = var * (trm0 option)
 (* List of functions to modify/list of dependencies when changing trm_desc:
   - src/debug.ml: [print_low_level_trm] function
   - src/ast_aux.ml: [trm_iter] and [trm_map] functions
@@ -221,8 +221,11 @@ type trm_desc =
   | Trm_break of label
   | Trm_continue of label
   | Trm_next of label
+  (* raise juste une fonction; appel de fonction, appel de constructeurs. *)
   | Trm_raise of except
   (* Note that the trm in the exception (in the case of Exit), will BE a pattern (as trivially simple as possible but still) *)
+  (* En caml, uniformisé avec le match. *)
+  (*  *)
   | Trm_try of trm * except * trm
 
   (*BBE constructions*)
@@ -234,6 +237,13 @@ type trm_desc =
   (*
   LATER: Trm_for of dir * var * trm * trm * trm
   *)
+
+(* match à la place de try with.
+| Exception (...) -> *)
+(* Ni besoin de raise, ni de try. *)
+
+(* smart constructor trm_raise à la main si envie *)
+(* pareil avec try_with_exit (t1, l, t2, continuation), et try_with_next (t, l, continuation). *)
 
 and trm = {
   trm_desc : trm_desc;
@@ -405,7 +415,15 @@ type kind =
   | LblLoop
   | LblBranch
 
+type label_item =
+  | LblBlock of typ
+  | LblFun of typ
+  | LblLoop
+  | LblBranch
+
 type env_label = ((kind * label), typ option) Env.t
+(* type env_label = (label, label_item) Env.t *)
+
 
 (** An [env_tconstr] is a typing environment for type constructors (e.g. [list]):
    it associates a type constructor descriptor ([tconstr_desc])

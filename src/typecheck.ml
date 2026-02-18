@@ -189,8 +189,13 @@ let unify_or_error_options (e : env) (sty : typ option) (sty' : typ option) : un
   | None, None -> ()
   | _, _ -> raise (Error (Expected_bindings, loc_none))
 
+(* read option, vérifie que c'est bien bindé, puis renvois label item. *)
+(* Faire le match directement dans typecheck_trm *)
+(* kind disparait *)
+(* Plus besoin de check_label_or_error *)
 let check_label_or_error ~loc (e : env) (k : kind) (lbl : label) (sty : typ option) : unit =
   match Env.read_option e.env_label (k, lbl) with
+  (* | Some sty' -> unify_or_error_options e sty sty' *)
   | Some sty' -> unify_or_error_options e sty sty'
   | _ -> raise (Error (Mismatch_label_type lbl, loc))
 
