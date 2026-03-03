@@ -38,10 +38,10 @@ let expand_funs ~loc (args : varsyntyps) (body : expression) : expression =
 
 (* very temporary function *)
 let is_obj_magic (t : trm) : bool =
-  Printf.printf "Checking for Obj.magic with %s\n" (trm_to_string ~style:style_debug t);
+  Debug.log "Checking for Obj.magic with %s" (trm_to_string ~style:style_debug t);
   match t.trm_desc with
-  | Trm_apps ({trm_desc = Trm_var fname}, _) when fname = "Obj.magic" -> Printf.printf "And said : true\n"; true
-  | _ -> Printf.printf "And said : false\n"; false
+  | Trm_apps ({trm_desc = Trm_var fname}, _) when fname = "Obj.magic" -> Debug.log "And returned : true"; true
+  | _ -> Debug.log "And returned : false"; false
 
 (* Main translation function from DSL trm to OCaml expression *)
 let rec expand_trm (t : trm) : expression =
