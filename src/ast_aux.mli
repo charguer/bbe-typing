@@ -159,6 +159,7 @@ val trm_pat_var_varid : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) varid -> t
 val trm_pat_wild : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) unit -> trm
 val trm_pat_when : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) pat -> bbe -> trm
 
+val trm_magic : ?loc:loc -> ?typ:typ -> trm -> trm
 val trm_try_next : ?loc:loc -> ?typ:typ -> trm -> label -> trm -> trm
 val trm_try_exit : ?loc:loc -> ?typ:typ -> trm -> label -> (* trm -> trm -> *) trm
 val trm_raise_next : ?loc:loc -> ?typ:typ -> label -> trm

@@ -259,7 +259,9 @@ let rec comp_trm (t : trm) : trm =
     let t2' = aux_trm t2 in
     Option.fold
     ~none:(aux_bbe b0 t1' t2')
-    ~some:(fun lbl -> aux_bbe b0 (trm_try_next t1' lbl t2') t2')
+    ~some:(fun lbl ->
+            let t12' = aux_trm (trm_try_next t1 lbl t2) in
+            aux_bbe b0 t12' t2')
     l
     (* let k () = t2 in aux_bbe b0 (try t1' with | Exn_Next L -> k) *)
 
@@ -282,7 +284,7 @@ let rec comp_trm (t : trm) : trm =
     trm_forall ~loc ~typ n t1'
 
   | Trm_match (_, _t0, _pts) ->
-    (* The best would be to have something of the shape : match t with | Exn_exit L -> t2 | _ -> assert false. Or something of the sort.
+    (* The best would be to have something of the shape : match t with | Exn_Exit L -> t2 | _ -> assert false. Or something of the sort.
     But I probably have no way to reliably differentiate between an ocaml-compatible match and a custom ast match...
     Is there a way. To recognize? *)
     (* This is not correct anymore now. Should translate it into a let x = v in switch x is p1 etc. Then into an if by recursive call. *)
@@ -339,6 +341,13 @@ let rec comp_trm (t : trm) : trm =
   | Trm_block (lbl, t) ->
     let t' = aux_trm t in
     trm_try_exit t' lbl
+
+  | Trm_next lbl ->
+    aux_trm (trm_raise_next lbl)
+
+  | Trm_exit (lbl, t) ->
+    let t' = aux_trm t in
+    aux_trm (trm_raise_exit lbl t')
 
   (* TODO-list:
   2. blocks => same *)

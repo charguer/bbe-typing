@@ -36,6 +36,13 @@ let expand_funs ~loc (args : varsyntyps) (body : expression) : expression =
     pexp_fun ~loc Nolabel None pat' acc
   ) args body
 
+(* very temporary function *)
+let is_obj_magic (t : trm) : bool =
+  Printf.printf "Checking for Obj.magic with %s\n" (trm_to_string ~style:style_debug t);
+  match t.trm_desc with
+  | Trm_apps ({trm_desc = Trm_var fname}, _) when fname = "Obj.magic" -> Printf.printf "And said : true\n"; true
+  | _ -> Printf.printf "And said : false\n"; false
+
 (* Main translation function from DSL trm to OCaml expression *)
 let rec expand_trm (t : trm) : expression =
   let aux = expand_trm in
@@ -68,6 +75,12 @@ let rec expand_trm (t : trm) : expression =
       let t2' = aux t2 in
       expand_let_def ~loc ld t2'
 
+  | Trm_apps (t1, [t2]) when is_obj_magic t ->
+    Printf.printf "Captured an Obj.magic";
+    let t1' = pexp_ident ~loc (Located.mk ~loc (Ldot (Lident "Obj", "magic"))) in
+    let t2' = aux t2 in
+    pexp_apply ~loc t1' [Nolabel, t2']
+
   | Trm_apps ({ trm_desc = Trm_var constr_name; _ }, ts) when is_capitalized constr_name ->
     let ts' = List.map aux ts in
       let args = match ts' with
@@ -75,6 +88,10 @@ let rec expand_trm (t : trm) : expression =
         | _ -> Some (pexp_tuple ~loc ts')
       in
       pexp_construct ~loc (Located.mk ~loc (Lident constr_name)) args
+
+  | Trm_apps ({ trm_desc = Trm_var fname; _ } as t0, [{trm_desc = Trm_apps ( {trm_desc = Trm_var constr_name} as t2, [t3; t4])} as t1]) when (fname = "raise" && constr_name = "Exn_Exit" && (not (is_obj_magic t4))) ->
+    let t4' = trm_magic ~loc:t4.trm_loc t4 in (* temporary solution, the location is bound to the value inside, and not the whole obj.magic expression *)
+    aux (trm_apps ~loc t0 [{t1 with trm_desc = (trm_desc_apps t2 [t3; t4'])}])
 
   | Trm_apps (t0, ts) -> (* Depends on whether apps is a constructor or not *)
       let t0' = aux t0 in
@@ -125,7 +142,8 @@ let rec expand_trm (t : trm) : expression =
   | Trm_pat_wild -> failwith "expand_trm: Trm_pat_wild is not a term"
   | Trm_pat_when _ -> failwith "expand_trm: Trm_pat_when is not a term"
 
-  | _ -> failwith "TODO: implement expansion of all exception handling constructs"
+  | _ -> Debug.log "Trying to expand term : %s\n" (trm_to_string ~style:style_debug t);
+    failwith "TODO: implement expansion of all exception handling constructs"
 
 and expand_let_def ~loc (ld : let_def) (t2 : expression) : expression =
   let rec_flag = ld.let_def_rec in
@@ -170,6 +188,7 @@ and expand_pattern (p : pat) : pattern =
       ppat_tuple ~loc ps'
 
   | _ ->
+      Debug.log "Trying to expand pattern : %s\n" (trm_to_string ~style:style_debug p);
       failwith "expand_pattern: unsupported pattern form"
 
 (* Top-level definitions *)
@@ -261,7 +280,7 @@ let expand_program (p : program) : structure =
         ~loc
         (Located.lident ~loc "string")
         []
-    in
+    (* in
     let int_ty =
       ptyp_constr
         ~loc
@@ -272,7 +291,13 @@ let expand_program (p : program) : structure =
       ptyp_constr
         ~loc
         (Located.lident ~loc "ref")
-        [int_ty]
+        [int_ty] *)
+      in
+    let dummy_ty =
+      ptyp_constr
+        ~loc
+        (Located.lident ~loc "float")
+        []
     in
     pstr_exception
       ~loc
@@ -281,12 +306,15 @@ let expand_program (p : program) : structure =
         (extension_constructor
             ~loc
             ~name:(Located.mk ~loc "Exn_Exit")
-            ~kind:(Pext_decl ([], (Pcstr_tuple [string_ty; int_ref_ty]), None))))
+            ~kind:(Pext_decl ([], (Pcstr_tuple [string_ty; dummy_ty]), None))))
   in
   let filtered_p = List.filter (is_not_external) p in
 
-  if !Flags.presentation then (List.map expand_topdef filtered_p)
-  else exn_decl_next::exn_decl_exit::func::(List.map expand_topdef p)
+  let result = if !Flags.presentation then (List.map expand_topdef filtered_p)
+               else exn_decl_next::exn_decl_exit::func::(List.map expand_topdef p)
+  in
+  Printf.printf "Post expansion ast : %s\n" (Pprintast.string_of_structure result);
+  result
 
   (* typ_arrow [the_typ_string; t] the_typ_exn *)
 
@@ -333,4 +361,4 @@ let ty_unit   = Ast_builder.Default.ptyp_unit   ~loc
   (* what we need. We can't easily add exceptions since it is not polymorphic.
   List all of the labels present *)
 
-  (* Exn_exit Exn_Next *)
+  (* Exn_Exit Exn_Next *)

@@ -45,7 +45,7 @@ let recompile = ref false
 let expand = ref false
 
 (* Very specific and temporary flag, to remove the first line of expanded version for a presentation *)
-let presentation = ref true
+let presentation = ref false
 
 (* Replace overloaded variables by the corresponding instance. *)
 let instantiate = ref false

@@ -772,7 +772,7 @@ let trm_assert_false ?loc ?typ () : trm =
 let trm_exn_next (t1 : trm) : trm =
   trm_apps (trm_var "Exn_Next") [t1]
 
-let trm_exn_exit (t1 : trm) (t2 : trm) : trm =
+let trm_Exn_Exit (t1 : trm) (t2 : trm) : trm =
   trm_apps (trm_var "Exn_Exit") [t1; t2]
 
 let trm_magic ?loc ?typ (t : trm) : trm =
@@ -783,13 +783,13 @@ let trm_magic ?loc ?typ (t : trm) : trm =
 
 let trm_try_exit ?loc ?typ (t1 : trm) (lbl : label) : trm =
   let x = fresh_var () in
-  mktrm ?loc ?typ (trm_desc_match None t1 [(trm_exn_exit (trm_string lbl) (trm_pat_var x), trm_magic (trm_var x)); (trm_pat_wild (), trm_assert_false ())])
+  mktrm ?loc ?typ (trm_desc_match None t1 [(trm_Exn_Exit (trm_string lbl) (trm_pat_var x), trm_magic (trm_var x)); (trm_pat_wild (), trm_assert_false ())])
 
 let trm_raise_next ?loc ?typ (lbl : label) : trm =
   mktrm ?loc ?typ (trm_desc_apps (trm_var "raise") [trm_exn_next (trm_string lbl)])
 
 let trm_raise_exit ?loc ?typ (lbl : label) (t : trm) : trm =
-  mktrm ?loc ?typ (trm_desc_apps (trm_var "raise") [trm_exn_exit (trm_string lbl) (trm_magic t)])
+  mktrm ?loc ?typ (trm_desc_apps (trm_var "raise") [trm_Exn_Exit (trm_string lbl) (trm_magic t)])
 
 (*
 Smart constructors:
@@ -934,7 +934,7 @@ let env_builtin =
   let e =
     let tv = tvar_rigid "'a" in
     let t = typ_rigid tv in
-    env_add_var e (var "Exn_exit") (mk_sch [tv] (typ_arrow [the_typ_string; t] the_typ_exn)) in
+    env_add_var e (var "Exn_Exit") (mk_sch [tv] (typ_arrow [the_typ_string; t] the_typ_exn)) in
   let e =
     env_add_var e (var "Exn_next") (mk_sch [] (typ_arrow [the_typ_string] the_typ_exn)) in
   e

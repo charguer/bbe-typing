@@ -444,5 +444,5 @@ let simple_block_exit =
 (* let simple_if_next_1 = if[@label "L"] (2 @_is ??x) then (__next "L"); x else 3
 let simple_if_next_2 = if[@label "L"] (2 @_is ??x) then __next "L" else 3
  *)
-let simple_raise_exit = raise (Exn_exit ("L", 3))
+let simple_raise_exit = raise (Exn_Exit ("L", 3))
 let simple_raise_next = raise (Exn_Next "L")
