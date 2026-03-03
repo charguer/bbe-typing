@@ -71,6 +71,18 @@ let mk_env_binds (bs : env_var) : env =
 
 (** * Custom functions, to be put elsewhere later *)
 
+(* let global_label_env : ((label, typ) Env.t) ref = ref (Env.empty ())
+
+let label_env_add (lbl : label) (ty : typ) : unit =
+  (* Several assumptions that will need to be verified here *)
+  (* 1. Unify or error with an empty environment will basically just lookup type constructor names
+     2. We only support simple types to have conflicts between toplevel definitions. We allow the same label to be used in different places, as long as there is no shadowing, and as long as the expected types are the same *)
+  let env_ref = !global_label_env in
+  begin match Env.read_option env_ref lbl with
+    | Some ty' -> unify_or_error env_empty ty ty' (Unable_to_unify (ty, ty'));
+    | None -> global_label_env := Env.add env_ref lbl ty
+  end *)
+
 let is_capitalized (s : string) : bool =
   if String.length s = 0 then false
   else

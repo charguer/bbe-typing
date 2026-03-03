@@ -236,19 +236,100 @@ let expand_program (p : program) : structure =
             (Located.lident ~loc "Stdlib"))
        ~override:Fresh)
   in *)
+  let exn_decl_next =
+    let loc = Location.none in
+    let string_ty =
+      ptyp_constr
+        ~loc
+        (Located.lident ~loc "string")
+        []
+    in
+    pstr_exception
+      ~loc
+      (type_exception
+        ~loc
+        (extension_constructor
+            ~loc
+            ~name:(Located.mk ~loc "Exn_Next")
+            ~kind:(Pext_decl ([], (Pcstr_tuple [string_ty]), None))))
+  in
 
+  let exn_decl_exit =
+    let loc = Location.none in
+    let string_ty =
+      ptyp_constr
+        ~loc
+        (Located.lident ~loc "string")
+        []
+    in
+    let int_ty =
+      ptyp_constr
+        ~loc
+        (Located.lident ~loc "int")
+        []
+    in
+    let int_ref_ty =
+      ptyp_constr
+        ~loc
+        (Located.lident ~loc "ref")
+        [int_ty]
+    in
+    pstr_exception
+      ~loc
+      (type_exception
+        ~loc
+        (extension_constructor
+            ~loc
+            ~name:(Located.mk ~loc "Exn_Exit")
+            ~kind:(Pext_decl ([], (Pcstr_tuple [string_ty; int_ref_ty]), None))))
+  in
   let filtered_p = List.filter (is_not_external) p in
 
   if !Flags.presentation then (List.map expand_topdef filtered_p)
-  else func::(List.map expand_topdef p)
+  else exn_decl_next::exn_decl_exit::func::(List.map expand_topdef p)
 
-  (* So what? I want to add also : exception Exn_Exit and Exn_Next. *)
   (* typ_arrow [the_typ_string; t] the_typ_exn *)
 
   (* Say we already have the env of all the labels.
   What we do is that during typing, we not only add to the env, but also to a global env *)
-  (* if we have the correct map, then changing smart constrs is enough. This would be weird mixing code with a string, but well it works I guess. *)
+  (* This global env would be only for exit, since next does not need polymorphism *)
+  (* Env from label to ty. No sty for the moment, since not everything has a type. But if we code in caml all of this will be typ-top. And this is not text but ast... *)
 
+  (*
+  let e = env_add_tconstr e (tconstr "*") mk_special in
+  let e = env_add_tconstr e (tconstr "->") mk_special in
+  let e = env_add_tconstr e (tconstr "option") mk_special in
+  let e = env_add_tconstr e (tconstr "int") (mk_base the_typ_int) in
+  let e = env_add_tconstr e (tconstr "bool") (mk_base the_typ_bool) in
+  let e = env_add_tconstr e (tconstr "float") (mk_base the_typ_float) in
+  let e = env_add_tconstr e (tconstr "string") (mk_base the_typ_string) in
+  let e = env_add_tconstr e (tconstr "unit") (mk_base the_typ_unit) in
+  *)
+
+  (*
+  Ast_builder.Default.ptyp_int    ~loc
+Ast_builder.Default.ptyp_string ~loc
+Ast_builder.Default.ptyp_unit   ~loc
+Ast_builder.Default.ptyp_bool   ~loc
+Ast_builder.Default.ptyp_float  ~loc
+
+  let ty_int    = Ast_builder.Default.ptyp_int    ~loc
+let ty_string = Ast_builder.Default.ptyp_string ~loc
+let ty_unit   = Ast_builder.Default.ptyp_unit   ~loc
+*)
+
+  (* write a function : [typ_into_styp] that does translation from our custom types into ocaml syntax types. For the moment only do the constant types, document it, and if it works we'll see later for the rest. *)
+  (* The translation would be done in the later stage, in ast expand, to avoid useless tasks. And so we can unify during typechecking *)
+  (* Ok. *)
+
+  (* Voici les types qui nous intéressent. On veut traduire ça en Parsetree.core_type en gros. Ça suffira pour le moment *)
+  (* Par exemple, int, bool, float et string seront traduits en "cst int", "cst bool" etc *)
+
+  (* Ok, how do we translate our types into OCaml types?  *)
+  (* if we have the correct map, then changing smart constrs is enough. This would be weird mixing code with a string, but well it works I guess. *)
+  (* And adding the list of exceptions is easy with a list.map *)
+  (* Now the issue at hand is translating types correctly. I know that we can do most of it. But not optimal?
+  For the moment, use the printer we made, should be enough *)
   (* what we need. We can't easily add exceptions since it is not polymorphic.
   List all of the labels present *)
 

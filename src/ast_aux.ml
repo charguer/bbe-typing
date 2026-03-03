@@ -749,7 +749,7 @@ let trm_try ?loc ?typ (* ?annot *) (t1 : trm) (ex : except) (t2 : trm) : trm =
 let trm_bbe_is ?loc ?typ (* ?annot *) (t : trm) (p : pat) : trm =
   mktrm ?loc ?typ (* ?annot *) (trm_desc_bbe_is t p)
 
-(* ** Smart constructors for trm_patterns *)
+(* ** Smart constructors for patterns *)
 
 let trm_pat_var ?loc ?typ (* ?annot *) (x : var) : trm =
   mktrm ?loc ?typ (* ?annot *) (trm_desc_pat_var x)
@@ -766,24 +766,30 @@ let trm_pat_when ?loc ?typ (* ?annot *) (p : pat) (b : bbe) : trm =
 let trm_assert_false ?loc ?typ () : trm =
   mktrm ?loc ?typ (trm_desc_assert_false ())
 
+
+(* ** Smart constructors for exception handling constructs *)
+
 let trm_exn_next (t1 : trm) : trm =
   trm_apps (trm_var "Exn_Next") [t1]
 
 let trm_exn_exit (t1 : trm) (t2 : trm) : trm =
   trm_apps (trm_var "Exn_Exit") [t1; t2]
 
-let trm_try_next ?loc ?typ (t : trm) (lbl : label) (k : trm) : trm =
+let trm_magic ?loc ?typ (t : trm) : trm =
+  mktrm ?loc ?typ (trm_desc_apps (trm_var "Obj.magic") [t])
+
+ let trm_try_next ?loc ?typ (t : trm) (lbl : label) (k : trm) : trm =
   mktrm ?loc ?typ (trm_desc_match None t [(trm_exn_next (trm_string lbl), k); (trm_pat_wild (), trm_assert_false ())])
 
 let trm_try_exit ?loc ?typ (t1 : trm) (lbl : label) : trm =
   let x = fresh_var () in
-  mktrm ?loc ?typ (trm_desc_match None t1 [(trm_exn_exit (trm_string lbl) (trm_pat_var x), trm_var x); (trm_pat_wild (), trm_assert_false ())])
+  mktrm ?loc ?typ (trm_desc_match None t1 [(trm_exn_exit (trm_string lbl) (trm_pat_var x), trm_magic (trm_var x)); (trm_pat_wild (), trm_assert_false ())])
 
 let trm_raise_next ?loc ?typ (lbl : label) : trm =
   mktrm ?loc ?typ (trm_desc_apps (trm_var "raise") [trm_exn_next (trm_string lbl)])
 
 let trm_raise_exit ?loc ?typ (lbl : label) (t : trm) : trm =
-  mktrm ?loc ?typ (trm_desc_apps (trm_var "raise") [trm_exn_exit (trm_string lbl) t])
+  mktrm ?loc ?typ (trm_desc_apps (trm_var "raise") [trm_exn_exit (trm_string lbl) (trm_magic t)])
 
 (*
 Smart constructors:
