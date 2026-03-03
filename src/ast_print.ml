@@ -471,10 +471,10 @@ and trm_to_doc ~style t =
 
 and trm_to_doc_raw ~style (t : trm) : doc =
   let aux = trm_to_doc_raw ~style in
-    let ex_to_doc (ex : except) : doc =
+    (* let ex_to_doc (ex : except) : doc =
     let (lbl, st) = ex in
     Option.fold ~none:(string lbl) ~some:(fun t -> string lbl ^^ blank 1 ^^ (aux t)) st
-  in
+  in *)
   let auxs = List.map aux in
 (*   let match_trm_apps =
     match t.trm_desc with
@@ -885,7 +885,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
     ^^ blank 1
     ^^ d
 
-  | Trm_raise ex ->
+  (* | Trm_raise ex ->
     let dex = ex_to_doc ex in
        string "raise"
     ^^ blank 1
@@ -903,7 +903,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
     ^^ blank 1
     ^^ string "->"
     ^^ blank 1
-    ^^ d2
+    ^^ d2 *)
 
 
   | Trm_bbe_is (t1, p2) ->

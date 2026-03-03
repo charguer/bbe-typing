@@ -239,5 +239,17 @@ let expand_program (p : program) : structure =
 
   let filtered_p = List.filter (is_not_external) p in
 
-  if !Flags.presentation then (* open_stdlib:: *)(List.map expand_topdef filtered_p)
+  if !Flags.presentation then (List.map expand_topdef filtered_p)
   else func::(List.map expand_topdef p)
+
+  (* So what? I want to add also : exception Exn_Exit and Exn_Next. *)
+  (* typ_arrow [the_typ_string; t] the_typ_exn *)
+
+  (* Say we already have the env of all the labels.
+  What we do is that during typing, we not only add to the env, but also to a global env *)
+  (* if we have the correct map, then changing smart constrs is enough. This would be weird mixing code with a string, but well it works I guess. *)
+
+  (* what we need. We can't easily add exceptions since it is not polymorphic.
+  List all of the labels present *)
+
+  (* Exn_exit Exn_Next *)

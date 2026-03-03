@@ -222,11 +222,11 @@ type trm_desc =
   | Trm_continue of label
   | Trm_next of label
   (* raise juste une fonction; appel de fonction, appel de constructeurs. *)
-  | Trm_raise of except
+  (* | Trm_raise of except *)
   (* Note that the trm in the exception (in the case of Exit), will BE a pattern (as trivially simple as possible but still) *)
   (* En caml, uniformisé avec le match. *)
   (*  *)
-  | Trm_try of trm * except * trm
+  (* | Trm_try of trm * except * trm *)
 
   (*BBE constructions*)
   | Trm_bbe_is of trm * pat
@@ -237,7 +237,8 @@ type trm_desc =
   (*
   LATER: Trm_for of dir * var * trm * trm * trm
   *)
-
+(* the try is in fact a match. With an exception...
+There is no typing rule for the match for the moment tho (i think...) *)
 (* match à la place de try with.
 | Exception (...) -> *)
 (* Ni besoin de raise, ni de try. *)
@@ -409,11 +410,11 @@ and program = topdefs
   (see definition of type [symbol]). *)
 type env_var = (var, sch) Env.t (* LATER: rename to env_symbol? *)
 
-type kind =
+(* type kind =
   | LblBlock
   | LblFun
   | LblLoop
-  | LblBranch
+  | LblBranch *)
 
 type label_item =
   | LblBlock of typ
@@ -421,8 +422,8 @@ type label_item =
   | LblLoop
   | LblBranch
 
-type env_label = ((kind * label), typ option) Env.t
-(* type env_label = (label, label_item) Env.t *)
+(* type env_label = ((kind * label), typ option) Env.t *)
+type env_label = (label, label_item) Env.t
 
 
 (** An [env_tconstr] is a typing environment for type constructors (e.g. [list]):
@@ -435,7 +436,7 @@ type env_tconstr = (tconstr, tconstr_desc) Env.t
     constructors of arity zero), and type constructors. *)
 type env = {
   env_var : env_var;
-  env_label : env_label; (* ça va casser des trucs *)
+  env_label : env_label;
   env_tconstr : env_tconstr;
   env_is_in_pattern : bool; (* Useful to recognize when to look for a "__pattern_" version. *)
   (* For all constr name (capitalized functions), give its arity. *)

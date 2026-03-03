@@ -86,8 +86,8 @@ val trm_desc_break : label -> trm_desc
 val trm_desc_continue : label -> trm_desc
 val trm_desc_next : label -> trm_desc
 
-val trm_desc_raise : except -> trm_desc
-val trm_desc_try : trm -> except -> trm -> trm_desc
+(* val trm_desc_raise : except -> trm_desc
+val trm_desc_try : trm -> except -> trm -> trm_desc *)
 
 val trm_desc_bbe_is : trm -> pat -> trm_desc
 
@@ -139,8 +139,8 @@ val trm_break : ?loc:loc -> ?typ:typ -> label -> trm
 val trm_continue : ?loc:loc -> ?typ:typ -> label -> trm
 val trm_next : ?loc:loc -> ?typ:typ -> label -> trm
 
-val trm_raise : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) except -> trm
-val trm_try : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> except -> trm -> trm
+(* val trm_raise : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) except -> trm
+val trm_try : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> except -> trm -> trm *)
 
 
 (* val trm_or : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
@@ -159,6 +159,10 @@ val trm_pat_var_varid : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) varid -> t
 val trm_pat_wild : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) unit -> trm
 val trm_pat_when : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) pat -> bbe -> trm
 
+val trm_try_next : ?loc:loc -> ?typ:typ -> trm -> label -> trm -> trm
+val trm_try_exit : ?loc:loc -> ?typ:typ -> trm -> label -> (* trm -> trm -> *) trm
+val trm_raise_next : ?loc:loc -> ?typ:typ -> label -> trm
+val trm_raise_exit : ?loc:loc -> ?typ:typ -> label -> trm -> trm
 
 (* Like [trm_funs], but simply returns the body if no arguments are provided. *)
 val trm_funs_if_non_empty : ?loc:loc -> ?typ:typ -> label option -> (* ?annot:annot -> *) varsyntyps -> trm -> trm

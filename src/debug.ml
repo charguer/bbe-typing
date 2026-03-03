@@ -35,10 +35,10 @@ let print_low_level_trm =
   let rec pr_desc i =
     let aux = aux (i + 2) in
 
-    let print_except (ex : except) : string =
+    (* let print_except (ex : except) : string =
       let (lbl, st) = ex in
       Option.fold ~none:lbl ~some:(fun t -> Printf.sprintf "%s, %s" lbl (aux t)) st
-    in
+    in *)
 
     function
     | Trm_var varid -> sprintf "Var %s" varid
@@ -95,8 +95,8 @@ let print_low_level_trm =
     | Trm_continue l -> sprintf "Continue %s" l
     | Trm_next l -> sprintf "Next %s" l
 
-    | Trm_raise ex -> sprintf "Raise (%s)" (print_except ex)
-    | Trm_try (t1, ex, t2) -> sprintf "Try_With (%s, %s, %s)" (aux t1) (print_except ex) (aux t2)
+    (* | Trm_raise ex -> sprintf "Raise (%s)" (print_except ex)
+    | Trm_try (t1, ex, t2) -> sprintf "Try_With (%s, %s, %s)" (aux t1) (print_except ex) (aux t2) *)
 
     | Trm_bbe_is (t, p) -> sprintf "Is (%s, %s)" (aux t) (aux p)
     | Trm_pat_var varid -> sprintf "PVar %s" varid

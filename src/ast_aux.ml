@@ -14,6 +14,15 @@ let env_empty : env = {
 
 let env_dummy = env_empty
 
+let fresh_counter = ref 0
+
+let reset_fresh_counter () =
+  fresh_counter := 0
+
+let fresh_var () =
+  incr fresh_counter;
+  "_y" ^ string_of_int !fresh_counter
+
 
 (*#########################################################################*)
 (* ** Locations *)
@@ -291,6 +300,9 @@ let typ_float () : typ =
 let typ_bool () : typ =
   typ_constr (tconstr "bool") []
 
+let typ_exn () : typ =
+  typ_constr (tconstr "exn") []
+
 let typ_bbe () : typ =
   typ_constr (tconstr "type_bbe") []
 
@@ -302,9 +314,9 @@ let the_typ_int = typ_int ()
 let the_typ_float = typ_float ()
 let the_typ_string = typ_string ()
 let the_typ_unit = typ_unit ()
+let the_typ_exn = typ_exn ()
 let the_typ_bbe = typ_bbe ()
 let the_typ_top = typ_top ()
-
 
 let typ_arrow (ty_args: typ list) (ty_ret: typ) : typ =
   assert (ty_args <> []) ;
@@ -549,10 +561,10 @@ let trm_desc_continue (lbl : label) : trm_desc =
 let trm_desc_next (lbl : label) : trm_desc =
   Trm_next lbl
 
-let trm_desc_raise (ex : except) : trm_desc =
+(* let trm_desc_raise (ex : except) : trm_desc =
   Trm_raise ex
 let trm_desc_try (t1 : trm) (ex : except) (t2 : trm) : trm_desc =
-  Trm_try (t1, ex, t2)
+  Trm_try (t1, ex, t2) *)
 
 (* ** Smart constructors for bbe trm descriptors*)
 let trm_desc_bbe_is (t : trm) (p : pat) : trm_desc =
@@ -728,10 +740,10 @@ let trm_continue ?loc ?typ (* ?annot *) (lbl : label) : trm =
 let trm_next ?loc ?typ (* ?annot *) (lbl : label) : trm =
   mktrm ?loc ?typ (trm_desc_next lbl)
 
-let trm_raise ?loc ?typ (* ?annot *) (ex : except) : trm =
+(* let trm_raise ?loc ?typ (* ?annot *) (ex : except) : trm =
   mktrm ?loc ?typ (trm_desc_raise ex)
 let trm_try ?loc ?typ (* ?annot *) (t1 : trm) (ex : except) (t2 : trm) : trm =
-  mktrm ?loc ?typ (trm_desc_try t1 ex t2)
+  mktrm ?loc ?typ (trm_desc_try t1 ex t2) *)
 
 (* ** Smart constructors for bbes *)
 let trm_bbe_is ?loc ?typ (* ?annot *) (t : trm) (p : pat) : trm =
@@ -750,6 +762,44 @@ let trm_pat_wild ?loc ?typ (* ?annot *) () : trm =
 
 let trm_pat_when ?loc ?typ (* ?annot *) (p : pat) (b : bbe) : trm =
   mktrm ?loc ?typ (* ?annot *) (trm_desc_pat_when p b)
+
+let trm_assert_false ?loc ?typ () : trm =
+  mktrm ?loc ?typ (trm_desc_assert_false ())
+
+let trm_exn_next (t1 : trm) : trm =
+  trm_apps (trm_var "Exn_Next") [t1]
+
+let trm_exn_exit (t1 : trm) (t2 : trm) : trm =
+  trm_apps (trm_var "Exn_Exit") [t1; t2]
+
+let trm_try_next ?loc ?typ (t : trm) (lbl : label) (k : trm) : trm =
+  mktrm ?loc ?typ (trm_desc_match None t [(trm_exn_next (trm_string lbl), k); (trm_pat_wild (), trm_assert_false ())])
+
+let trm_try_exit ?loc ?typ (t1 : trm) (lbl : label) : trm =
+  let x = fresh_var () in
+  mktrm ?loc ?typ (trm_desc_match None t1 [(trm_exn_exit (trm_string lbl) (trm_pat_var x), trm_var x); (trm_pat_wild (), trm_assert_false ())])
+
+let trm_raise_next ?loc ?typ (lbl : label) : trm =
+  mktrm ?loc ?typ (trm_desc_apps (trm_var "raise") [trm_exn_next (trm_string lbl)])
+
+let trm_raise_exit ?loc ?typ (lbl : label) (t : trm) : trm =
+  mktrm ?loc ?typ (trm_desc_apps (trm_var "raise") [trm_exn_exit (trm_string lbl) t])
+
+(*
+Smart constructors:
+- try_next t (freshvar) k
+- try_exit t1 (freshvar) t2 k
+- raise_next (not fresh, given.)
+- raise_exit (not fresh, given.) t
+- trm_case : )
+Representation of try-next/exit :
+match t with
+| Exn_Next l -> k
+
+match t1 with
+| Exn_Exit (l, t2) -> k
+*)
+
 
 (*#########################################################################*)
 (* ** Smart constructors for patterns *)
@@ -808,6 +858,7 @@ let env_builtin =
   let e = env_add_tconstr e (tconstr "float") (mk_base the_typ_float) in
   let e = env_add_tconstr e (tconstr "string") (mk_base the_typ_string) in
   let e = env_add_tconstr e (tconstr "unit") (mk_base the_typ_unit) in
+  let e = env_add_tconstr e (tconstr "exn") (mk_base the_typ_exn) in
   (* Adding special types for corner cases *)
   let e = env_add_tconstr e (tconstr "type_bbe") (mk_base the_typ_bbe) in
   let e = env_add_tconstr e (tconstr "type_top") (mk_base the_typ_top) in
@@ -869,6 +920,17 @@ let env_builtin =
     let tv = tvar_rigid "'a" in
     let t = typ_rigid tv in
     env_add_var e (var "=") (mk_sch [tv] (typ_arrow [t; t] (the_typ_bool))) in
+  (* Exception related constructs *)
+  let e =
+    let tv = tvar_rigid "'a" in
+    let t = typ_rigid tv in
+    env_add_var e (var "raise") (mk_sch [tv] (typ_arrow [the_typ_exn] t)) in
+  let e =
+    let tv = tvar_rigid "'a" in
+    let t = typ_rigid tv in
+    env_add_var e (var "Exn_exit") (mk_sch [tv] (typ_arrow [the_typ_string; t] the_typ_exn)) in
+  let e =
+    env_add_var e (var "Exn_next") (mk_sch [] (typ_arrow [the_typ_string] the_typ_exn)) in
   e
 
 (* let env_builtin_with_tuples =
@@ -1151,9 +1213,9 @@ let trm_iter (f : trm -> unit) (t : trm) : unit =
   | Trm_exit (_, t) -> f t
   | Trm_return (_, t) -> f t
   | Trm_block (_, t) -> f t
-  | Trm_raise (_, Some t) -> f t
+  (* | Trm_raise (_, Some t) -> f t
   | Trm_raise ex -> ex_iter f ex
-  | Trm_try (t1, ex, t2) -> f t1; ex_iter f ex; f t2
+  | Trm_try (t1, ex, t2) -> f t1; ex_iter f ex; f t2 *)
   | Trm_bbe_is (t, p) -> List.iter f [t; p]
   | Trm_pat_when (p, b) -> List.iter f [p; b]
 
@@ -1250,7 +1312,7 @@ let trm_map (f : trm -> trm) (t : trm) : trm =
     let t1' = f t1 in
     if t1' == t1 then t
     else trm_block ~loc ~typ lbl t1'
-  | Trm_raise ex ->
+  (* | Trm_raise ex ->
     let ex' = ex_map f ex in
     if ex' == ex then t
     else trm_raise ex'
@@ -1259,7 +1321,7 @@ let trm_map (f : trm -> trm) (t : trm) : trm =
     let ex' = ex_map f ex in
     let t2' = f t2 in
     if t1' == t1 && ex' == ex && t2' == t2 then t
-    else trm_try t1' ex' t2'
+    else trm_try t1' ex' t2' *)
   | Trm_bbe_is (t1, p1) ->
     let t1' = f t1 in
     let p1' = f p1 in

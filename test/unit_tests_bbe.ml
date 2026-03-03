@@ -426,6 +426,9 @@ let projbig b e g = ?!(example_funbig __ b __ __ e __ g)
 (* label --> lbl *)
 (* block : begin end annoté? *)
 (* lbl partout pour les noeuds des structures *)
+(* Pas clair, on devrait pouvoir écrire quelque chose comme :
+(__switch [])[@lbl "L5"]
+Mais pas mieux. La notation __switch[@label "L5"] [] n'est pas acceptée. *)
 (* notation exit, next etc c'est bien *)
 (* let if_label = if[@label "L1"] true then false else true
 let while_label = while[@label "L2"] false do () done
@@ -438,5 +441,8 @@ let simple_block_exit =
     __exit "L1" false; true)
  *)
 
-let simple_if_next_1 = if[@label "L"] (2 @_is ??x) then __next "L"; x else 3
+(* let simple_if_next_1 = if[@label "L"] (2 @_is ??x) then (__next "L"); x else 3
 let simple_if_next_2 = if[@label "L"] (2 @_is ??x) then __next "L" else 3
+ *)
+let simple_raise_exit = raise (Exn_exit ("L", 3))
+let simple_raise_next = raise (Exn_Next "L")

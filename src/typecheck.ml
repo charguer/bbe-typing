@@ -85,15 +85,15 @@ let merge_distinct ~loc (e1 : env_var) (e2 : env_var) : env_var =
 
 (** [env_extend e1 binds]: adds the bindings of binds inside e1.*)
 let env_extend ~loc (e1 : env) (binds : env) : env = (* TODO: env_bbe = env_var, and binds/"eb" has type env_bbe *)
-  assert (Env.size binds.env_tconstr = 0); (* it is assumed no expression can bind type constructors *) (* why is that? I mean how can there be extension of tconstr in binds? *)
+  assert (Env.size binds.env_tconstr = 0); (* it is assumed no expression can bind type constructors *)
   {e1 with env_var = (merge_distinct ~loc e1.env_var binds.env_var)}
 
-(** [env_extend_label e1 k l s]: adds label informations corresponding to k, l and s inside e1.*)
-let env_extend_label ~loc (e1 : env) (k : kind) (l : label option) (sty : typ option) : env =
+(** [env_extend_label e1 l li]: adds label informations corresponding to l and li inside e1.*)
+let env_extend_label ~loc (e1 : env) (l : label option) (li : label_item) (* (k : kind) (l : label option) (sty : typ option)*) : env =
   (* TODO: remove ~loc, and change error message *)
   Option.fold
     ~none:e1
-    ~some:(fun lbl -> {e1 with env_label = (if (Env.mem e1.env_label (k, lbl)) then raise (Error (Expected_bindings, loc)); (Env.add e1.env_label (k, lbl) sty))})
+    ~some:(fun lbl -> {e1 with env_label = (if (Env.mem e1.env_label lbl) then raise (Error (Expected_bindings, loc)); (Env.add e1.env_label lbl li))})
     l
 
 
@@ -189,15 +189,11 @@ let unify_or_error_options (e : env) (sty : typ option) (sty' : typ option) : un
   | None, None -> ()
   | _, _ -> raise (Error (Expected_bindings, loc_none))
 
-(* read option, vérifie que c'est bien bindé, puis renvois label item. *)
-(* Faire le match directement dans typecheck_trm *)
-(* kind disparait *)
-(* Plus besoin de check_label_or_error *)
-let check_label_or_error ~loc (e : env) (k : kind) (lbl : label) (sty : typ option) : unit =
+(* let check_label_or_error ~loc (e : env) (k : kind) (lbl : label) (sty : typ option) : unit =
   match Env.read_option e.env_label (k, lbl) with
   (* | Some sty' -> unify_or_error_options e sty sty' *)
   | Some sty' -> unify_or_error_options e sty sty'
-  | _ -> raise (Error (Mismatch_label_type lbl, loc))
+  | _ -> raise (Error (Mismatch_label_type lbl, loc)) *)
 
 (** End of custom functions *)
 
@@ -633,7 +629,7 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
   | Trm_if (l, b, t1, t2) ->
       let b = aux_bbe b in
       (* TODO: the intersection between the two environments *)
-      let e1 = env_extend_label ~loc (env_extend ~loc e (bindsof b)) LblBranch l None in
+      let e1 = env_extend_label ~loc (env_extend ~loc e (bindsof b)) l LblBranch in
       let t1 = aux ~env:e1 t1 in
       let t2 = aux t2 in
       (* if !Flags.verbose then Printf.printf "Types : \n %s : %s \n %s : %s \n %s : %s\n" (trm_to_string b)(Ast_print.typ_to_string b.trm_typ) (trm_to_string t1) (Ast_print.typ_to_string t1.trm_typ) (trm_to_string t2) (Ast_print.typ_to_string t2.trm_typ); *)
@@ -696,7 +692,7 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
   | Trm_match (l, t0, pts) ->
     let t0 = aux t0 in
 
-    let e = env_extend_label ~loc e LblBranch l None in
+    let e = env_extend_label ~loc e l LblBranch in
     let tyr = typ_nameless () in
     let pts =
       List.map (fun (pi, ti) ->
@@ -734,7 +730,7 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
     return the_typ_bool (Trm_or (t1, t2))
   | Trm_switch (l, cases) ->
     let ty_ret = typ_of_some_or_nameless expected_typ in
-    let e = env_extend_label ~loc e LblBranch l None in
+    let e = env_extend_label ~loc e l LblBranch in
     let type_case (b, t) =
       let b = aux_bbe b in
       let e = env_extend ~loc e (bindsof b) in
@@ -753,13 +749,13 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
   | Trm_while (l, b, t) ->
     let b = aux_bbe b in
     let e = env_extend ~loc e (bindsof b) in
-    let e = env_extend_label ~loc e LblLoop l None in
+    let e = env_extend_label ~loc e l LblLoop in
     let t = aux ~expected_typ:the_typ_unit ~env:e t in
     return the_typ_unit (Trm_while (l, b, t))
 
   | Trm_block (lbl, t) ->
     let ty_ret = typ_of_some_or_nameless expected_typ in
-    let e = env_extend_label ~loc e LblBlock (Some lbl) (Some ty_ret) in
+    let e = env_extend_label ~loc e (Some lbl) (LblBlock ty_ret) in
     let t = aux ~env:e t in
     return ty_ret (Trm_block (lbl, t))
 
@@ -767,28 +763,53 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
     (* verify that there is indeed a branch of label in F. *)
     let t = aux t in
     let ty_ret = typ_of_some_or_nameless expected_typ in
-    check_label_or_error ~loc e LblBlock lbl (Some (typeof t));
+    Debug.log "Looking for label %s from an 'exit'" lbl;
+    let li = Env.read e.env_label lbl in
+    begin match li with
+      | LblBlock ty -> unify_or_error e ty (typeof t) (Mismatch_label_type lbl)
+      | _ -> raise (Error (Mismatch_label_type lbl, loc))
+    end;
     return ty_ret (Trm_exit (lbl, t))
 
   | Trm_return (lbl, t) ->
     let t = aux t in
     let ty_ret = typ_of_some_or_nameless expected_typ in
-    check_label_or_error ~loc e LblFun lbl (Some (typeof t));
+    Debug.log "Looking for label %s from a 'return'" lbl;
+    let li = Env.read e.env_label lbl in
+    begin match li with
+      | LblFun ty -> unify_or_error e ty (typeof t) (Mismatch_label_type lbl)
+      | _ -> raise (Error (Mismatch_label_type lbl, loc))
+    end;
     return ty_ret (Trm_return (lbl, t))
 
   | Trm_break lbl ->
     let ty_ret = typ_of_some_or_nameless expected_typ in
-    check_label_or_error ~loc e LblLoop lbl None;
+    Debug.log "Looking for label %s from a 'break'" lbl;
+    let li = Env.read e.env_label lbl in
+    begin match li with
+      | LblLoop -> ()
+      | _ -> raise (Error (Mismatch_label_type lbl, loc))
+    end;
     return ty_ret (Trm_break lbl)
 
   | Trm_continue lbl ->
     let ty_ret = typ_of_some_or_nameless expected_typ in
-    check_label_or_error ~loc e LblLoop lbl None;
+    Debug.log "Looking for label %s from a 'continue'" lbl;
+    let li = Env.read e.env_label lbl in
+    begin match li with
+      | LblLoop -> ()
+      | _ -> raise (Error (Mismatch_label_type lbl, loc))
+    end;
     return ty_ret (Trm_continue lbl)
 
   | Trm_next lbl ->
     let ty_ret = typ_of_some_or_nameless expected_typ in
-    check_label_or_error ~loc e LblBranch lbl None;
+    Debug.log "Looking for label %s from a 'next'" lbl;
+    let li = Env.read e.env_label lbl in
+    begin match li with
+      | LblBranch -> ()
+      | _ -> raise (Error (Mismatch_label_type lbl, loc))
+    end;
     return ty_ret (Trm_next lbl)
 
   | _ -> failwith "unexpected construct in typecheck_trm"

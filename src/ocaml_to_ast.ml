@@ -687,6 +687,7 @@ let rec tr_exp (e : expression) : trm =
 
   | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__match"; _}; _}, _) -> unsupported ~loc "__switch expects either 2 or 3 arguments"
 
+  (* TODO: consider other possibility, begin-end with attribute. Represented as a "pstr_eval" with attribute, not very clear but would probably work *)
   | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__block"; _}; _}, aes) ->
     let (label, e0) =
       begin match aes with

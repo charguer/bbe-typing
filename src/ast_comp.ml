@@ -213,8 +213,6 @@ let mk_duplicate ~loc (cont : trm) (body : trm -> trm) : trm =
 	trm_let ~loc Nonrecursive (k, None) k_fun (body k_call) *)
   body cont
 
-(* Accumulator to factorize function definition *)
-(* Actually useless, since ocaml's ast is currified by default *)
 (* let rec factorize_fun (t : trm) : varsyntyps * trm =
   match t.trm_desc with
   | Trm_funs (args, t') ->
@@ -222,6 +220,22 @@ let mk_duplicate ~loc (cont : trm) (body : trm -> trm) : trm =
     (args@args'), t''
   | _ -> [] , t
  *)
+
+(*
+Smart constructors:
+- try_next t l k
+- try_exit t1 l t2 k
+- raise_next l
+- raise_exit l t
+
+Representation of try-next/exit :
+match t with
+| Exn_Next l -> k
+
+match t1 with
+| Exn_Exit (l, t2) -> k
+*)
+
 (* Main translation functions *)
 let rec comp_trm (t : trm) : trm =
   let aux_trm = comp_trm in
@@ -240,10 +254,14 @@ let rec comp_trm (t : trm) : trm =
     let t1' = aux_trm t1 in
     trm_funs ~loc ~typ None args t1'
 
-  | Trm_if (_, b0, t1, t2) ->
+  | Trm_if (l, b0, t1, t2) ->
     let t1' = aux_trm t1 in
     let t2' = aux_trm t2 in
-    aux_bbe b0 t1' t2'
+    Option.fold
+    ~none:(aux_bbe b0 t1' t2')
+    ~some:(fun lbl -> aux_bbe b0 (trm_try_next t1' lbl t2') t2')
+    l
+    (* let k () = t2 in aux_bbe b0 (try t1' with | Exn_Next L -> k) *)
 
   | Trm_let (ld, t2) ->
     let t2' = aux_trm t2 in
@@ -264,7 +282,16 @@ let rec comp_trm (t : trm) : trm =
     trm_forall ~loc ~typ n t1'
 
   | Trm_match (_, _t0, _pts) ->
-    (* As specified, match should not be used at this point *)
+    (* The best would be to have something of the shape : match t with | Exn_exit L -> t2 | _ -> assert false. Or something of the sort.
+    But I probably have no way to reliably differentiate between an ocaml-compatible match and a custom ast match...
+    Is there a way. To recognize? *)
+    (* This is not correct anymore now. Should translate it into a let x = v in switch x is p1 etc. Then into an if by recursive call. *)
+    (* For the moment do this, we'll see later *)
+    (*
+    let fv = fresh_var () in
+    let pts' = List.map (fun (p, t) -> () in
+    trm_let ~loc ~typ Nonrecursive (fresh_var (), None) t0 in pts
+ *)
     trm_apps ~loc ~typ (trm_var_varid ~loc "assert") [trm_bool ~loc false]
 
   | Trm_tuple ts ->
@@ -285,8 +312,8 @@ let rec comp_trm (t : trm) : trm =
     let t2' = aux_trm t2 in
     trm_or ~loc ~typ t1' t2'
 
-  | Trm_switch (_, cases) ->
-    comp_switch ~loc ~typ cases
+  | Trm_switch (l, cases) ->
+    comp_switch ~loc ~typ l cases
 
   | Trm_while (_, b1, t2) ->
     let loop_name = "__my_loop" in
@@ -309,19 +336,13 @@ let rec comp_trm (t : trm) : trm =
     (* let let_typ = typ_to_styp (typ_arrow [the_typ_unit] the_typ_unit) in *)
     trm_let ~loc Recursive (loop_name, Some (synsch_of_nonpolymorphic_typ (mk_syntyp unit_to_unit_type))) loop_fun loop_call
 
+  | Trm_block (lbl, t) ->
+    let t' = aux_trm t in
+    trm_try_exit t' lbl
+
   (* TODO-list:
-  1. if labels => implement try-with
-  2. blocks => same
-  3. exit/next => raise *)
+  2. blocks => same *)
 
-  (*Trm_raise exception
-  type exception =
-  | Exit of label * trm
-  | Next of label *)
-
-  (* Automatic generation of try with will need generation of fresh variables. So a new fresh generator I guess? I could make one on the side, only for this, since it does not require that many variables anyway (linear in the number of (if / blocks) *)
-
-  (* Notes: raise is an intermediate only representation, it is not expected to be built for the moment.  *)
   (* Takes as argument either Exit or Next -> make it into a type, with list of possible exceptions, raised with specific constructs (DSL only anyway) *)
 
   (* Non-term constructors should be errors *)
@@ -529,7 +550,7 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
     let body = trm_if ~loc None x_var u u' in
     trm_let ~loc Nonrecursive (x, None) t_applied body
 
-and comp_switch ~loc ~typ (cases : (bbe * trm) list) : trm =
+and comp_switch ~loc ~typ (l : label option) (cases : (bbe * trm) list) : trm =
   match cases with
   | [] ->
       (* switch [] ==> raise_switch_failure *)
@@ -537,9 +558,12 @@ and comp_switch ~loc ~typ (cases : (bbe * trm) list) : trm =
 
   | (b, t) :: rest ->
       (* switch (case b then t) :: case_list ==> [[b]] ([[t]]) ([[switch case_list]]) *)
-      let t' = comp_trm t in
+      (* Factorize by translating into an if, then let if handle exception raising *)
+      let into_if = trm_if l b t (trm_switch l rest) in
+      comp_trm into_if
+      (* let t' = comp_trm into_if in
       let rest_compiled = comp_switch ~loc ~typ rest in
-      comp_bbe b t' rest_compiled
+      comp_bbe b t' rest_compiled *)
 
 and comp_let_def (ld : let_def) : let_def =
   { ld with let_def_body = comp_trm ld.let_def_body }
