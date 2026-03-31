@@ -561,6 +561,9 @@ let trm_desc_continue (lbl : label) : trm_desc =
 let trm_desc_next (lbl : label) : trm_desc =
   Trm_next lbl
 
+let trm_desc_try_with (t1 : trm) (p : pat) (t2 : trm) : trm_desc =
+  Trm_try_with (t1, p, t2)
+
 (* let trm_desc_raise (ex : except) : trm_desc =
   Trm_raise ex
 let trm_desc_try (t1 : trm) (ex : except) (t2 : trm) : trm_desc =
@@ -766,30 +769,33 @@ let trm_pat_when ?loc ?typ (* ?annot *) (p : pat) (b : bbe) : trm =
 let trm_assert_false ?loc ?typ () : trm =
   mktrm ?loc ?typ (trm_desc_assert_false ())
 
-
 (* ** Smart constructors for exception handling constructs *)
 
 let trm_exn_next (t1 : trm) : trm =
   trm_apps (trm_var "Exn_Next") [t1]
 
-let trm_Exn_Exit (t1 : trm) (t2 : trm) : trm =
+let trm_exn_exit (t1 : trm) (t2 : trm) : trm =
   trm_apps (trm_var "Exn_Exit") [t1; t2]
 
 let trm_magic ?loc ?typ (t : trm) : trm =
   mktrm ?loc ?typ (trm_desc_apps (trm_var "Obj.magic") [t])
 
+let trm_try_with ?loc ?typ (t1 : trm) (p : pat) (t2 : trm) : trm =
+  mktrm ?loc ?typ (* ?annot *) (trm_desc_try_with t1 p t2)
+
+
  let trm_try_next ?loc ?typ (t : trm) (lbl : label) (k : trm) : trm =
-  mktrm ?loc ?typ (trm_desc_match None t [(trm_exn_next (trm_string lbl), k); (trm_pat_wild (), trm_assert_false ())])
+  mktrm ?loc ?typ (trm_desc_try_with t (trm_exn_next (trm_string lbl)) k) (* ; (trm_pat_wild (), trm_assert_false ())] *)
 
 let trm_try_exit ?loc ?typ (t1 : trm) (lbl : label) : trm =
   let x = fresh_var () in
-  mktrm ?loc ?typ (trm_desc_match None t1 [(trm_Exn_Exit (trm_string lbl) (trm_pat_var x), trm_magic (trm_var x)); (trm_pat_wild (), trm_assert_false ())])
+  mktrm ?loc ?typ (trm_desc_try_with t1 (trm_exn_exit (trm_string lbl) (trm_pat_var x)) (trm_magic (trm_var x))(* ; (trm_pat_wild (), trm_assert_false ())] *))
 
 let trm_raise_next ?loc ?typ (lbl : label) : trm =
   mktrm ?loc ?typ (trm_desc_apps (trm_var "raise") [trm_exn_next (trm_string lbl)])
 
 let trm_raise_exit ?loc ?typ (lbl : label) (t : trm) : trm =
-  mktrm ?loc ?typ (trm_desc_apps (trm_var "raise") [trm_Exn_Exit (trm_string lbl) (trm_magic t)])
+  mktrm ?loc ?typ (trm_desc_apps (trm_var "raise") [trm_exn_exit (trm_string lbl) (trm_magic t)])
 
 (*
 Smart constructors:
@@ -1219,6 +1225,7 @@ let trm_iter (f : trm -> unit) (t : trm) : unit =
   | Trm_exit (_, t) -> f t
   | Trm_return (_, t) -> f t
   | Trm_block (_, t) -> f t
+  | Trm_try_with (t1, p, t2) -> List.iter f [t1; p; t2]
   (* | Trm_raise (_, Some t) -> f t
   | Trm_raise ex -> ex_iter f ex
   | Trm_try (t1, ex, t2) -> f t1; ex_iter f ex; f t2 *)
@@ -1318,6 +1325,13 @@ let trm_map (f : trm -> trm) (t : trm) : trm =
     let t1' = f t1 in
     if t1' == t1 then t
     else trm_block ~loc ~typ lbl t1'
+  | Trm_try_with (t1, p, t2) ->
+    let t1' = f t1 in
+    let p' = f p in
+    let t2' = f t2 in
+    if t1' == t1 && p' == p && t2' == t2 then t
+    else trm_try_with ~loc ~typ t1' p' t2'
+
   (* | Trm_raise ex ->
     let ex' = ex_map f ex in
     if ex' == ex then t

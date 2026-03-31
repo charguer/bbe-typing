@@ -94,6 +94,7 @@ let print_low_level_trm =
     | Trm_break l -> sprintf "Break %s" l
     | Trm_continue l -> sprintf "Continue %s" l
     | Trm_next l -> sprintf "Next %s" l
+    | Trm_try_with (t1, p, t2) -> sprintf "Try_with (%s, %s, %s)" (aux t1) (aux p) (aux t2)
 
     (* | Trm_raise ex -> sprintf "Raise (%s)" (print_except ex)
     | Trm_try (t1, ex, t2) -> sprintf "Try_With (%s, %s, %s)" (aux t1) (print_except ex) (aux t2) *)

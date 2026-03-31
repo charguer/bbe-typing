@@ -221,6 +221,7 @@ type trm_desc =
   | Trm_break of label
   | Trm_continue of label
   | Trm_next of label
+  | Trm_try_with of trm * pat * trm
   (* raise juste une fonction; appel de fonction, appel de constructeurs. *)
   (* | Trm_raise of except *)
   (* Note that the trm in the exception (in the case of Exit), will BE a pattern (as trivially simple as possible but still) *)

@@ -85,6 +85,8 @@ val trm_desc_return : label -> trm -> trm_desc
 val trm_desc_break : label -> trm_desc
 val trm_desc_continue : label -> trm_desc
 val trm_desc_next : label -> trm_desc
+val trm_desc_try_with : trm -> pat -> trm -> trm_desc
+
 
 (* val trm_desc_raise : except -> trm_desc
 val trm_desc_try : trm -> except -> trm -> trm_desc *)
@@ -158,8 +160,11 @@ val trm_pat_var : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) var -> trm
 val trm_pat_var_varid : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) varid -> trm
 val trm_pat_wild : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) unit -> trm
 val trm_pat_when : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) pat -> bbe -> trm
+val trm_assert_false : ?loc:loc -> ?typ:typ -> unit -> trm
 
 val trm_magic : ?loc:loc -> ?typ:typ -> trm -> trm
+val trm_try_with : ?loc:loc -> ?typ:typ -> trm -> pat -> trm -> trm
+
 val trm_try_next : ?loc:loc -> ?typ:typ -> trm -> label -> trm -> trm
 val trm_try_exit : ?loc:loc -> ?typ:typ -> trm -> label -> (* trm -> trm -> *) trm
 val trm_raise_next : ?loc:loc -> ?typ:typ -> label -> trm

@@ -1,3 +1,6 @@
+(** File implementing a a second translation pass.
+    Translates the minimal source language into OCaml AST. *)
+
 (** Final pass, translates DSL into OCaml AST *)
 
 open Ppxlib
@@ -26,6 +29,14 @@ let expand_cst ~loc (c : cst) : expression =
   | Cst_string s -> pexp_constant ~loc (Pconst_string (s, loc, None))
   | Cst_unit () -> pexp_construct ~loc (Located.mk ~loc (Lident "()")) None
 
+let expand_cst_pat ~loc (c : cst) : Parsetree.pattern =
+  match c with
+  | Cst_bool b -> ppat_construct ~loc (Located.mk ~loc (Lident (string_of_bool b))) None
+  | Cst_int n -> ppat_constant ~loc (Pconst_integer (string_of_int n, None))
+  | Cst_float f -> ppat_constant ~loc (Pconst_float (string_of_float f, None))
+  | Cst_string s -> ppat_constant ~loc (Pconst_string (s, loc, None))
+  | Cst_unit () -> ppat_construct ~loc (Located.mk ~loc (Lident "()")) None
+
 let expand_funs ~loc (args : varsyntyps) (body : expression) : expression =
   List.fold_right (fun (x, sty) acc ->
     let pat = ppat_var ~loc (Located.mk ~loc x) in
@@ -36,7 +47,6 @@ let expand_funs ~loc (args : varsyntyps) (body : expression) : expression =
     pexp_fun ~loc Nolabel None pat' acc
   ) args body
 
-(* very temporary function *)
 let is_obj_magic (t : trm) : bool =
   Debug.log "Checking for Obj.magic with %s" (trm_to_string ~style:style_debug t);
   match t.trm_desc with
@@ -76,7 +86,7 @@ let rec expand_trm (t : trm) : expression =
       expand_let_def ~loc ld t2'
 
   | Trm_apps (t1, [t2]) when is_obj_magic t ->
-    Printf.printf "Captured an Obj.magic";
+    Debug.log "Captured an Obj.magic";
     let t1' = pexp_ident ~loc (Located.mk ~loc (Ldot (Lident "Obj", "magic"))) in
     let t2' = aux t2 in
     pexp_apply ~loc t1' [Nolabel, t2']
@@ -116,6 +126,16 @@ let rec expand_trm (t : trm) : expression =
         case ~lhs:p' ~guard:None ~rhs:t'
       ) pts in
       pexp_match ~loc t0' cases
+
+  | Trm_try_with (t1, p, t2) ->
+    let t1' = aux t1 in
+
+    let p' = expand_pattern p in
+    let t2' = aux t2 in
+    let c = case ~lhs:p' ~guard:None ~rhs:t2' in
+
+    pexp_try ~loc t1' [c]
+
 
   | Trm_tuple ts ->
       let ts' = List.map aux ts in
@@ -166,30 +186,45 @@ and expand_pattern (p : pat) : pattern =
   let loc = p.trm_loc in
   match p.trm_desc with
 
+  | Trm_cst c ->
+    (expand_cst_pat ~loc c)
+
   | Trm_pat_wild ->
-      ppat_any ~loc
+    ppat_any ~loc
+
+  (* | Trm_pat_var x when (x = "Exn_Next" || x = "Exn_Exit") ->
+    ppat_exception ~loc (ppat_var ~loc (Located.mk ~loc x)) *)
 
   | Trm_pat_var x ->
-      ppat_var ~loc (Located.mk ~loc x)
+    ppat_var ~loc (Located.mk ~loc x)
 
   | Trm_var x ->
-      ppat_construct ~loc (Located.mk ~loc (Lident x)) None
+    ppat_construct ~loc (Located.mk ~loc (Lident x)) None
+
+  (* | Trm_apps ({ trm_desc = Trm_var x; _ }, ps) when (x = "Exn_Next" || x = "Exn_Exit") ->
+    let ps' = List.map expand_pattern ps in
+    let arg_pat = match ps' with
+      | [p_single] -> Some p_single
+      | _ -> Some (ppat_tuple ~loc ps')
+    in
+    ppat_exception ~loc (ppat_construct ~loc (Located.mk ~loc (Lident x)) arg_pat) *)
 
   | Trm_apps ({ trm_desc = Trm_var x; _ }, ps) ->
-      let ps' = List.map expand_pattern ps in
-      let arg_pat = match ps' with
-        | [p_single] -> Some p_single
-        | _ -> Some (ppat_tuple ~loc ps')
-      in
-      ppat_construct ~loc (Located.mk ~loc (Lident x)) arg_pat
+    let ps' = List.map expand_pattern ps in
+    let arg_pat = match ps' with
+      | [p_single] -> Some p_single
+      | _ -> Some (ppat_tuple ~loc ps')
+    in
+    ppat_construct ~loc (Located.mk ~loc (Lident x)) arg_pat
+
 
   | Trm_tuple ps ->
-      let ps' = List.map expand_pattern ps in
-      ppat_tuple ~loc ps'
+    let ps' = List.map expand_pattern ps in
+    ppat_tuple ~loc ps'
 
   | _ ->
-      Debug.log "Trying to expand pattern : %s\n" (trm_to_string ~style:style_debug p);
-      failwith "expand_pattern: unsupported pattern form"
+    Debug.log "Trying to expand pattern : %s\n" (trm_to_string ~style:style_debug p);
+    failwith "expand_pattern: unsupported pattern form"
 
 (* Top-level definitions *)
 let expand_topdef (td : topdef) : structure_item =
@@ -311,9 +346,17 @@ let expand_program (p : program) : structure =
   let filtered_p = List.filter (is_not_external) p in
 
   let result = if !Flags.presentation then (List.map expand_topdef filtered_p)
-               else exn_decl_next::exn_decl_exit::func::(List.map expand_topdef p)
+               else let expand_p = (List.map expand_topdef p) in
+               let out = open_out "generated_ast.txt" in
+               let f_out = Format.formatter_of_out_channel out in
+               Ocaml_common.Printast.implementation f_out expand_p;
+               close_out out;
+  exn_decl_next::exn_decl_exit::func::expand_p
   in
-  Printf.printf "Post expansion ast : %s\n" (Pprintast.string_of_structure result);
+  let out = open_out "generated_ml.ml" in
+  output_string out (Pprintast.string_of_structure result);
+  close_out out;
+
   result
 
   (* typ_arrow [the_typ_string; t] the_typ_exn *)

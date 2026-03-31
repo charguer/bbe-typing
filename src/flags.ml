@@ -35,6 +35,7 @@ let disable_check_cycle_on_resolution_attempts = ref false
 
 (* If disabled, do not write any output. *)
 let output = ref true
+
 let print_types = ref false
 let print_parsed = ref false
 
@@ -42,7 +43,7 @@ let print_parsed = ref false
 let recompile = ref false
 
 (* If enabled, compile back to ocaml *)
-let expand = ref false
+let expand = ref true
 
 (* Very specific and temporary flag, to remove the first line of expanded version for a presentation *)
 let presentation = ref false

@@ -1,4 +1,5 @@
-(** First translation pass, decodes derived constructs, and simplifies syntax *)
+(** File implementing a first translation pass.
+    Decodes derived constructs and simplifies syntax, into a very minimal source language. *)
 
 open Asttypes
 open Parsetree
@@ -255,14 +256,18 @@ let rec comp_trm (t : trm) : trm =
     trm_funs ~loc ~typ None args t1'
 
   | Trm_if (l, b0, t1, t2) ->
-    let t1' = aux_trm t1 in
+    (* This no. We want it to immediatly generate a match. How do I do that then? *)
+
+    (* into minimal language make a specific function that does it. *)
+    (*  *)
     let t2' = aux_trm t2 in
-    Option.fold
+    let t1' = aux_trm t1 in
+    Option.fold l
     ~none:(aux_bbe b0 t1' t2')
     ~some:(fun lbl ->
-            let t12' = aux_trm (trm_try_next t1 lbl t2) in
+            let t12' = trm_try_next t1' lbl t2' in
             aux_bbe b0 t12' t2')
-    l
+
     (* let k () = t2 in aux_bbe b0 (try t1' with | Exn_Next L -> k) *)
 
   | Trm_let (ld, t2) ->
@@ -284,6 +289,7 @@ let rec comp_trm (t : trm) : trm =
     trm_forall ~loc ~typ n t1'
 
   | Trm_match (_, _t0, _pts) ->
+
     (* The best would be to have something of the shape : match t with | Exn_Exit L -> t2 | _ -> assert false. Or something of the sort.
     But I probably have no way to reliably differentiate between an ocaml-compatible match and a custom ast match...
     Is there a way. To recognize? *)
@@ -294,7 +300,12 @@ let rec comp_trm (t : trm) : trm =
     let pts' = List.map (fun (p, t) -> () in
     trm_let ~loc ~typ Nonrecursive (fresh_var (), None) t0 in pts
  *)
-    trm_apps ~loc ~typ (trm_var_varid ~loc "assert") [trm_bool ~loc false]
+    (* trm_apps ~loc ~typ (trm_var_varid ~loc "assert") [trm_bool ~loc false] (* It is clear that the error is here. *) *)
+    trm_assert_false ~loc ~typ ()
+
+  | Trm_try_with (_, _, _) ->
+    (* We do not expect try_with at this point of the translation, it only appears later *)
+    trm_assert_false ~loc ~typ ()
 
   | Trm_tuple ts ->
     let ts' = List.map aux_trm ts in
@@ -349,9 +360,6 @@ let rec comp_trm (t : trm) : trm =
     let t' = aux_trm t in
     aux_trm (trm_raise_exit lbl t')
 
-  (* TODO-list:
-  2. blocks => same *)
-
   (* Takes as argument either Exit or Next -> make it into a type, with list of possible exceptions, raised with specific constructs (DSL only anyway) *)
 
   (* Non-term constructors should be errors *)
@@ -376,14 +384,15 @@ and comp_bbe (b : bbe) (u : trm) (u' : trm) : trm =
   let loc = b.trm_loc in
   match b.trm_desc with
   | Trm_bbe_is (t1, p2) ->
-    (match t1.trm_desc with
-      | Trm_var y ->
-        aux_pat y p2 u u'
-      | _ ->
-        let y = fresh_var () in
-        let t1' = aux_trm t1 in
-        let body = aux_pat y p2 u u' in
-        trm_let ~loc Nonrecursive (y, None) t1' body)
+    begin match t1.trm_desc with
+    | Trm_var y ->
+      aux_pat y p2 u u'
+    | _ ->
+      let y = fresh_var () in
+      let t1' = aux_trm t1 in
+      let body = aux_pat y p2 u u' in
+      trm_let ~loc Nonrecursive (y, None) t1' body
+    end
 
   | Trm_not b1 ->
     (* [[not b]] (u) (u') ==> [[b]] (u') (u) *)
@@ -550,7 +559,7 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
     trm_annot ~loc t' styp
 
   | _ ->
-    (* If this is not a pattern, then it is a term of the type xxx -> bool *)
+    (* If this is not a pattern, then it is a term of the type [?t -> bool] *)
     let x = fresh_var () in
     let y_var = trm_var_varid ~loc y in
     let t' = aux_trm p in
@@ -563,7 +572,7 @@ and comp_switch ~loc ~typ (l : label option) (cases : (bbe * trm) list) : trm =
   match cases with
   | [] ->
       (* switch [] ==> raise_switch_failure *)
-      trm_var_varid ~loc "__assert_false"
+      trm_var_varid ~loc "*"
 
   | (b, t) :: rest ->
       (* switch (case b then t) :: case_list ==> [[b]] ([[t]]) ([[switch case_list]]) *)

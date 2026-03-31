@@ -885,6 +885,26 @@ and trm_to_doc_raw ~style (t : trm) : doc =
     ^^ blank 1
     ^^ d
 
+  | Trm_try_with (t1, p, t2) ->
+    (* has the form: [try "e1" with | p -> "e2"] *)
+    let d1 = aux t1 in
+    let dp = aux p in
+    let d2 = aux t2 in
+       string "try"
+    ^^ blank 1
+    ^^ parens d1
+    ^^ blank 1
+    ^^ string "with"
+    ^^ hardline
+    ^^ blank 2
+    ^^ bar
+    ^^ blank 1
+    ^^ dp
+    ^^ blank 1
+    ^^ string "->"
+    ^^ blank 1
+    ^^ d2
+
   (* | Trm_raise ex ->
     let dex = ex_to_doc ex in
        string "raise"
