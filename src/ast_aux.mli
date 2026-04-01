@@ -238,6 +238,10 @@ val mk_sch : tvar_rigid list -> typ -> sch
 val sch_of_nonpolymorphic_typ : typ -> sch
 val synsch_of_nonpolymorphic_typ : syntyp -> synsch
 
+(* Used for the weak typer *)
+val the_sch_top : sch
+val env_add_weak_var : env -> var -> env
+
 (* Like [typ_arrow], but if its first argument is empty, returns the second. *)
 val typ_arrow_flexible : typ list -> typ -> typ
 

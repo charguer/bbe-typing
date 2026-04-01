@@ -388,6 +388,10 @@ let mk_sch (vs : tvar_rigid list) (ty : typ) : sch = {
 let sch_of_nonpolymorphic_typ (ty : typ) =
   mk_sch [] ty
 
+let the_sch_top = (sch_of_nonpolymorphic_typ the_typ_top)
+
+let env_add_weak_var e x = env_add_var e x the_sch_top
+
 let synsch_of_nonpolymorphic_typ (ty : syntyp) = {
   synsch_syntax = ([], ty.syntyp_syntax) ;
   synsch_sch = sch_of_nonpolymorphic_typ ty.syntyp_typ

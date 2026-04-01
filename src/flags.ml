@@ -10,7 +10,9 @@ let quiet = ref false
 let continue_on_error = ref true
 
 (* If enabled, the typer will stop unifying types, and only verify variable scopes *)
-let weak_typer = ref false
+(* More precisely, it will do a deep lookup of the ast, and raise trivial shadowing errors with pattern variables.
+If a variable is bound in some context, then it can not appear as a pattern variable inside some pattern. *)
+let weak_typer = ref true
 
 (* If enabled, halts the typing on error and forces OCaml's verbose runtime trace *)
 let halt_on_error = ref false

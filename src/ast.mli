@@ -406,9 +406,8 @@ and program = topdefs
   | Env_item_overload of candidates_and_modes (* overloaded *)
  *)
 (** An [env_var] is a typing environment for resolving program variables
-  typically defined by a let-binding): it associates an [env_item] to every
-  variable name. Technically, the keys are symbols, due to our encodings
-  (see definition of type [symbol]). *)
+  typically defined by a let-binding): it associates a type scheme to every variable *)
+
 type env_var = (var, sch) Env.t (* LATER: rename to env_symbol? *)
 
 (* type kind =
@@ -425,7 +424,6 @@ type label_item =
 
 (* type env_label = ((kind * label), typ option) Env.t *)
 type env_label = (label, label_item) Env.t
-
 
 (** An [env_tconstr] is a typing environment for type constructors (e.g. [list]):
    it associates a type constructor descriptor ([tconstr_desc])
