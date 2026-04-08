@@ -1,5 +1,7 @@
 (** File implementing a first translation pass.
-    Decodes derived constructs and simplifies syntax, into a very minimal source language. *)
+    Decodes derived constructs and simplifies syntax, into a minimal IR. *)
+
+(* Implements most of the compilation scheme detailed in the paper *)
 
 open Asttypes
 open Parsetree
@@ -237,7 +239,7 @@ match t1 with
 | Exn_Exit (l, t2) -> k
 *)
 
-(* Main translation functions *)
+(* Main translation function for terms *)
 let rec comp_trm (t : trm) : trm =
   let aux_trm = comp_trm in
   let aux_bbe = comp_bbe in
@@ -245,21 +247,21 @@ let rec comp_trm (t : trm) : trm =
   let typ = t.trm_typ in
   match t.trm_desc with
   | Trm_var x ->
+    (* [[x]] ==> x *)
     trm_var ~loc ~typ x
 
   | Trm_cst c ->
+    (* [[n]] ==> n *)
     trm_cst ~loc ~typ c
 
   | Trm_funs (_, args, t1) ->
-    (* let args, t1 = factorize_fun t in *)
+    (* [[fun (x1, ..., xn) -> t1]] ==> fun (x1, ..., xn) -> [[t]]*)
     let t1' = aux_trm t1 in
     trm_funs ~loc ~typ None args t1'
 
   | Trm_if (l, b0, t1, t2) ->
-    (* This no. We want it to immediatly generate a match. How do I do that then? *)
-
-    (* into minimal language make a specific function that does it. *)
-    (*  *)
+    (* if^"L" b0 then t1 else t2 ==>
+    let k() = [[t2]] in [[b0]] (try [[t1]] with | Exn_Next "L" -> k ()) (k ()) *)
     let t2' = aux_trm t2 in
     let t1' = aux_trm t1 in
     Option.fold l
@@ -271,36 +273,29 @@ let rec comp_trm (t : trm) : trm =
     (* let k () = t2 in aux_bbe b0 (try t1' with | Exn_Next L -> k) *)
 
   | Trm_let (ld, t2) ->
+    (* [[let x = t1 in t2]] ==> let x = [[t1]] in [[t2]]*)
     let t2' = aux_trm t2 in
     let ld' = comp_let_def ld in
     trm_let_def ~loc ~typ ld' t2'
 
   | Trm_apps (t0, ts) ->
+    (* [[ t0 [t1; ...; tn] ]] ==> [[t0]] [ [[t1]]; ...; [[tn]] ] *)
     let t0' = aux_trm t0 in
     let ts' = List.map aux_trm ts in
     trm_apps ~loc ~typ t0' ts'
 
   | Trm_annot (t1, sty) ->
+    (* Propagating the annotation -- Outdated *)
     let t1' = aux_trm t1 in
     trm_annot ~loc ~typ t1' sty
 
   | Trm_forall (n, t1) ->
+    (* Propageting the forall -- Outdated *)
     let t1' = aux_trm t1 in
     trm_forall ~loc ~typ n t1'
 
   | Trm_match (_, _t0, _pts) ->
-
-    (* The best would be to have something of the shape : match t with | Exn_Exit L -> t2 | _ -> assert false. Or something of the sort.
-    But I probably have no way to reliably differentiate between an ocaml-compatible match and a custom ast match...
-    Is there a way. To recognize? *)
-    (* This is not correct anymore now. Should translate it into a let x = v in switch x is p1 etc. Then into an if by recursive call. *)
-    (* For the moment do this, we'll see later *)
-    (*
-    let fv = fresh_var () in
-    let pts' = List.map (fun (p, t) -> () in
-    trm_let ~loc ~typ Nonrecursive (fresh_var (), None) t0 in pts
- *)
-    (* trm_apps ~loc ~typ (trm_var_varid ~loc "assert") [trm_bool ~loc false] (* It is clear that the error is here. *) *)
+    (* TODO: add handling of match construct when it is fully added is a keyword of the IR *)
     trm_assert_false ~loc ~typ ()
 
   | Trm_try_with (_, _, _) ->
@@ -308,9 +303,11 @@ let rec comp_trm (t : trm) : trm =
     trm_assert_false ~loc ~typ ()
 
   | Trm_tuple ts ->
+    (* C (t1, ..., tn) ==> C ([[t1]], ..., [[tn]]) (for any primitive constructor C) *)
     let ts' = List.map aux_trm ts in
     trm_tuple ~loc ~typ ts'
 
+  (* The [not], [and] and [or] operators are all functions applied to term arguments, and are compiled as such *)
   | Trm_not t1 ->
     let t1' = aux_trm t1 in
     trm_not ~loc ~typ t1'
@@ -326,41 +323,46 @@ let rec comp_trm (t : trm) : trm =
     trm_or ~loc ~typ t1' t2'
 
   | Trm_switch (l, cases) ->
+    (* A switch is compiled as a sequence of boolean conditions, with labels *)
     comp_switch ~loc ~typ l cases
 
   | Trm_while (_, b1, t2) ->
+    (* [[while b1 do t2 done]] ==> let rec f () = [[b]] ([[t2]]; f ()) (()) in f ()*)
     let loop_name = "__my_loop" in
     let loop_var = trm_var_varid ~loc loop_name in
     let t2' = aux_trm t2 in
+    (* loop_call <- "__my_loop ()" *)
     let loop_call = trm_apps ~loc loop_var [trm_unit ~loc ()] in
+    (* seq <- "[[t2]]; __my_loop ()"*)
     let seq = trm_seq ~loc t2' loop_call in
     let unit_syntyp = mk_syntyp_unit () in
+    (* body <- [[b1]] ([[t2]]; __my_loop ()) (()) *)
     let body = aux_bbe b1 seq (trm_unit ~loc ()) in
     let unit_type ~loc =
       ptyp_constr ~loc (Located.mk ~loc (Lident "unit")) []
     in
+    (* building by hand the OCaml type of [__my_loop] *)
     let unit_to_unit_type : core_type =
       let loc = Location.none in
       ptyp_arrow ~loc Nolabel (unit_type ~loc) (unit_type ~loc)
     in
-    (* Instead of using typ to styp, just build the styp by hand *)
+    (* loop_fun <- (fun () -> [[b1]] ([[t2]]; __my_loop ()) (())) *)
     let loop_fun = trm_funs ~loc None [(fresh_var (), unit_syntyp)] body in
-    (* let unit_styp = unit_syntyp.syntyp_syntax in *)
-    (* let let_typ = typ_to_styp (typ_arrow [the_typ_unit] the_typ_unit) in *)
     trm_let ~loc Recursive (loop_name, Some (synsch_of_nonpolymorphic_typ (mk_syntyp unit_to_unit_type))) loop_fun loop_call
 
   | Trm_block (lbl, t) ->
+    (* [[L:{t}]] ==>try [[t]] with | Exn_Exit "L" x -> x *)
     let t' = aux_trm t in
     trm_try_exit t' lbl
 
   | Trm_next lbl ->
-    aux_trm (trm_raise_next lbl)
+    (* [[next "L"]] ==> raise (Exn_Next "L") *)
+    trm_raise_next lbl
 
   | Trm_exit (lbl, t) ->
+    (* [[exit "L" t]] ==> raise (Exn_Exit ("L", [[t]]) *)
     let t' = aux_trm t in
-    aux_trm (trm_raise_exit lbl t')
-
-  (* Takes as argument either Exit or Next -> make it into a type, with list of possible exceptions, raised with specific constructs (DSL only anyway) *)
+    trm_raise_exit lbl t'
 
   (* Non-term constructors should be errors *)
   | Trm_bbe_is _ ->
@@ -375,8 +377,26 @@ let rec comp_trm (t : trm) : trm =
   | Trm_pat_when _ ->
     failwith "comp_trm: Trm_pat_when is not a term"
 
+  (* Constructors not yet handled: Trm_return, Trm_continue, Trm_break *)
   | _ -> failwith "comp_trm: exception handling constructs not yet handled"
 
+and comp_switch ~loc ~typ (l : label option) (cases : (bbe * trm) list) : trm =
+  match cases with
+  | [] ->
+      (* switch [] ==> raise_switch_failure *)
+      trm_var_varid ~loc "*"
+
+  | (b, t) :: rest ->
+      (* switch ((case b then t) :: [c2; ...; cn]) ==> [[b]] ([[t]]) ([[switch [c2; ...; cn]]]) *)
+      let into_if = trm_if l b t (trm_switch l rest) in
+      comp_trm into_if
+      (* let t' = comp_trm into_if in
+      let rest_compiled = comp_switch ~loc ~typ rest in
+      comp_bbe b t' rest_compiled *)
+
+(** [comp_bbe] is the main translation function for BBEs.
+The call [comp_bbe b u u'] compiles the BBE [b] with two continuations [u] and [u'].
+The generated code evaluates to either [u] or [u'], depending on the evaluation result of b *)
 and comp_bbe (b : bbe) (u : trm) (u' : trm) : trm =
   let aux_trm = comp_trm in
   let aux_bbe = comp_bbe in
@@ -384,6 +404,7 @@ and comp_bbe (b : bbe) (u : trm) (u' : trm) : trm =
   let loc = b.trm_loc in
   match b.trm_desc with
   | Trm_bbe_is (t1, p2) ->
+    (* [[t is p]] (u) (u') ==> let y = [[t]] in [[y |> p]] (u) (u') *)
     begin match t1.trm_desc with
     | Trm_var y ->
       aux_pat y p2 u u'
@@ -425,6 +446,9 @@ and comp_bbe (b : bbe) (u : trm) (u' : trm) : trm =
     let t' = aux_trm b in
     trm_if ~loc None t' u u'
 
+(** [comp_pat] is the main translation function for patterns.
+It assumes that the variable [y] is already in scope with a let-binding,
+which is supposedly the case if the call was made from [comp_bbe] *)
 and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
   let aux_trm = comp_trm in
   let aux_bbe = comp_bbe in
@@ -432,16 +456,16 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
   let loc = p.trm_loc in
   match p.trm_desc with
   | Trm_pat_wild ->
-    (* (y |> _ (u) (u')) ==> u *)
+    (* [[y |> _]] (u) (u') ==> u *)
     u
 
   | Trm_pat_var x ->
-    (* (y |> ??x (u) (u')) ==> let x = y in u *)
+    (* [[y |> ??x]] (u) (u') ==> let x = y in u *)
     let y_var = trm_var_varid ~loc y in
     trm_let ~loc Nonrecursive (x, None) y_var u
 
   | Trm_and (p1, p2) ->
-    (* (y |> (p1 & p2) (u) (u')) ==> let k () = u' in (y |> [[p1]] (y |> [[p2]] (u) (k ())) (k ())) *)
+    (* [[y |> (p1 & p2)]] (u) (u') ==> let k () = u' in [[y |> p1]] ([[y |> p2]] (u) (k ())) (k ()) *)
     if is_duplicated_continuation u' then
       let inner = aux_pat y p2 u u' in
       aux_pat y p1 inner u'
@@ -453,7 +477,7 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
       mk_duplicate ~loc u' body
 
   | Trm_or (p1, p2) ->
-    (* (y |> (p1 | p2) (u) (u')) ==> let k () = u in (y |> [[p1]] (k ()) (y |> [[p2]] (k ()) (u'))) *)
+    (* [[y |> (p1 | p2)]] (u) (u') ==> let k (x1, ..., xn) = u in [[y |> p1]] (k (x1, ..., xn)) ([[y |> p2]] (k (x1, ..., xn)) (u')) *)
     if is_duplicated_continuation u then
       let inner = aux_pat y p2 u u' in
       aux_pat y p1 u inner
@@ -465,11 +489,11 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
       mk_duplicate ~loc u body
 
   | Trm_not p1 ->
-    (* (y |> (not p) (u) (u')) ==> (y |> [[p]] (u') (u)) *)
+    (* [[y |> (not p)]] (u) (u') ==> [[y |> p]] (u') (u) *)
     aux_pat y p1 u' u
 
   | Trm_pat_when (p1, b2) ->
-    (* (y |> (p when b) (u) (u')) ==> let k () = u' in (y |> [[p]] ([[b]] (u) (k ())) (k ())) *)
+    (* [[y |> (p when b)]] (u) (u') ==> let k () = u' in [[y |> p]] ([[b]] (u) (k ())) (k ()) *)
     if is_duplicated_continuation u' then
       let inner = aux_bbe b2 u u' in
       aux_pat y p1 inner u'
@@ -481,7 +505,7 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
       mk_duplicate ~loc u' body
 
   | Trm_var constr_name when is_capitalized constr_name ->
-    (* Constructor without arguments: (y |> C (u) (u')) ==> match y with C -> u | _ -> u' *)
+    (* Constructor without arguments: [[y |> C]] (u) (u') ==> match y with C -> u | _ -> u' *)
     let y_var = trm_var_varid ~loc y in
     let success_pat = trm_var ~loc constr_name in
     let success_case = (success_pat, u) in
@@ -491,7 +515,7 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
 
   | Trm_var f ->
     (* Non-capitalized variable: boolean predicate *)
-    (* (y |> g (u) (u')) ==> let x = [[g]] y in if x then u else u' *)
+    (* [[y |> g]] (u) (u') ==> let x = [[g]] y in (if x then u else u') *)
     let x = fresh_var () in
     let y_var = trm_var_varid ~loc y in
     let f_term = trm_var ~loc f in
@@ -502,8 +526,12 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
     trm_let ~loc Nonrecursive (x, None) f_applied body
 
   | Trm_apps ({ trm_desc = Trm_var constr_name; _ }, ps) when is_capitalized constr_name ->
-    (* Constructor with arguments: (y |> C (p1, ..., pn) (u) (u')) ==>
-        match y with C (x1, ..., xn) -> [[(x1 is p1) && ... && (xn is pn)]] (u) (u') | _ -> u' *)
+    (* Constructor with arguments: [[y |> C (p1, ..., pn)]] (u) (u') ==>
+        let k () = u' in match y with
+          | C (x1, ..., xn) -> [[(x1 is p1) && ... && (xn is pn)]] (u) (u')
+          | _ -> u' *)
+    (* (for globally fresh variables {x1, ..., xn} *)
+    (* TODO: handle the duplication *)
     let y_var = trm_var_varid ~loc y in
     let fresh_vars = List.map (fun _ -> fresh_var ()) ps in
     let pat_vars = List.map (fun x -> trm_pat_var ~loc x) fresh_vars in
@@ -519,7 +547,9 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
     trm_match ~loc None y_var [success_case; failure_case]
 
   | Trm_apps (f, ps) ->
-    (* Function pattern: (y |> f (p1, ..., pn) (u) (u')) ==> let x = [[f]] y in (x |> Some (p1, ..., pn) (u) (u')) *)
+    (* Function pattern: [[y |> f (p1, ..., pn)]] (u) (u') ==>
+      let x = [[f]] y in [[x |> Some (p1, ..., pn)]] (u) (u') *)
+    (* (for a globally fresh variable y) *)
     let x = fresh_var () in
     let y_var = trm_var_varid ~loc y in
     let f' = aux_trm f in
@@ -535,7 +565,9 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
     trm_let ~loc Nonrecursive (x, None) f_applied body
 
   | Trm_tuple ps ->
-    (* Tuple pattern: (y |> (p1, ..., pn) (u) (u')) ==> let (x1, ..., xn) = y in [[(x1 is p1) && ... && (xn is pn)]] (u) (u') *)
+    (* Tuple pattern: [[y |> (p1, ..., pn)]] (u) (u') ==>
+      let (x1, ..., xn) = y in [[(x1 is p1) && ... && (xn is pn)]] (u) (u') *)
+    (* (for globally fresh variables {x1, ..., xn} *)
     let y_var = trm_var_varid ~loc y in
     let fresh_vars = List.map (fun _ -> fresh_var ()) ps in
     let pat_vars = List.map (fun x -> trm_pat_var ~loc x) fresh_vars in
@@ -548,18 +580,19 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
     trm_match ~loc None y_var [(tuple_pat, body)]
 
   | Trm_cst c ->
-    (* Constant pattern: (y |> c (u) (u')) ==> if (y = c) then u else u' *)
+    (* Constant pattern: [[y |> c]] (u) (u') ==> if (y = c) then u else u' *)
     let y_var = trm_var_varid ~loc y in
     let c_term = trm_cst ~loc c in
     let eq = trm_apps ~loc (trm_var_varid ~loc "=") [y_var; c_term] in
     trm_if ~loc None eq u u'
 
   | Trm_annot (p, styp) ->
+    (* Propagating the annotated pattern -- Outdated *)
     let t' = aux_pat y p u u' in
     trm_annot ~loc t' styp
 
   | _ ->
-    (* If this is not a pattern, then it is a term of the type [?t -> bool] *)
+    (* If this is not a pattern, then it is a term of the type ['a -> bool] *)
     let x = fresh_var () in
     let y_var = trm_var_varid ~loc y in
     let t' = aux_trm p in
@@ -568,25 +601,10 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
     let body = trm_if ~loc None x_var u u' in
     trm_let ~loc Nonrecursive (x, None) t_applied body
 
-and comp_switch ~loc ~typ (l : label option) (cases : (bbe * trm) list) : trm =
-  match cases with
-  | [] ->
-      (* switch [] ==> raise_switch_failure *)
-      trm_var_varid ~loc "*"
-
-  | (b, t) :: rest ->
-      (* switch (case b then t) :: case_list ==> [[b]] ([[t]]) ([[switch case_list]]) *)
-      (* Factorize by translating into an if, then let if handle exception raising *)
-      let into_if = trm_if l b t (trm_switch l rest) in
-      comp_trm into_if
-      (* let t' = comp_trm into_if in
-      let rest_compiled = comp_switch ~loc ~typ rest in
-      comp_bbe b t' rest_compiled *)
-
 and comp_let_def (ld : let_def) : let_def =
   { ld with let_def_body = comp_trm ld.let_def_body }
 
-(* Top-level translation functions *)
+  (* Top-level translation functions *)
 let comp_topdef (td : topdef) : topdef =
   match td.topdef_desc with
   | Topdef_val_def ld ->
