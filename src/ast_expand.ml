@@ -1,7 +1,7 @@
 (** File implementing a a second translation pass.
     Translates the minimal source language into OCaml AST. *)
 
-(** Final pass, translates DSL into OCaml AST *)
+(** Final pass, translates IR into OCaml AST *)
 
 open Ppxlib
 open Ast_builder.Default
