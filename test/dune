@@ -124,3 +124,11 @@
 ;   (name aberth_typed)
 ;   (flags (:standard -w -23-26-27-32-34-39)))
 
+(rule
+ (target unit_tests_ppx_generated.ml)
+ (mode promote)
+ (deps
+  ../tools/dump_ppx.exe
+  unit_tests_ppx.ml)
+ (action
+  (run %{dep:../tools/dump_ppx.exe} --output %{target} %{dep:unit_tests_ppx.ml})))

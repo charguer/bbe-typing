@@ -1,10 +1,18 @@
 # Artifacts
 _build
 *.exe
-test/*
+test/attempt*
 _opam/*
 *.opam
 *.txt
 src/flags.ml
 */a.out
 .*
+*.cmi
+*.cmo
+*_compiled.ml
+*_typed.ml
+*_expanded.ml
+*_translated.ml
+*_generated.ml
+test/unit_tests_debug.ml

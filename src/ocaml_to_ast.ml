@@ -474,10 +474,8 @@ let recognize_switch_case ~loc (e : expression) : expression * expression =
   [label_attribute_inv attrs] checks whether an attribute list contains label related attributes.
   Returns [None] if it does not, or [Some L] if it does, L being the corresponding label*)
 let label_attribute_inv (attrs : attributes) : label option =
-  Debug.log "visiting label_attribute_inv, of size %n\n" (List.length attrs);
   match attrs with
   | [{attr_name={txt = "label"}; attr_payload}] ->
-    Debug.log "label_attribute_inv: got a label attribute";
     begin match attr_payload with
     | PStr [{pstr_desc=Pstr_eval ({pexp_desc= Pexp_constant (Pconst_string (l, _, _))}, [])}] -> Some l
     | _ -> None
