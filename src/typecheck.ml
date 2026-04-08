@@ -4,26 +4,43 @@ open Blocks
 open Errors
 open Var
 
-(* List of all the free variables in the file (we assume they are correctly opened from the outside). Used in weak-typing *)
-let free_variables = ref []
+type occurrences = (var, loc) Hashtbl.t
 
-let add_free_var (x : var) : unit =
-  free_variables := x::(!free_variables)
+let make_occurrences () : occurrences =
+  Hashtbl.create 97
 
-(* List of all pattern variables mentionned in the file, this risks to be very large, quickly think of some more efficient method. Used in weak-typing *)
-let pattern_variables = ref []
+(* For weak typing, we only need membership plus one representative source location
+   in each category to produce a useful final diagnostic. *)
+let free_variables : occurrences = make_occurrences ()
 
-let add_pattern_variable (x : var) : unit =
-  pattern_variables := x::(!pattern_variables)
+let pattern_variables : occurrences = make_occurrences ()
 
-(* TODO: implement this with maps if this is needed, or at least sort the lists to have an O(n * logn + m * logm) complexity *)
-let rec intersect (l1 : var list) (l2 : var list) : var list =
-  match l1 with
-  | [] -> []
-  | x1::l1' ->
-    if (List.exists (fun x -> x1 = x)) l2
-      then x1::(intersect l1' l2)
-      else (intersect l1' l2)
+let clear_occurrences (tbl : occurrences) : unit =
+  Hashtbl.reset tbl
+
+let add_occurrence (tbl : occurrences) ~(loc : loc) (x : var) : unit =
+  if not (Hashtbl.mem tbl x) then
+    Hashtbl.add tbl x loc
+
+let add_free_var ~(loc : loc) (x : var) : unit =
+  add_occurrence free_variables ~loc x
+
+let add_pattern_variable ~(loc : loc) (x : var) : unit =
+  add_occurrence pattern_variables ~loc x
+
+let find_conflicting_occurrence (tbl1 : occurrences) (tbl2 : occurrences) :
+    (var * loc * loc) option =
+  let found = ref None in
+  Hashtbl.iter (fun x loc1 ->
+    match !found with
+    | Some _ -> ()
+    | None ->
+      begin match Hashtbl.find_opt tbl2 x with
+      | Some loc2 -> found := Some (x, loc1, loc2)
+      | None -> ()
+      end
+  ) tbl1;
+  !found
 
 let debug_env = false
 
@@ -256,7 +273,7 @@ let typecheck_variable loc (e : env) (v : var) : typ =
     | None ->
       if !Flags.weak_typer then
         begin
-          add_free_var v;
+          add_free_var ~loc v;
           the_sch_top
         end
       else raise (Error (Unbound_variable v, loc))
@@ -936,7 +953,7 @@ and typecheck_pat ?(expected_typ:typ option) (e : env) (p : pat) : pat =
   | Trm_pat_var x ->
     let typ =
       if !Flags.weak_typer
-      then (add_pattern_variable x; the_typ_top)
+      then (add_pattern_variable ~loc x; the_typ_top)
       else typ_nameless ()
     in
     let new_env = env_singleton x typ in
@@ -1502,6 +1519,8 @@ let typecheck_topdef ?exact_error_messages ~style (env : env) (td : topdef) : to
   )
 
 let typecheck_program ?exact_error_messages ?(continue_on_error = false) ~style (tds: topdefs) : topdefs =
+  clear_occurrences free_variables;
+  clear_occurrences pattern_variables;
   let (env, tds) =
     List.fold_left (fun (env, tds) td ->
       let (td, env) =
@@ -1510,7 +1529,18 @@ let typecheck_program ?exact_error_messages ?(continue_on_error = false) ~style 
           prerr_endline (Printf.sprintf "🟥 Type error: %s" msg) ;
           (td, env) in
       (env, td :: tds)) (env_builtin, []) tds in
-  (* Compare the list of free variables (that we will compute quite easily, and the set of all the pat variables ever. -- I hope this will be a temporary solution. One good fix would be to add as information to the fv/pv the location of their definition to add to the error message. *)
+  (* For weak typing only, verifying that free variables are not bound as pattern variables inside patterns *)
+  if !Flags.weak_typer then
+    match find_conflicting_occurrence free_variables pattern_variables with
+    | None -> ()
+    | Some (x, free_loc, pattern_loc) ->
+      raise_typecheck_error free_loc
+        (Printf.sprintf
+          "The variable %s is used both as a free variable and as a pattern variable.\n  Free-variable occurrence: %s\n  Pattern-variable occurrence: %s"
+          x
+          (Ast_print.print_loc free_loc)
+          (Ast_print.print_loc pattern_loc));
+  ;
+
   Debug.log "++++++++++++++++++++++++++++++++++" ;
   List.rev tds
-

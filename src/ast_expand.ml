@@ -15,6 +15,21 @@ open Ast_print
 open PPrint
 
 (* Helper function to recognize constructors in application position *)
+let pop_last (lst : 'a list) : 'a =
+  match List.rev lst with
+  | x :: xs -> x
+  | [] -> assert false (* only called when the lst has at least 1 argument *)
+
+let string_to_ident (s : string) : Longident.t =
+  let rec aux sl =
+  (* We know by definition that the list is never empty *)
+  match sl with
+    | [x] -> Lident x (* This is the first element of the split *)
+    | x :: sl' -> Ldot (aux sl', x)
+    | [] -> assert false
+  in
+  aux (List.rev (String.split_on_char '.' s))
+
 let is_capitalized (s : string) : bool =
   if String.length s = 0 then false
   else
@@ -53,20 +68,20 @@ let is_obj_magic (t : trm) : bool =
   | Trm_apps ({trm_desc = Trm_var fname}, _) when fname = "Obj.magic" -> Debug.log "And returned : true"; true
   | _ -> Debug.log "And returned : false"; false
 
-(* Main translation function from DSL trm to OCaml expression *)
+(* Main translation function from IR trm to OCaml expression *)
 let rec expand_trm (t : trm) : expression =
   let aux = expand_trm in
   let loc = t.trm_loc in
   match t.trm_desc with
 
-  | Trm_var x when x = "__assert_false" ->
-      pexp_assert ~loc (ebool ~loc false)
-
-  | Trm_var constr_name when is_capitalized constr_name ->
-      pexp_construct ~loc (Located.mk ~loc (Lident constr_name)) None
-
   | Trm_var x ->
-      pexp_ident ~loc (Located.mk ~loc (Lident x))
+    Printf.printf "Translating variable %s\n" x;
+    if x = "__assert_false" then
+      pexp_assert ~loc (ebool ~loc false)
+    else if is_capitalized (pop_last (String.split_on_char '.' x)) then
+      pexp_construct ~loc (Located.mk ~loc (string_to_ident x)) None
+    else
+      pexp_ident ~loc (Located.mk ~loc (string_to_ident x))
 
   | Trm_cst c ->
       expand_cst ~loc c
@@ -91,13 +106,13 @@ let rec expand_trm (t : trm) : expression =
     let t2' = aux t2 in
     pexp_apply ~loc t1' [Nolabel, t2']
 
-  | Trm_apps ({ trm_desc = Trm_var constr_name; _ }, ts) when is_capitalized constr_name ->
+  | Trm_apps ({ trm_desc = Trm_var constr_name; _ }, ts) when is_capitalized (pop_last (String.split_on_char '.' constr_name)) ->
     let ts' = List.map aux ts in
       let args = match ts' with
         | [t0] -> Some t0
         | _ -> Some (pexp_tuple ~loc ts')
       in
-      pexp_construct ~loc (Located.mk ~loc (Lident constr_name)) args
+      pexp_construct ~loc (Located.mk ~loc (string_to_ident constr_name)) args
 
   | Trm_apps ({ trm_desc = Trm_var fname; _ } as t0, [{trm_desc = Trm_apps ( {trm_desc = Trm_var constr_name} as t2, [t3; t4])} as t1]) when (fname = "raise" && constr_name = "Exn_Exit" && (not (is_obj_magic t4))) ->
     let t4' = trm_magic ~loc:t4.trm_loc t4 in (* temporary solution, the location is bound to the value inside, and not the whole obj.magic expression *)
