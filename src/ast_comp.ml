@@ -31,11 +31,19 @@ let rec trm_ands ~loc (ts : trm list) : trm =
   | [t] -> t
   | t :: ts' -> trm_and ~loc t (trm_ands ~loc ts')
 
-(* Check if a term is a duplicated continuation: k () where k is a variable *)
+let is_variable (t : trm) : bool =
+  match t.trm_desc with
+  | Trm_var _ -> true
+  | _ -> false
+
+(** [is_duplicated_continuation t] checks if a term is a duplicated continuation if the form [k (x1, ..., xn)] where k, x1, ..., xn are variables *)
 let is_duplicated_continuation (t : trm) : bool =
   match t.trm_desc with
+  (* In the case where the argument is a unit, we only need to verify that the function is a variable *)
   | Trm_apps ({ trm_desc = Trm_var _; _ },
              [{ trm_desc = Trm_cst (Cst_unit _); _ }]) -> true
+  (* Otherwise, we check that all arguments are variables *)
+  | Trm_apps ({ trm_desc = Trm_var _; _ }, args) when (List.for_all is_variable args) -> true
   | _ -> false
 
 (* Helper to check if first character is uppercase *)
@@ -49,66 +57,91 @@ let is_capitalized (s : string) : bool =
 let bound_vars_varsyntyps (args : varsyntyps) : varid list =
   List.map fst args
 
-(** [bound_vars_pat p] returns the list of variables bound by a pattern *)
-let rec bound_vars_pat (p : trm) : varid list =
-  match p.trm_desc with
+let rec list_intersect (l1 : varid list) (l2 : varid list) : varid list =
+  match l1 with
+  | [] -> []
+  | x1 :: l1' ->
+    let rest = (list_intersect l1' l2) in
+    if List.mem x1 l2 then x1 :: rest else rest
+
+(** [bound_vars e] returns the list of variables bound by a BBE or a pattern *)
+let rec bound_vars (b : trm) : varid list =
+  (* TODO: handle bv(false) as the set of all variables *)
+  match b.trm_desc with
+  | Trm_bbe_is (t, p) -> bound_vars p
+
   | Trm_pat_wild ->
       []
 
   | Trm_pat_var x ->
       [x]
 
-  | Trm_and (p1, p2) | Trm_or (p1, p2) ->
-      bound_vars_pat p1 @ bound_vars_pat p2
+  | Trm_and (b1, b2) ->
+    bound_vars b1 @ bound_vars b2
+
+  | Trm_or (b1, b2) ->
+    list_intersect (bound_vars b1) (bound_vars b2)
 
   | Trm_not p1 ->
-      bound_vars_pat p1
+      []
 
-  | Trm_pat_when (p1, _b) ->
-      bound_vars_pat p1
+  | Trm_pat_when (p1, b2) ->
+      bound_vars p1 @ bound_vars b2
 
-  | Trm_apps ({ trm_desc = Trm_pat_var _; _ }, ps) ->
-      List.concat (List.map bound_vars_pat ps)
+  | Trm_apps (_, ps) ->
+      List.concat (List.map bound_vars ps)
 
   | Trm_tuple ps ->
-      List.concat (List.map bound_vars_pat ps)
+      List.concat (List.map bound_vars ps)
 
-  | Trm_cst _ | Trm_var _ | Trm_apps _ ->
+  | Trm_cst _ | Trm_var _ ->
       []
 
   | _ ->
       []
 
-(* (** [free_vars_pat env p] computes free variables in a pattern *)
+(** [free_vars_pat env p] computes free variables in a pattern *)
 let rec free_vars_pat (env : varid list) (p : trm) : varid list =
   match p.trm_desc with
   | Trm_pat_wild | Trm_pat_var _ | Trm_cst _ ->
       []
 
-  | Trm_and (p1, p2) | Trm_or (p1, p2) ->
-      free_vars_pat env p1 @ free_vars_pat env p2
+  | Trm_and (p1, p2) ->
+    let bound_p1 = bound_vars p1 in
+    free_vars_pat env p1 @ (free_vars_pat (env @ bound_p1) p2)
+
+  | Trm_or (p1, p2) ->
+    free_vars_pat env p1 @ free_vars_pat env p2
 
   | Trm_not p1 ->
-      free_vars_pat env p1
+    free_vars_pat env p1
 
-  | Trm_pat_when (p1, b) ->
-      let bound_p1 = bound_vars_pat p1 in
-      let env' = bound_p1 @ env in
-      free_vars_pat env p1 @ free_vars env' b
+  | Trm_pat_when (p1, b2) ->
+    let bound_p1 = bound_vars p1 in
+    free_vars_pat env p1 @ free_vars (bound_p1 @ env) b2
 
   | Trm_apps (f, ps) ->
-      free_vars env f @ List.concat (List.map (free_vars_pat env) ps)
+    (* Each pattern binds its variables to the next patterns.
+    The recursive auxiliary function computes the bound variables of each pattern and adds it to the variable environment for the next ones *)
+    let rec aux var_env ps =
+      match ps with
+      | pi :: ps' ->
+        let bound_pi = bound_vars pi in
+        free_vars var_env pi @ aux (var_env @ bound_pi) ps'
+      | [] -> []
+    in
+    aux env ps
 
   | Trm_tuple ps ->
-      List.concat (List.map (free_vars_pat env) ps)
+    List.concat (List.map (free_vars_pat env) ps)
 
   | Trm_var _ ->
-      []
+    []
 
   | _ ->
-      [] *)
+    []
 
-(* (** [free_vars env t] computes the list of free variables in term [t] *)
+(** [free_vars env t] computes the list of free variables in term [t] *)
 and free_vars (env : varid list) (t : trm) : varid list =
   match t.trm_desc with
   | Trm_var x ->
@@ -146,7 +179,7 @@ and free_vars (env : varid list) (t : trm) : varid list =
   | Trm_match (_, t0, pts) ->
       let fv_t0 = free_vars env t0 in
       let fv_branches = List.concat (List.map (fun (p, t) ->
-        let bound_p = bound_vars_pat p in
+        let bound_p = bound_vars p in
         let env' = bound_p @ env in
         free_vars_pat env p @ free_vars env' t
       ) pts) in
@@ -169,6 +202,10 @@ and free_vars (env : varid list) (t : trm) : varid list =
   | Trm_while (_, b, t1) ->
       free_vars env b @ free_vars env t1
 
+  | Trm_try_with (t1, p, t2) ->
+    let bound_p = bound_vars p in
+    (free_vars env t1) @ (free_vars_pat env p) @ (free_vars (env @ bound_p) t2)
+
   | Trm_block (_, t) -> free_vars env t
   | Trm_exit (_, t) -> free_vars env t
   | Trm_return (_, t) -> free_vars env t
@@ -183,9 +220,10 @@ and free_vars (env : varid list) (t : trm) : varid list =
       []
 
   | Trm_pat_when (p, b) ->
-      free_vars_pat env p @ free_vars env b *)
+      free_vars_pat env p @ free_vars env b
 
-(* (** [free_vars_let_def env ld] computes free variables in a let definition *)
+
+(** [free_vars_let_def env ld] computes free variables in a let definition *)
 and free_vars_let_def (env : varid list) (ld : let_def) : varid list =
   let env' = if ld.let_def_rec = Recursive then
     match ld.let_def_bind with
@@ -195,7 +233,7 @@ and free_vars_let_def (env : varid list) (ld : let_def) : varid list =
     env
   in
   free_vars env' ld.let_def_body
- *)
+
 let vars_or_unit_fun (env : varid list) : (varid * syntyp) list =
 	match env with
 	| [] -> [(fresh_var (), mk_syntyp_unit ())]
@@ -421,25 +459,23 @@ and comp_bbe (b : bbe) (u : trm) (u' : trm) : trm =
 
   | Trm_and (b1, b2) ->
     (* [[b1 && b2]] (u) (u') ==> let k () = u' in [[b1]] ([[b2]] (u) (k ())) (k ()) *)
+    let body k =
+      let inner = aux_bbe b2 u k in
+      aux_bbe b1 inner k
+    in
     if is_duplicated_continuation u' then
-      let inner = aux_bbe b2 u u' in
-      aux_bbe b1 inner u'
+      body u'
     else
-		  let body k =
-        let inner = aux_bbe b2 u k in
-        aux_bbe b1 inner k
-      in
       mk_duplicate ~loc u' body
   | Trm_or (b1, b2) ->
-    (* [[b1 || b2]] (u) (u') ==> let k () = u in [[b1]] (k ()) ([[b2]] (k ()) (u')) *)
+    (* [[b1 || b2]] (u) (u') ==> let k (x1, ..., xn) = u in [[b1]] (k ()) ([[b2]] (k ()) (u')) *)
+    let body k =
+      let inner = aux_bbe b2 k u' in
+      aux_bbe b1 k inner
+    in
     if is_duplicated_continuation u then
-      let inner = aux_bbe b2 u u' in
-      aux_bbe b1 u inner
+      body u
     else
-      let body k =
-        let inner = aux_bbe b2 k u' in
-        aux_bbe b1 k inner
-      in
       mk_duplicate ~loc u body
   | _ ->
     (* Boolean term case: [[t]] (u) (u') ==> if [[t]] then u else u' *)
