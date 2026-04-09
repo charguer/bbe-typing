@@ -790,7 +790,11 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
     let t = aux t in
     let ty_ret = typ_of_some_or_nameless expected_typ in
     Debug.log "Looking for label %s from an 'exit'" lbl;
-    let li = Env.read e.env_label lbl in
+    let li =
+      match Env.read_option e.env_label lbl with
+      | Some li -> li
+      | None -> raise (Error (Mismatch_label_type lbl, loc))
+    in
     begin match li with
       | LblBlock ty -> unify_or_error e ty (typeof t) (Mismatch_label_type lbl)
       | _ -> raise (Error (Mismatch_label_type lbl, loc))
@@ -801,7 +805,11 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
     let t = aux t in
     let ty_ret = typ_of_some_or_nameless expected_typ in
     Debug.log "Looking for label %s from a 'return'" lbl;
-    let li = Env.read e.env_label lbl in
+    let li =
+      match Env.read_option e.env_label lbl with
+      | Some li -> li
+      | None -> raise (Error (Mismatch_label_type lbl, loc))
+    in
     begin match li with
       | LblFun ty -> unify_or_error e ty (typeof t) (Mismatch_label_type lbl)
       | _ -> raise (Error (Mismatch_label_type lbl, loc))
@@ -811,7 +819,11 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
   | Trm_break lbl ->
     let ty_ret = typ_of_some_or_nameless expected_typ in
     Debug.log "Looking for label %s from a 'break'" lbl;
-    let li = Env.read e.env_label lbl in
+    let li =
+      match Env.read_option e.env_label lbl with
+      | Some li -> li
+      | None -> raise (Error (Mismatch_label_type lbl, loc))
+    in
     begin match li with
       | LblLoop -> ()
       | _ -> raise (Error (Mismatch_label_type lbl, loc))
@@ -821,7 +833,11 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
   | Trm_continue lbl ->
     let ty_ret = typ_of_some_or_nameless expected_typ in
     Debug.log "Looking for label %s from a 'continue'" lbl;
-    let li = Env.read e.env_label lbl in
+    let li =
+      match Env.read_option e.env_label lbl with
+      | Some li -> li
+      | None -> raise (Error (Mismatch_label_type lbl, loc))
+    in
     begin match li with
       | LblLoop -> ()
       | _ -> raise (Error (Mismatch_label_type lbl, loc))
@@ -831,7 +847,11 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
   | Trm_next lbl ->
     let ty_ret = typ_of_some_or_nameless expected_typ in
     Debug.log "Looking for label %s from a 'next'" lbl;
-    let li = Env.read e.env_label lbl in
+    let li =
+      match Env.read_option e.env_label lbl with
+      | Some li -> li
+      | None -> raise (Error (Mismatch_label_type lbl, loc))
+    in
     begin match li with
       | LblBranch -> ()
       | _ -> raise (Error (Mismatch_label_type lbl, loc))

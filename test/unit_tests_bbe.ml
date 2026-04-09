@@ -404,14 +404,7 @@ let testing_inv_and (type a) (t : int option) (f : int -> a) =
   if (t @_is (Some ??k)) && (k @_is (even_opt ??v)) then f v else f 0
 
 
-(* Partial operation *)
-
-(* #(f _ x) == (fun y -> f y x) *)
-
-(* __partial (....) instead of '#', or '?!' *)
-(* if r is Some (?!(list_get_opt tbl _) ??v) then *)
-
-(* ?! ok, mais le _ pas ok. c'est un pat. *)
+(* Partial function application : ?!(f x1 __ x3) == (fun y -> f x1 y x3) *)
 
 let example_fun2 x y = x
 let partl_proj x = ?!(example_fun2 x __)
@@ -423,28 +416,10 @@ let projbig b e g = ?!(example_funbig __ b __ __ e __ g)
 
 (* Label constructs *)
 
-(* label --> lbl *)
-(* block : begin end annoté? *)
-(* lbl partout pour les noeuds des structures *)
-(* Pas clair, on devrait pouvoir écrire quelque chose comme :
-(__switch [])[@lbl "L5"]
-Mais pas mieux. La notation __switch[@label "L5"] [] n'est pas acceptée. *)
-(* notation exit, next etc c'est bien *)
-(* let if_label = if[@label "L1"] true then false else true
-let while_label = while[@label "L2"] false do () done
-let block_label = __block "L3" false
-let match_label = __match "L4" true []
-let switch_label = __switch "L5" []
-
-let simple_block_exit =
-  __block "L1" (
-    __exit "L1" false; true)
- *)
-
-(* let simple_if_next_1 = if[@label "L"] (2 @_is ??x) then (__next "L"); x else 3
-let simple_if_next_2 = if[@label "L"] (2 @_is ??x) then __next "L" else 3
- *)
 let simple_raise_exit = raise (Exn_Exit ("L", 3))
 let simple_raise_next = raise (Exn_Next "L")
 
 let simple_if_next_2 = if[@label "L"] (2 @_is ??x) then __next "L" else 3
+
+
+
