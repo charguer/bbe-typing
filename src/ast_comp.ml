@@ -102,6 +102,7 @@ let rec bound_vars (b : trm) : varid list =
 
 (** [free_vars_pat env p] computes free variables in a pattern *)
 let rec free_vars_pat (env : varid list) (p : trm) : varid list =
+  (* The code only differs on the case Trm_apps, where the variable bound by the precedent patterns should be removed from the free variables of the remaining ones *)
   match p.trm_desc with
   | Trm_pat_wild | Trm_pat_var _ | Trm_cst _ ->
       []
@@ -224,35 +225,32 @@ and free_vars (env : varid list) (t : trm) : varid list =
 
 
 (** [free_vars_let_def env ld] computes free variables in a let definition *)
-and free_vars_let_def (env : varid list) (ld : let_def) : varid list =
-  let env' = if ld.let_def_rec = Recursive then
+and free_vars_let_def (args : varid list) (ld : let_def) : varid list =
+  let args' = if ld.let_def_rec = Recursive then
     match ld.let_def_bind with
-    | Bind_anon -> env
-    | Bind_var (x, _) -> x :: env
+    | Bind_anon -> args
+    | Bind_var (x, _) -> x :: args
   else
-    env
+    args
   in
-  free_vars env' ld.let_def_body
+  free_vars args' ld.let_def_body
 
-let vars_or_unit_fun (env : varid list) : (varid * syntyp) list =
-	match env with
+let vars_or_unit_fun (args : varid list) : (varid * syntyp) list =
+	match args with
 	| [] -> [(fresh_var (), mk_syntyp_unit ())]
-	| _ -> List.map (fun v -> (v, mk_syntyp_none ())) env
+	| _ -> List.map (fun v -> (v, mk_syntyp_none ())) args
 
-let vars_or_unit_args (env : varid list) : trm list =
-	match env with
+let vars_or_unit_args (args : varid list) : trm list =
+	match args with
 	| [] -> [trm_unit ()]
-	| _ -> List.map trm_var_varid env
+	| _ -> List.map trm_var_varid args
 
-let mk_duplicate ~loc (cont : trm) (body : trm -> trm) : trm =
-	(* YL LATER: buggy code. Would find any possible free variables, since given an empty context. Only current solution would be to have during translation a list of all the currently bound variables. *)
-  (* let k = fresh_var () in
+let mk_duplicate ~loc (arg_vars : varid list) (cont : trm) (body : trm -> trm) : trm =
+  let k = fresh_var () in
 	let k_var = trm_var_varid ~loc k in
-	let free_vars_cont = free_vars [] cont in
-	let k_call = trm_apps ~loc k_var (vars_or_unit_args free_vars_cont) in
-	let k_fun = trm_funs ~loc (vars_or_unit_fun free_vars_cont) cont in
-	trm_let ~loc Nonrecursive (k, None) k_fun (body k_call) *)
-  body cont
+	let k_call = trm_apps ~loc k_var (vars_or_unit_args arg_vars) in
+	let k_fun = trm_funs ~loc None (vars_or_unit_fun arg_vars) cont in
+	trm_let ~loc Nonrecursive (k, None) k_fun (body k_call)
 
 (* let rec factorize_fun (t : trm) : varsyntyps * trm =
   match t.trm_desc with
@@ -466,7 +464,7 @@ and comp_bbe (b : bbe) (u : trm) (u' : trm) : trm =
     if is_duplicated_continuation u' then
       body u'
     else
-      mk_duplicate ~loc u' body
+      mk_duplicate ~loc [] u' body
   | Trm_or (b1, b2) ->
     (* [[b1 || b2]] (u) (u') ==> let k (x1, ..., xn) = u in [[b1]] (k ()) ([[b2]] (k ()) (u')) *)
     let body k =
@@ -476,7 +474,8 @@ and comp_bbe (b : bbe) (u : trm) (u' : trm) : trm =
     if is_duplicated_continuation u then
       body u
     else
-      mk_duplicate ~loc u body
+      let x_bar = list_intersect (list_intersect (bound_vars b1) (bound_vars b2)) (free_vars [] u) in
+      mk_duplicate ~loc x_bar u body
   | _ ->
     (* Boolean term case: [[t]] (u) (u') ==> if [[t]] then u else u' *)
     let t' = aux_trm b in
@@ -510,7 +509,7 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
         let inner = aux_pat y p2 u k in
         aux_pat y p1 inner k
       in
-      mk_duplicate ~loc u' body
+      mk_duplicate ~loc [] u' body
 
   | Trm_or (p1, p2) ->
     (* [[y |> (p1 | p2)]] (u) (u') ==> let k (x1, ..., xn) = u in [[y |> p1]] (k (x1, ..., xn)) ([[y |> p2]] (k (x1, ..., xn)) (u')) *)
@@ -522,7 +521,8 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
         let inner = aux_pat y p2 k u' in
         aux_pat y p1 k inner
       in
-      mk_duplicate ~loc u body
+      let x_bar = list_intersect (list_intersect (bound_vars p1) (bound_vars p2)) (free_vars [] u) in
+      mk_duplicate ~loc x_bar u body
 
   | Trm_not p1 ->
     (* [[y |> (not p)]] (u) (u') ==> [[y |> p]] (u') (u) *)
@@ -538,7 +538,7 @@ and comp_pat (y : varid) (p : trm) (u : trm) (u' : trm) : trm =
         let inner = aux_bbe b2 u k in
         aux_pat y p1 inner k
       in
-      mk_duplicate ~loc u' body
+      mk_duplicate ~loc [] u' body
 
   | Trm_var constr_name when is_capitalized constr_name ->
     (* Constructor without arguments: [[y |> C]] (u) (u') ==> match y with C -> u | _ -> u' *)
