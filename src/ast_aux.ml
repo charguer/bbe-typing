@@ -946,7 +946,7 @@ let env_builtin =
     let t = typ_rigid tv in
     env_add_var e (var "Exn_Exit") (mk_sch [tv] (typ_arrow [the_typ_string; t] the_typ_exn)) in
   let e =
-    env_add_var e (var "Exn_next") (mk_sch [] (typ_arrow [the_typ_string] the_typ_exn)) in
+    env_add_var e (var "Exn_Next") (mk_sch [] (typ_arrow [the_typ_string] the_typ_exn)) in
   e
 
 (* let env_builtin_with_tuples =

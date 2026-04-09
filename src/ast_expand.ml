@@ -63,10 +63,10 @@ let expand_funs ~loc (args : varsyntyps) (body : expression) : expression =
   ) args body
 
 let is_obj_magic (t : trm) : bool =
-  Debug.log "Checking for Obj.magic with %s" (trm_to_string ~style:style_debug t);
+  (* Debug.log "Checking for Obj.magic with %s" (trm_to_string ~style:style_debug t); *)
   match t.trm_desc with
-  | Trm_apps ({trm_desc = Trm_var fname}, _) when fname = "Obj.magic" -> Debug.log "And returned : true"; true
-  | _ -> Debug.log "And returned : false"; false
+  | Trm_apps ({trm_desc = Trm_var fname}, _) when fname = "Obj.magic" -> (* Debug.log "And returned : true"; *) true
+  | _ -> (* Debug.log "And returned : false"; *) false
 
 (* Main translation function from IR trm to OCaml expression *)
 let rec expand_trm (t : trm) : expression =
@@ -75,7 +75,6 @@ let rec expand_trm (t : trm) : expression =
   match t.trm_desc with
 
   | Trm_var x ->
-    Printf.printf "Translating variable %s\n" x;
     if x = "__assert_false" then
       pexp_assert ~loc (ebool ~loc false)
     else if is_capitalized (pop_last (String.split_on_char '.' x)) then

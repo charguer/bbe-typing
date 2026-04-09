@@ -773,7 +773,8 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
 
   | Trm_while (l, b, t) ->
     let b = aux_bbe b in
-    let e = env_extend ~loc e (bindsof b) in
+    (* Removes all labels from trm_while, except for LblLoop *)
+    let e = empty_labels (env_extend ~loc e (bindsof b)) in
     let e = env_extend_label ~loc e l LblLoop in
     let t = aux ~expected_typ:the_typ_unit ~env:e t in
     return the_typ_unit (Trm_while (l, b, t))
@@ -990,15 +991,25 @@ and typecheck_pat ?(expected_typ:typ option) (e : env) (p : pat) : pat =
   | Trm_apps (t0, ps) ->
     (* For the moment this is expected to work with "__pattern_XXX" written by hand.  *)
     assert (ps <> []);
-    (* Kind of the same idea, give a "shape to fit", and do the typing. *)
-    (* let typ = match expected_typ with Some ty -> ty | None -> typ_nameless() in *)
     let typ = typ_nameless () in
-    let typ_args = List.map (fun _ -> typ_nameless()) ps in
+    let typ_args = List.map (fun _ -> typ_nameless ()) ps in
 
-    (* typ_tuple_flex <- typ_tuple_if_several/if_multiple *)
-      let t0 = typecheck_trm ~expected_typ:(typ_arrow [typ] (typ_option ((typ_tuple_flex typ_args)(*  (typ_tuple typ_args) *)))) {e with env_is_in_pattern = true} t0 in
-      let ps = List.map2 (fun pi typ_arg_i -> typecheck_pat e ~expected_typ:typ_arg_i pi) ps typ_args in
-      return typ (Trm_apps (t0,ps)) (env_merge_binds ~loc (List.map bindsof ps))
+    (* Typecheck the function, while checking whether it has prefix "__pattern_XXX" with [env_is_in_pattern] flag *)
+    let t0 = typecheck_trm ~expected_typ:(typ_arrow [typ] (typ_option ((typ_tuple_flex typ_args)))) {e with env_is_in_pattern = true} t0 in
+
+    (* Recursively computes the bindings of the patterns for the remaining ones *)
+    let rec aux env ps typ_args =
+      match ps, typ_args with
+      | pi :: ps', typ_arg_i :: typ_args' ->
+        let pi' = typecheck_pat env ~expected_typ:typ_arg_i pi in
+        let env' = env_extend ~loc env (bindsof pi') in
+        pi' :: (aux env' ps' typ_args')
+      | [], [] -> []
+      | _ -> assert false
+    in
+
+    let ps = aux e ps typ_args in
+    return typ (Trm_apps (t0,ps)) (env_merge_binds ~loc (List.map bindsof ps))
 
    (* Conjunction *)
   | Trm_and (p1, p2) ->
