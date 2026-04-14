@@ -22,7 +22,7 @@ chk:
 	make -C test chk
 
 # tests:
-yout
+
 clean:
 	rm -f typer.exe bbe_rewriter.exe ppx_bbe src/typer.exe src/bbe_rewriter.exe
 	$(MAKE) -C test clean
