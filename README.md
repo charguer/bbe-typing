@@ -6,17 +6,26 @@ PPX extension for *binding-boolean-expressions*.
 
 Implementation of the language defined in *source paper*
 
-### Overview
+### Overview 
+
+...
+
+### Compilation
+
+Compile the whole project with `make all` in the root directory.
 
 ### Usage
 
 There are three ways of using this tool:
 
-1. The executable `bbe_rewriter.exe` takes as input an extended OCaml file, and outputs its translation by the compilation scheme, with the suffix `_translated.ml`
+1. The executable `bbe_rewriter.exe` takes as input an extended OCaml file, and outputs its translation by the compilation scheme, with the suffix `_translated.ml`.
 
-2. The ppx `ppx_bbe` directly branches into dune, and preprocesses the extended OCaml input before the typecheck.
+2. The ppx `ppx_bbe` directly branches into dune, and preprocesses the extended OCaml input before the typecheck. 
+In the dune executable stanza, add `(preprocess (pps ppx_bbe))` to preprocess with the ppx (Check `demo/dune` for an example).
 
-3. As a standalone typechecker, with `typer.exe`. It is assumed that the two first options will be used with the flag `Flags.weak_typer` set to `true`. If the flag is instead set to false, `typer.exe` will verify the type of the input extended OCaml file according to the typing rules of *source paper*. 
+3. As a standalone typechecker, with `typer.exe`. It is assumed that the two first options will be used with the flag `Flags.weak_typer` set to `true`. If the flag is instead set to false, `typer.exe` will verify the type of the input extended OCaml file according to the typing rules of *source paper*.
+
+
 
 
 
