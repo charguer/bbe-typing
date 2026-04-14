@@ -1,4 +1,4 @@
-(** File implementing a first translation pass.
+(** Implementation of a first translation pass.
     Decodes derived constructs and simplifies syntax, into a minimal IR. *)
 
 (* Implements most of the compilation scheme detailed in the paper *)

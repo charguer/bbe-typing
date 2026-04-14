@@ -6,6 +6,13 @@
   (modules typer)
 )
 
+(executable
+  (modes byte exe)
+  (name bbe_rewriter)
+  (libraries typer_lib)
+  (modules bbe_rewriter)
+)
+
 (library
  (modes byte native)
  (name typer_lib)
@@ -18,7 +25,7 @@
    pprint
  )
 
- (modules (:standard \ typer web))
+ (modules (:standard \ typer web bbe_rewriter))
  (modules_without_implementation ast)
 )
 

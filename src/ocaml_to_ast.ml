@@ -1,9 +1,10 @@
+(** Translates an OCaml Parsetree with extended syntax into the IR language *)
+
 open Asttypes
 open Parsetree
 open Var
 open Ast_fix
 open Ast_aux
-
 
 (* Documentation of parsetree in:
   https://v2.ocaml.org/releases/4.11/htmlman/compilerlibref/Parsetree.html *)
@@ -529,7 +530,6 @@ let rec tr_exp (e : expression) : trm =
         | Some res -> res in
     let t1 = tr_exp e1 in
     (* let t2 = add_local_instances local_instances t1 in  *)
-    Printf.printf "returning a function here";
     return (trm_desc_funs l xs t1)
   | Pexp_ifthenelse (e1, e2, Some e3) ->
     let l = label_attribute_inv e.pexp_attributes in
