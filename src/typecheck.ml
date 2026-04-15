@@ -609,7 +609,7 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
         before the generic Trm_apps *)
     let ts = List.map aux ts in
     let ty_tuple = typ_tuple (List.map typeof ts) in
-    if !Flags.verbose then (* LATER: remove this debugging stuff *)
+    if !Flags.verbose then
       begin
       Printf.printf "Tuple :\n";
       List.iter (fun arg -> Printf.printf "%s : %s\n" (trm_to_string arg) (Ast_print.typ_to_string arg.trm_typ)) ts;
@@ -812,6 +812,14 @@ and typecheck_bbe (e : env) (b : bbe) : bbe =
       -> Propagate the expected types to the corresponding sub-patterns if any.
     2. "List.map2 (fun typ p -> typecheck_pat ~expected_typ:typ p [...]) typs pats", and merge all of the result bindings, checking for conflicts.
     3. The result bindings of the pattern is the disjoint union of all of the sub-pattern bindings.
+
+Notes on nested patterns:
+  - A regular usage of flowing bindings between subpatterns (e.g., in the pattern ` `(p1, p2, p3)` where variables of p1 bind in both p2 and p3) is to ask for equality with a variable from a previous subpattern (e.g., `(??x, eq x)` only accepts tuples of the form `(2, 2)`).
+  -> A difficulty with `eq x`, is that we can not, without checking deep in the ast, know whether a `eq` is an inversor function applied to some argument, or the full expression `eq x` is in itself an inversor/predicate, and should be treated as a term.
+  --> The currently implemented solution is to try both.
+    Either `eq` is an inversor (that is a function of the type "'a -> 'b option"), and we handle the subpatterns accordingly.
+    Or it is not, in which case we handle the whole expression `eq x` as a term predicate.
+  ---> We can note that this implementation does not conserve enough expressiveness, as it would reject patterns of the form `(f t1) p2`, where "f t1" is a partially applied inversor. It seems clear that this is doable if we can a partition of the list of arguments [t1; t2; ...; tk; p(k+1); ... pn], but finding such partition without a deep search with current syntax seems unlikely.
 *)
 
 and typecheck_pat ?(expected_typ:typ option) (e : env) (p : pat) : pat =
@@ -860,13 +868,20 @@ and typecheck_pat ?(expected_typ:typ option) (e : env) (p : pat) : pat =
     let typ = typ_constant cst in
     return typ (Trm_cst cst) env_empty
 
-  | Trm_tuple pl ->
-    let pl = List.map (aux_pat ~env:e) pl in
-    let tys = List.map (fun p -> p.trm_typ) pl in
-    let binds = List.map bindsof pl in
-    (* merge all binds  *)
-    return (typ_tuple tys) (Trm_tuple pl) (env_merge_binds ~loc binds)
+  | Trm_tuple ps ->
+    (* We expect the pattern variables of the first patterns to be bound in the following ones. For this, we recursively go through the variables, and extend the typing environment as we go. *)
+    let rec aux env ps =
+      match ps with
+      | pi :: ps' ->
+        let pi' = typecheck_pat env pi in
+        let env' = env_extend ~loc env (bindsof pi') in
+        pi' :: (aux env' ps')
+      | []-> []
+    in
 
+    let ps = aux e ps in
+    let tys = List.map (fun p -> p.trm_typ) ps in
+    return (typ_tuple tys) (Trm_tuple ps) (env_merge_binds ~loc (List.map bindsof ps))
 
     (* For predicate pattern and inversor pattern, we look in the table for a "__pattern_" version, that would indicate that the pattern is inversible. Meaning that there is a predefined function for destructing the construction. *)
    (* Predicate pattern *)
@@ -891,21 +906,31 @@ and typecheck_pat ?(expected_typ:typ option) (e : env) (p : pat) : pat =
     let typ_args = List.map (fun _ -> typ_nameless ()) ps in
 
     (* Typecheck the function, while checking whether it has prefix "__pattern_XXX" with [env_is_in_pattern] flag *)
-    let t0 = typecheck_trm ~expected_typ:(typ_arrow [typ] (typ_option ((typ_tuple_flex typ_args)))) {e with env_is_in_pattern = true} t0 in
+    let t0 = typecheck_trm {e with env_is_in_pattern = true} t0 in
 
-    (* Recursively computes the bindings of the patterns for the remaining ones *)
-    let rec aux env ps typ_args =
-      match ps, typ_args with
-      | pi :: ps', typ_arg_i :: typ_args' ->
-        let pi' = typecheck_pat env ~expected_typ:typ_arg_i pi in
-        let env' = env_extend ~loc env (bindsof pi') in
-        pi' :: (aux env' ps' typ_args')
-      | [], [] -> []
-      | _ -> assert false
-    in
+    if try_unify {e with env_is_in_pattern = true}
+    t0.trm_typ (typ_arrow [typ] (typ_option ((typ_tuple_flex typ_args))))
+    then
+      (* In this case t0 is an inversor (of the form 'a -> 'b option) *)
+      (* We recursively computes the bindings of the patterns for the remaining ones *)
+      let rec aux env ps typ_args : pat list =
+        match ps, typ_args with
+        | pi :: ps', typ_arg_i :: typ_args' ->
+          let pi' = typecheck_pat env ~expected_typ:typ_arg_i pi in
+          let env' = env_extend ~loc env (bindsof pi') in
+          pi' :: (aux env' ps' typ_args')
+        | [], [] -> []
+        | _ -> assert false
+      in
 
-    let ps = aux e ps typ_args in
-    return typ (Trm_apps (t0,ps)) (env_merge_binds ~loc (List.map bindsof ps))
+      let ps = aux e ps typ_args in
+      return typ (Trm_apps (t0,ps)) (env_merge_binds ~loc (List.map bindsof ps))
+    else
+      (* In this case, we try to handle the whole expression as a predicate term
+      Sidenote: with labels, we could directly link to the translation of terms, which is the final case of the pattern matching*)
+      let typ_exp = typ_of_some_or_nameless expected_typ in
+      let t' = aux_trm ~env:e ~expected_typ:(typ_arrow [typ_exp] the_typ_bool) p in
+      return typ_exp t'.trm_desc (env_empty)
 
    (* Conjunction *)
   | Trm_and (p1, p2) ->

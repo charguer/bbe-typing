@@ -917,6 +917,22 @@ let env_builtin =
 
   (* Hard coding "__pattern_" versions *)
   (* expected to return one binding *)
+  (* list constructors *)
+  let e =
+    let tv = tvar_rigid "'a" in
+    let t = typ_rigid tv in
+    env_add_var e (var "__pattern_[]")
+      (mk_sch [tv] (typ_arrow [typ_list t] (the_typ_bool)))
+  in
+  (* expected to return no binding --> So typed to return a boolean *)
+  let e =
+    let tv = tvar_rigid "'a" in
+    let t = typ_rigid tv in
+    env_add_var e (var "__pattern_::")
+      (mk_sch [tv]
+      (typ_arrow [typ_list t] (typ_option (typ_tuple_flex [t; typ_list t]))))
+  in
+  (* option construtors *)
   let e =
     let tv = tvar_rigid "'a" in
     let t = typ_rigid tv in

@@ -37,12 +37,15 @@ let is_variable (t : trm) : bool =
   | _ -> false
 
 (** [is_duplicated_continuation t] checks if a term is a duplicated continuation if the form [k (x1, ..., xn)] where k, x1, ..., xn are variables *)
+(* Idea for inversion:
+- Instead of a boolean, option on a list. Then compare the list with the arg vars of the duplicated continuation. If it is, then continue.
+  -> Note, could have done the same by giving it the actual list as argument, instead of comparing outside, so no real time save...*)
 let is_duplicated_continuation (t : trm) : bool =
   match t.trm_desc with
   (* In the case where the argument is a unit, we only need to verify that the function is a variable *)
   | Trm_apps ({ trm_desc = Trm_var _; _ },
              [{ trm_desc = Trm_cst (Cst_unit _); _ }]) -> true
-  (* Otherwise, we check that all arguments are variables *)
+  (* Otherwise, we check that all arguments are variables : Note YL: not sure this works? What if the continuation was done so early that some variables that were not bound before are bound now? *)
   | Trm_apps ({ trm_desc = Trm_var _; _ }, args) when (List.for_all is_variable args) -> true
   | _ -> false
 
@@ -167,6 +170,9 @@ and free_vars (env : varid list) (t : trm) : varid list =
         | Bind_var (x, _) -> [x]
       in
       fv_ld @ free_vars (bound @ env) t2
+      (* Example of factorization:
+      let env = if (binds_of ld ??x) then (x :: env) else env in
+      fv_ld @ free_vars (bound @ env) t2 *)
 
   | Trm_apps (t0, ts) ->
       free_vars env t0 @ List.concat (List.map (free_vars env) ts)
@@ -228,7 +234,7 @@ and free_vars (env : varid list) (t : trm) : varid list =
 and free_vars_let_def (args : varid list) (ld : let_def) : varid list =
   let args' = if ld.let_def_rec = Recursive then
     match ld.let_def_bind with
-    | Bind_anon -> args
+    | Bind_anon -> args (* should be assert false? in which case can we have a recursive anonymous function.  *)
     | Bind_var (x, _) -> x :: args
   else
     args

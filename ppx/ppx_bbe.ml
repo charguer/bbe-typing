@@ -3,6 +3,8 @@ open Ppxlib
 open Parsetree
 open Ast_fix
 
+(* Set flags here *)
+
 let transform_impl (str : structure) : structure =
 
   let ast : program = Ocaml_to_ast.tr_structure str in
@@ -28,7 +30,6 @@ let transform_impl (str : structure) : structure =
   let compiled_ast = Ast_comp.comp_program ast in
 
   Ast_expand.expand_program compiled_ast
-
 
 let () =
   Driver.register_transformation

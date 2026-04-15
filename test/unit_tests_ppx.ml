@@ -324,6 +324,13 @@ let comp_bbe_or_general =
   then x + 10
   else 0
 
+(* Higher-order programming *)
+(* let check_test s f =
+  Printf.printf "Checking %s\n" s;
+  if f () then Printf.printf "Successful test\n"; else failwith "Failure\n"*)
+
+(* check_test "comp_bbe/not" (fun () -> comp_bbe_not = 1); *)
+
 let () =
   start_test "comp_bbe/not";
   let actual = comp_bbe_not in

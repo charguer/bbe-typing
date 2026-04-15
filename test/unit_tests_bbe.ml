@@ -273,6 +273,10 @@ let option_pat = if difficult_option @_is (Some (Some ??x, Some ??y)) then y els
 
 let pat_deep_when z : int = if z @_is (Some ??a @_when (a @_is (Some ??n @_when (n = 2)))) then n else -1
 
+let nested_lists_tuple =
+  __switch [
+    __case (([(1, 2)] @_is [(??x, ?!(__ = x))]) @_then true);
+    __case (false @_then false)]
 
 (**************************************************************)
 (* Motivating examples from slides *)
@@ -421,5 +425,4 @@ let simple_raise_next = raise (Exn_Next "L")
 
 let simple_if_next_2 = if[@label "L"] (2 @_is ??x) then __next "L" else 3
 
-
-
+(*  *)
