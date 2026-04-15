@@ -3,16 +3,16 @@
   They are only modified in Typer. **)
 
 let debug = ref true
-let verbose = ref true
+let verbose = ref false
 
 let quiet = ref false
 
-let continue_on_error = ref true
+let continue_on_error = ref false
 
 (* If enabled, the typer will stop unifying types, and only verify variable scopes *)
 (* More precisely, it will do a deep lookup of the ast, and raise trivial shadowing errors with pattern variables.
 If a variable is bound in some context, then it can not appear as a pattern variable inside some pattern. *)
-let weak_typer = ref true
+let weak_typer = ref false
 
 (* If enabled, halts the typing on error and forces OCaml's verbose runtime trace *)
 let halt_on_error = ref false
@@ -45,7 +45,7 @@ let print_parsed = ref false
 let recompile = ref false
 
 (* If enabled, compile back to ocaml *)
-let expand = ref true
+let expand = ref false
 
 (* Very specific and temporary flag, to remove the first line of expanded version for a presentation *)
 let presentation = ref false
