@@ -1,15 +1,10 @@
 (**************************************************************)
 (* Helpers *)
 
-let check_eq translation expected actual =
-  if expected = actual then () else failwith translation
-
-let start_test translation =
-  Printf.printf "testing %s\n%!" translation
-
-let finish_test translation =
-  Printf.printf "testing complete: %s\n%!" translation
-
+let check_test s f =
+  Printf.printf "Testing %s\n" s;
+  if f () then Printf.printf "Successful\n" else
+    failwith (Printf.sprintf "Exiting %s with failure\n" s)
 
 (**************************************************************)
 (* Basic top-level and homomorphic term translations *)
@@ -61,49 +56,32 @@ let rec term_fact n =
 (* let term_poly_id (type a) (x : a) : a = x *)
 
 let () =
-  start_test "expand_trm/constants+tuple";
-  let actual = term_constants_and_tuple in
-  check_eq "expand_trm/constants+tuple" (true, 7, 2.5, "bbe", ()) actual;
-  finish_test "expand_trm/constants+tuple";
+  check_test "expand_trm/constants+tuple"
+  (fun () -> term_constants_and_tuple = (true, 7, 2.5, "bbe", ()));
 
-  start_test "expand_trm/constr-nullary";
-  let actual = term_constructor_no_arg in
-  check_eq "expand_trm/constr-nullary" Empty actual;
-  finish_test "expand_trm/constr-nullary";
+  check_test "expand_trm/constr-nullary"
+  (fun () -> term_constructor_no_arg = Empty);
 
-  start_test "expand_trm/constr-args";
-  let actual = term_constructor_with_args in
-  check_eq "expand_trm/constr-args" (PairBox (3, 4)) actual;
-  finish_test "expand_trm/constr-args";
+  check_test "expand_trm/constr-args"
+  (fun () -> term_constructor_with_args = (PairBox (3, 4)));
 
-  start_test "expand_topdef/external + expand_trm/annot";
-  let actual = term_annotated_app in
-  check_eq "expand_topdef/external + expand_trm/annot" 11 actual;
-  finish_test "expand_topdef/external + expand_trm/annot";
+  check_test "expand_topdef/external + expand_trm/annot"
+  (fun () -> term_annotated_app = 11);
 
-  start_test "comp_trm/let";
-  let actual = term_nested_let in
-  check_eq "comp_trm/let" 7 actual;
-  finish_test "comp_trm/let";
+  check_test "comp_trm/let"
+  (fun () -> term_nested_let = 7);
 
-  start_test "expand_trm/not-and-or-as-terms";
-  let actual = term_boolean_ops in
-  check_eq "expand_trm/not-and-or-as-terms" (true, false, true) actual;
-  finish_test "expand_trm/not-and-or-as-terms";
+  check_test "expand_trm/not-and-or-as-terms"
+  (fun () -> term_boolean_ops = (true, false, true));
 
-  start_test "expand_trm/dotted-ident";
-  let actual = term_string_length in
-  check_eq "expand_trm/dotted-ident" 4 actual;
-  finish_test "expand_trm/dotted-ident";
+  check_test "expand_trm/dotted-ident"
+  (fun () -> term_string_length = 4);
 
-  start_test "expand_let_def/recursive";
-  let actual = term_fact 5 in
-  check_eq "expand_let_def/recursive" 120 actual;
-  finish_test "expand_let_def/recursive"
-  (* start_test "expand_trm/forall";
-  let actual = term_poly_id "poly" in
-  check_eq "expand_trm/forall" "poly" actual;
-  finish_test "expand_trm/forall" *)
+  check_test "expand_let_def/recursive"
+  (fun () -> term_fact 5 = 120);
+
+  (* check_test "expand_trm/forall" (fun () -> term_poly_id "poly" = "poly");
+ *)
 
 
 (**************************************************************)
@@ -209,81 +187,50 @@ let comp_switch_empty_placeholder_application =
   (__switch []) 6 7
 
 let () =
-  start_test "comp_bbe/fallback-if";
-  let actual = comp_bbe_boolean_fallback_if in
-  check_eq "comp_bbe/fallback-if" 3 actual;
-  finish_test "comp_bbe/fallback-if";
+  check_test "comp_bbe/fallback-if"
+    (fun () -> comp_bbe_boolean_fallback_if = 3);
 
-  start_test "comp_bbe/is-non-var";
-  let actual = comp_bbe_is_non_var in
-  check_eq "comp_bbe/is-non-var" 9 actual;
-  finish_test "comp_bbe/is-non-var";
+  check_test "comp_bbe/is-non-var"
+  (fun () -> comp_bbe_is_non_var = 9);
 
-  start_test "comp_bbe/is-var";
-  let actual = comp_bbe_is_var in
-  check_eq "comp_bbe/is-var" 8 actual;
-  finish_test "comp_bbe/is-var";
+  check_test "comp_bbe/is-var"
+  (fun () -> comp_bbe_is_var = 8);
 
-  start_test "comp_trm/labeled-if-next";
-  let actual = comp_trm_labeled_if_next in
-  check_eq "comp_trm/labeled-if-next" 41 actual;
-  finish_test "comp_trm/labeled-if-next";
+  check_test "comp_trm/labeled-if-next"
+  (fun () -> comp_trm_labeled_if_next = 41);
 
-  start_test "comp_trm/while";
-  let actual = comp_trm_while_sum () in
-  check_eq "comp_trm/while" 6 actual;
-  finish_test "comp_trm/while";
+  check_test "comp_trm/while"
+  (fun () -> comp_trm_while_sum () = 6);
 
-  start_test "comp_switch/non-empty-some";
-  let actual = (comp_switch_non_empty (Some 5)) 1 2 in
-  check_eq "comp_switch/non-empty-some" 8 actual;
-  finish_test "comp_switch/non-empty-some";
+  check_test "comp_switch/non-empty-some"
+  (fun () -> (comp_switch_non_empty (Some 5)) 1 2 = 8);
 
-  start_test "comp_switch/non-empty-none";
-  let actual = (comp_switch_non_empty None) 1 2 in
-  check_eq "comp_switch/non-empty-none" 3 actual;
-  finish_test "comp_switch/non-empty-none";
+  check_test "comp_switch/non-empty-none"
+  (fun () -> (comp_switch_non_empty None) 1 2 = 3);
 
-  start_test "comp_switch/labeled-next";
-  let actual = comp_switch_labeled_next in
-  check_eq "comp_switch/labeled-next" 23 actual;
-  finish_test "comp_switch/labeled-next";
+  check_test "comp_switch/labeled-next"
+  (fun () -> comp_switch_labeled_next = 23);
 
-  start_test "parser+comp_switch/labeled-match-next-some";
-  let actual = comp_match_labeled_next (Some 1) in
-  check_eq "parser+comp_switch/labeled-match-next-some" 99 actual;
-  finish_test "parser+comp_switch/labeled-match-next-some";
+  check_test "parser+comp_switch/labeled-match-next-some"
+  (fun () -> comp_match_labeled_next (Some 1) = 99);
 
-  start_test "parser+comp_switch/labeled-match-next-none";
-  let actual = comp_match_labeled_next None in
-  check_eq "parser+comp_switch/labeled-match-next-none" 99 actual;
-  finish_test "parser+comp_switch/labeled-match-next-none";
+  check_test "parser+comp_switch/labeled-match-next-none"
+  (fun () -> comp_match_labeled_next None = 99);
 
-  start_test "comp_trm/block-exit";
-  let actual = comp_trm_block_exit in
-  check_eq "comp_trm/block-exit" 42 actual;
-  finish_test "comp_trm/block-exit";
+  check_test "comp_trm/block-exit"
+  (fun () -> comp_trm_block_exit = 42);
 
-  start_test "comp_trm/block-plain";
-  let actual = comp_trm_block_plain in
-  check_eq "comp_trm/block-plain" 17 actual;
-  finish_test "comp_trm/block-plain";
+  check_test "comp_trm/block-plain"
+  (fun () -> comp_trm_block_plain = 17);
 
-  start_test "expand_trm/raw-raise-exit";
-  let actual = expand_trm_raw_raise_exit_not_taken in
-  check_eq "expand_trm/raw-raise-exit" 123 actual;
-  finish_test "expand_trm/raw-raise-exit";
+  check_test "expand_trm/raw-raise-exit"
+  (fun () -> expand_trm_raw_raise_exit_not_taken = 123);
 
-  start_test "expand_trm/raw-raise-next";
-  let actual = expand_trm_raw_raise_next_not_taken in
-  check_eq "expand_trm/raw-raise-next" 456 actual;
-  finish_test "expand_trm/raw-raise-next";
+  check_test "expand_trm/raw-raise-next"
+  (fun () -> expand_trm_raw_raise_next_not_taken = 456);
 
-  start_test "comp_switch/empty-placeholder";
-  let actual = comp_switch_empty_placeholder_application in
-  check_eq "comp_switch/empty-placeholder" 42 actual;
-  finish_test "comp_switch/empty-placeholder"
-
+  check_test "comp_switch/empty-placeholder"
+  (fun () -> comp_switch_empty_placeholder_application = 42);
 
 (**************************************************************)
 (* BBE translations implemented in comp_bbe *)
@@ -325,38 +272,25 @@ let comp_bbe_or_general =
   else 0
 
 (* Higher-order programming *)
-(* let check_test s f =
-  Printf.printf "Checking %s\n" s;
-  if f () then Printf.printf "Successful test\n"; else failwith "Failure\n"*)
+(* *)
 
-(* check_test "comp_bbe/not" (fun () -> comp_bbe_not = 1); *)
+
 
 let () =
-  start_test "comp_bbe/not";
-  let actual = comp_bbe_not in
-  check_eq "comp_bbe/not" 1 actual;
-  finish_test "comp_bbe/not";
+  check_test "comp_bbe/not"
+  (fun () -> comp_bbe_not = 1);
 
-  start_test "comp_bbe/and-general";
-  let actual = comp_bbe_and_general in
-  check_eq "comp_bbe/and-general" 8 actual;
-  finish_test "comp_bbe/and-general";
+  check_test "comp_bbe/and-general"
+  (fun () -> comp_bbe_and_general = 8);
 
-  start_test "comp_bbe/and-fastpath";
-  let actual = comp_bbe_and_fastpath in
-  check_eq "comp_bbe/and-fastpath" 21 actual;
-  finish_test "comp_bbe/and-fastpath";
+  check_test "comp_bbe/and-fastpath"
+  (fun () -> comp_bbe_and_fastpath = 21);
 
-  start_test "comp_bbe/or-fastpath";
-  let actual = comp_bbe_or_fastpath in
-  check_eq "comp_bbe/or-fastpath" 11 actual;
-  finish_test "comp_bbe/or-fastpath";
+  check_test "comp_bbe/or-fastpath"
+  (fun () -> comp_bbe_or_fastpath = 11);
 
-  start_test "comp_bbe/or-general";
-  let actual = comp_bbe_or_general in
-  check_eq "comp_bbe/or-general" 12 actual;
-  finish_test "comp_bbe/or-general"
-
+  check_test "comp_bbe/or-general"
+  (fun () -> comp_bbe_or_general = 12);
 
 (**************************************************************)
 (* Pattern translations implemented in comp_pat / expand_pattern *)
@@ -459,90 +393,73 @@ let comp_pat_when =
   if (Some 6) @_is ((Some ??x) @_when (x = 6)) then x else 0
 
 let () =
-  start_test "comp_pat/wild";
-  let actual = comp_pat_wild in
-  check_eq "comp_pat/wild" 1 actual;
-  finish_test "comp_pat/wild";
+  check_test "comp_pat/wild"
+  (fun () -> comp_pat_wild = 1);
 
-  start_test "comp_pat/var";
-  let actual = comp_pat_var in
-  check_eq "comp_pat/var" 5 actual;
-  finish_test "comp_pat/var";
 
-  start_test "comp_pat/const";
-  let actual = comp_pat_const in
-  check_eq "comp_pat/const" 1 actual;
-  finish_test "comp_pat/const";
+  check_test "comp_pat/var"
+  (fun () -> comp_pat_var = 5);
 
-  start_test "comp_pat/annot";
-  let actual = comp_pat_annot in
-  check_eq "comp_pat/annot" (Some 6) actual;
-  finish_test "comp_pat/annot";
 
-  start_test "expand_pattern/constr-nullary";
-  let actual = comp_pat_constr0 in
-  check_eq "expand_pattern/constr-nullary" 1 actual;
-  finish_test "expand_pattern/constr-nullary";
+  check_test "comp_pat/const"
+  (fun () -> comp_pat_const = 1);
 
-  start_test "expand_pattern/constr-args";
-  let actual = comp_pat_constr in
-  check_eq "expand_pattern/constr-args" 7 actual;
-  finish_test "expand_pattern/constr-args";
 
-  start_test "expand_pattern/tuple";
-  let actual = comp_pat_tuple in
-  check_eq "expand_pattern/tuple" 9 actual;
-  finish_test "expand_pattern/tuple";
+  check_test "comp_pat/annot"
+  (fun () -> comp_pat_annot = (Some 6));
 
-  start_test "comp_pat/predicate-var";
-  let actual = comp_pat_predicate_var in
-  check_eq "comp_pat/predicate-var" 1 actual;
-  finish_test "comp_pat/predicate-var";
 
-  start_test "comp_pat/predicate-term";
-  let actual = comp_pat_predicate_term in
-  check_eq "comp_pat/predicate-term" 1 actual;
-  finish_test "comp_pat/predicate-term";
+  check_test "expand_pattern/constr-nullary"
+  (fun () -> comp_pat_constr0 = 1);
 
-  start_test "comp_pat/function-single";
-  let actual = comp_pat_function_single in
-  check_eq "comp_pat/function-single" 4 actual;
-  finish_test "comp_pat/function-single";
 
-  start_test "comp_pat/function-multi";
-  let actual = comp_pat_function_multi in
-  check_eq "comp_pat/function-multi" 23 actual;
-  finish_test "comp_pat/function-multi";
+  check_test "expand_pattern/constr-args"
+  (fun () -> comp_pat_constr = 7);
 
-  start_test "comp_pat/and-general";
-  let actual = comp_pat_and_general in
-  check_eq "comp_pat/and-general" 8 actual;
-  finish_test "comp_pat/and-general";
 
-  start_test "comp_pat/and-fastpath";
-  let actual = comp_pat_and_fastpath in
-  check_eq "comp_pat/and-fastpath" 21 actual;
-  finish_test "comp_pat/and-fastpath";
+  check_test "expand_pattern/tuple"
+  (fun () -> comp_pat_tuple = 9);
 
-  start_test "comp_pat/or-general";
-  let actual = comp_pat_or_general in
-  check_eq "comp_pat/or-general" 5 actual;
-  finish_test "comp_pat/or-general";
 
-  start_test "comp_pat/or-fastpath";
-  let actual = comp_pat_or_fastpath in
-  check_eq "comp_pat/or-fastpath" 11 actual;
-  finish_test "comp_pat/or-fastpath";
+  check_test "comp_pat/predicate-var"
+  (fun () -> comp_pat_predicate_var = 1);
 
-  start_test "comp_pat/not";
-  let actual = comp_pat_not in
-  check_eq "comp_pat/not" 1 actual;
-  finish_test "comp_pat/not";
 
-  start_test "comp_pat/when";
-  let actual = comp_pat_when in
-  check_eq "comp_pat/when" 6 actual;
-  finish_test "comp_pat/when"
+  check_test "comp_pat/predicate-term"
+  (fun () -> comp_pat_predicate_term = 1);
+
+
+  check_test "comp_pat/function-single"
+  (fun () -> comp_pat_function_single = 4);
+
+
+  check_test "comp_pat/function-multi"
+  (fun () -> comp_pat_function_multi = 23);
+
+
+  check_test "comp_pat/and-general"
+  (fun () -> comp_pat_and_general = 8);
+
+
+  check_test "comp_pat/and-fastpath"
+  (fun () -> comp_pat_and_fastpath = 21);
+
+
+  check_test "comp_pat/or-general"
+  (fun () -> comp_pat_or_general = 5);
+
+
+  check_test "comp_pat/or-fastpath"
+  (fun () -> comp_pat_or_fastpath = 11);
+
+
+  check_test "comp_pat/not"
+  (fun () -> comp_pat_not = 1);
+
+
+  check_test "comp_pat/when"
+  (fun () -> comp_pat_when = 6);
+
 
 
 (**************************************************************)
