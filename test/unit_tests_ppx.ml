@@ -78,11 +78,7 @@ let () =
   (fun () -> term_string_length = 4);
 
   check_test "expand_let_def/recursive"
-  (fun () -> term_fact 5 = 120);
-
-  (* check_test "expand_trm/forall" (fun () -> term_poly_id "poly" = "poly");
- *)
-
+  (fun () -> term_fact 5 = 120)
 
 (**************************************************************)
 (* Control-flow translations implemented in comp_trm *)
@@ -230,7 +226,7 @@ let () =
   (fun () -> expand_trm_raw_raise_next_not_taken = 456);
 
   check_test "comp_switch/empty-placeholder"
-  (fun () -> comp_switch_empty_placeholder_application = 42);
+  (fun () -> comp_switch_empty_placeholder_application = 42)
 
 (**************************************************************)
 (* BBE translations implemented in comp_bbe *)
@@ -290,7 +286,7 @@ let () =
   (fun () -> comp_bbe_or_fastpath = 11);
 
   check_test "comp_bbe/or-general"
-  (fun () -> comp_bbe_or_general = 12);
+  (fun () -> comp_bbe_or_general = 12)
 
 (**************************************************************)
 (* Pattern translations implemented in comp_pat / expand_pattern *)
@@ -396,69 +392,53 @@ let () =
   check_test "comp_pat/wild"
   (fun () -> comp_pat_wild = 1);
 
-
   check_test "comp_pat/var"
   (fun () -> comp_pat_var = 5);
-
 
   check_test "comp_pat/const"
   (fun () -> comp_pat_const = 1);
 
-
   check_test "comp_pat/annot"
   (fun () -> comp_pat_annot = (Some 6));
-
 
   check_test "expand_pattern/constr-nullary"
   (fun () -> comp_pat_constr0 = 1);
 
-
   check_test "expand_pattern/constr-args"
   (fun () -> comp_pat_constr = 7);
-
 
   check_test "expand_pattern/tuple"
   (fun () -> comp_pat_tuple = 9);
 
-
   check_test "comp_pat/predicate-var"
   (fun () -> comp_pat_predicate_var = 1);
-
 
   check_test "comp_pat/predicate-term"
   (fun () -> comp_pat_predicate_term = 1);
 
-
   check_test "comp_pat/function-single"
   (fun () -> comp_pat_function_single = 4);
-
 
   check_test "comp_pat/function-multi"
   (fun () -> comp_pat_function_multi = 23);
 
-
   check_test "comp_pat/and-general"
   (fun () -> comp_pat_and_general = 8);
-
 
   check_test "comp_pat/and-fastpath"
   (fun () -> comp_pat_and_fastpath = 21);
 
-
   check_test "comp_pat/or-general"
   (fun () -> comp_pat_or_general = 5);
-
 
   check_test "comp_pat/or-fastpath"
   (fun () -> comp_pat_or_fastpath = 11);
 
-
   check_test "comp_pat/not"
   (fun () -> comp_pat_not = 1);
 
-
   check_test "comp_pat/when"
-  (fun () -> comp_pat_when = 6);
+  (fun () -> comp_pat_when = 6)
 
 
 

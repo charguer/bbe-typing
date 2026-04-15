@@ -35,12 +35,11 @@ Meta-variables:
 | sequence | `t1; t2` |
 | term annotation | `(t : ty)` |
 | local abstract type | `fun (type a) -> t` |
-| ordinary conditional | `if t1 then t2 else t3` |
+| conditional | `if b then t1 else t2` |
+| conditional loops | `while b do t done` |
 | conditional without `else` | `if t1 then t2` |
 | native match | <code>match t0 with p1 -&gt; t1 &#124; ... &#124; pn -&gt; tn</code> |
 | native guarded match case | <code>match t0 with p1 when t1 -&gt; t2 &#124; ...</code> |
-| ordinary while-loop | `while t1 do t2 done` |
-| `assert false` | `assert false` |
 | external declaration | `external f : ty = "prim"` |
 
 ## Binding Boolean Expressions
@@ -51,8 +50,6 @@ Meta-variables:
 | conjunction | `b1 && b2` |
 | disjunction | <code>b1 &#124;&#124; b2</code> |
 | negation | `not b` |
-| BBE conditional | `if b then t1 else t2` |
-| BBE loop guard | `while b do t done` |
 
 ## Pattern Constructs
 
@@ -80,11 +77,8 @@ Meta-variables:
 |---|---|
 | switch | `__switch [ __case (b1 @_then t1); ...; __case (bn @_then tn) ]` |
 | switch case | `__case (b @_then t)` |
-| case separator | `b @_then t` |
-| labeled switch | `__switch "L" [ __case (b1 @_then t1); ...; __case (bn @_then tn) ]` |
-| unlabeled switch | `__switch [ __case (b1 @_then t1); ...; __case (bn @_then tn) ]` |
-| labeled custom match | `__match "L" t0 [ __case (p1 @_then t1); ...; __case (pn @_then tn) ]` |
-| unlabeled custom match | `__match t0 [ __case (p1 @_then t1); ...; __case (pn @_then tn) ]` |
+| switch | `__switch [ __case (b1 @_then t1); ...; __case (bn @_then tn) ]` |
+| custom match | `__match t0 [ __case (p1 @_then t1); ...; __case (pn @_then tn) ]` |
 
 ## Label-Based Control Constructs
 
@@ -93,6 +87,8 @@ Meta-variables:
 | labeled function | `fun[@label "L"] x -> t` |
 | labeled `if` | `if[@label "L"] b then t1 else t2` |
 | labeled native match | <code>match[@label "L"] t0 with p1 -&gt; t1 &#124; ... &#124; pn -&gt; tn</code> |
+| labeled custom match | `__match "L" t0 [ __case (p1 @_then t1); ...; __case (pn @_then tn) ]` |
+| labeled switch | `__switch "L" [ __case (b1 @_then t1); ...; __case (bn @_then tn) ]` |
 | labeled while-loop | `while[@label "L"] b do t done` |
 | `next` | `__next "L"` |
 | block | `__block "L" t` |
@@ -110,19 +106,8 @@ Meta-variables:
 | one-hole partial application | `?!(f t1 __ t2)` |
 | multi-hole partial application | `?!(f __ t2 __ ... __ tn)` |
 
-## Typical Derived Forms
 
-| Construct | Example |
-|---|---|
-| tuple destructuring test | `t @_is (p1, ..., pn)` |
-| constructor destructuring test | `t @_is C (p1, ..., pn)` |
-| guarded destructuring test | `t @_is (p @_when b)` |
-| nested pattern test | `t @_is C (p1, C' (p2, p3), p4)` |
-| chained BBE test | `(t1 @_is p1) && (t2 @_is p2)` |
-| alternative BBE test | <code>(t1 @_is p1) &#124;&#124; (t2 @_is p2)</code> |
-| switch over BBEs | `__switch [ __case (t1 @_is p1 @_then t2); __case (true @_then t3) ]` |
-| match over patterns | `__match t0 [ __case (C p1 @_then t1); __case (__ @_then t2) ]` |
-
+<!-- TODO: move each subnote to the corresponding case. -->
 ## Notes
 
 - The notation is schematic: for example, `(p1, ..., pn)` means a tuple of patterns.

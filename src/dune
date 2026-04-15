@@ -17,6 +17,7 @@
  (modes byte native)
  (name typer_lib)
  (preprocess (pps ppxlib.metaquot))
+ (instrumentation (backend bisect_ppx))
  (libraries
    ppxlib
    ppxlib.metaquot_lifters
@@ -29,23 +30,20 @@
  (modules_without_implementation ast)
 )
 
-(executable
- (modes js)
- (name web)
- (libraries
-  typer_lib
-  js_of_ocaml-lwt
- )
- (preprocess (pps lwt_ppx js_of_ocaml-ppx))
- (modules web)
-)
+; (executable
+;  (modes js)
+;  (name web)
+;  (libraries
+;   typer_lib
+;   js_of_ocaml-lwt
+;  )
+;  (preprocess (pps lwt_ppx js_of_ocaml-ppx))
+;  (modules web)
+; )
 
 (env
   (dev
     (flags (:standard -g -warn-error -16 -w -9-27-32-33-34-37))
-  )
-  (release
-    (js_of_ocaml (flags :standard \ --pretty))
   )
 )
 

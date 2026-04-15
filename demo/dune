@@ -7,6 +7,14 @@
 
 (executable
  (modes byte exe)
+ (name test_code)
+ (preprocess (pps ppx_bbe))
+ (libraries typer_lib)
+ (modules test_code)
+ (flags (:standard -warn-error -a)))
+
+(executable
+ (modes byte exe)
  (name test_debug)
  (preprocess (pps ppx_bbe))
  (libraries typer_lib)

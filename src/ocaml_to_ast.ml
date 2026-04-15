@@ -14,6 +14,7 @@ type ocaml_ast = Parsetree.structure
 (*#########################################################################*)
 (* ** Errors *)
 
+(* TODO: add some handling of the error "unsupported?" *)
 let unsupported ?(loc=loc_none) (m : string) : 'a =
   prerr_endline (Printf.sprintf "🟪 Unsupported, %s: %s" (Ast_print.print_loc loc) m) ;
   exit 1
@@ -84,13 +85,13 @@ let coretype_to_synsch ty =
     }
   }
 
-let check_uniq ?loc fs : unit =
+(* let check_uniq ?loc fs : unit =
   let rec aux = function
   | [] | [_] -> ()
   | f1 :: f2 :: _ when f1 = f2 ->
     unsupported ?loc (Printf.sprintf "Field %s defined several times." f1)
   | _ :: fs -> aux fs in
-  aux (List.sort compare fs)
+  aux (List.sort compare fs) *)
 
 
 let tr_longident (lid : Longident.t) : string =
@@ -106,7 +107,7 @@ let tr_constant ?loc (c : constant) : cst =
 let varsyntyp_of_var ?loc (x : var) : varsyntyp =
    (x, mk_syntyp_none ?loc ())
 
-(* Translate a pattern in a place in which we only accept variables, or return [None]. *)
+(* Translate a pattern in a place in where we only accept variables, or return [None]*)
 let tr_pat_to_var (p : pattern) : varsyntyp option =
   let loc = p.ppat_loc in
   match p.ppat_desc with
@@ -182,90 +183,6 @@ That is:  local_instance : (var * syntyp) * symbol(why?) * loc(why?) *)
           })
       } body) body (List.rev local_instances) *)
 
-(* let payload_to_symbol loc = function
-  | PStr [{ pstr_desc =
-      Pstr_eval ({ pexp_desc = Pexp_ident { txt = Lident x ; _ } ; _ }, _) ; _ }] ->
-    SymbolName (var x)
-  | PPat ({ ppat_desc = Ppat_tuple ps }, None)
-      when List.for_all (fun p -> p.ppat_desc = Ppat_any) ps ->
-    let i = List.length ps in
-    if i = 1 then unsupported ~loc "Expected number different than 1 here." ;
-    SymbolTuple i
-  | PTyp [%type: int] -> SymbolNumericInt
-  | PTyp [%type: float] -> SymbolNumericFloat
-  | PTyp [%type: string] -> SymbolString
-  | PTyp [%type: unit] -> SymbolTuple 0
-  | PTyp [%type: bool] -> SymbolBool
-  | PPat ([%pat? Get [%p? { ppat_desc = Ppat_record ([(id, _)], Closed) }]], None) ->
-    SymbolGetField (field (tr_longident id.txt))
-  | PPat ([%pat? Set [%p? { ppat_desc = Ppat_record ([(id, _)], Closed) }]], None) ->
-    SymbolSetField (field (tr_longident id.txt))
-  | PPat ([%pat? Make [%p? { ppat_desc = Ppat_record (ps, Closed) }]], None) ->
-    let fs = List.map (fun (id, _) -> field (tr_longident id.txt)) ps in
-    let fs = List.sort compare fs in
-    SymbolMakeRecord fs
-  | PPat ([%pat? With [%p? { ppat_desc = Ppat_record ([(id, _)], Closed) }]], None) ->
-    SymbolRecordWith (field (tr_longident id.txt))
-  | _ -> unsupported ~loc "Invalid payload for an instance." *)
-
-(* Given a list of attributes, extract the [@instance (symbol)] ones and return the
-  list of corresponding symbols. *)
-(* let filter_attributes_binding =
-  List.filter_map (fun attr ->
-    match attr.attr_name.txt with
-    | "instance" | "register" ->
-      (* In practise, the [@register (symbol)] attribute behaves very similarly
-        to a [@instance (symbol)]—its only difference being that it can't introduce
-        names, and that it's not meant to be available to the user. *)
-      Some (payload_to_symbol attr.attr_loc attr.attr_payload)
-    | str ->
-      prerr_endline (Printf.sprintf "Warning: ignored attribute %s." str) ;
-      None) *)
-
-(* type argument_attribute =
-  | Arg_Implicit of symbol
-  | Arg_Instance of symbol *)
-
-let rec pat_attributes p =
-  p.ppat_attributes
-  @ match p.ppat_desc with
-    | Ppat_constraint (p, _) -> pat_attributes p
-    | _ -> []
-
-(* Process the argument attributes. *)
-(* let filter_attributes_argument =
-  List.concat_map (fun attr ->
-    let loc = attr.attr_loc in
-    match attr.attr_name.txt with
-    | "implicit" -> [(Arg_Implicit (payload_to_symbol loc attr.attr_payload), loc)]
-    | "instance" -> [(Arg_Instance (payload_to_symbol loc attr.attr_payload), loc)]
-    | "implicit_instance" ->
-      let symbol = payload_to_symbol loc attr.attr_payload in
-      [(Arg_Implicit symbol, loc) ; (Arg_Instance symbol, loc)]
-    | str ->
-      prerr_endline (Printf.sprintf "Warning: ignored attribute %s." str) ;
-      []) *)
-
-(* Given a list of processed argument attribute, return either [None] if no [Arg_Implicit]
-  is provided, or [Some] with the associated symbol if any. *)
-(* let get_implicit_symbol attrs =
-  List.fold_left (fun ret (attr, loc) ->
-    match attr with
-    | Arg_Implicit symbol ->
-      begin match ret with
-      | None -> Some symbol
-      | Some _ -> unsupported ~loc "implicit argument associated to two separate symbols."
-      end
-    | Arg_Instance _ -> ret) None attrs
- *)
-(* Given a list of processed argument attribute, return the list of local instances it associates
-  with. *)
-(* let get_all_local_instances attrs =
-  List.filter_map (fun (attr, loc) ->
-    match attr with
-    | Arg_Implicit _ -> None
-    | Arg_Instance sym -> Some (sym, loc)) attrs *)
-
 let build_match_on_var ~loc (x : var) (cs : case list) : expression = {
     pexp_desc = Pexp_match ({
         pexp_desc = Pexp_ident { txt = Lident (print_var x) ; loc } ;
@@ -321,11 +238,6 @@ let rec pexp_fun_get_annotated_args_body (e : expression)
   | Pexp_fun (Nolabel, None, p, e1) ->
     begin match tr_pat_to_var p with
     | Some x ->
-      (* Here x and xs are annotated variables. *)
-      (* let attributes = pat_attributes p in *)
-      (* let attrs = filter_attributes_argument attributes in
-      if get_implicit_symbol attrs <> None then
-        unsupported ~loc "implicit argument can only be defined in an explicit instance declaration." ; *)
       begin match pexp_fun_get_annotated_args_body e1 with
       | None -> Some ([x], e1)
       | Some (xs, ei) -> Some (x :: xs, ei)
@@ -346,23 +258,6 @@ let rec pexp_fun_get_annotated_args_body (e : expression)
     Some ([x], e)
   | _ -> None
 
-
-(* FIXME: Do we still need them? *)
-(* let ocaml_to_mode (e : expression) =
-  match e.pexp_desc with
-  | Pexp_construct ({txt = Lident b; _ }, _) ->
-      if b = "true" then Mode_in
-      else if b = "false" then Mode_out
-      else invalid_arg "modes must be booleans litterals."
-  | _ -> invalid_arg "modes must be booleans."
- *)
-(* let rec ocaml_list_to_modes (e : expression) : mode list =
-  match e.pexp_desc with
-  | Pexp_construct ({ txt = Lident "[]"; _ }, _) -> []
-  | Pexp_construct ({ txt = Lident "::"; _ }, Some {pexp_desc = Pexp_tuple [e1; e2]; _ }) ->
-      ocaml_to_mode e1 :: ocaml_list_to_modes e2
-  | _ -> invalid_arg "the input must be a boolean list."
- *)
 (* Given a term of the form [fun (type a b) -> t], return the list [a; b] and t. *)
 let rec extract_leading_type_parameters t =
   match t.pexp_desc with
@@ -522,7 +417,6 @@ let rec tr_exp (e : expression) : trm =
       trm_let_def ~loc l t) t2 (List.rev lets)
   | Pexp_let (rf, vbs, e) -> unsupported ~loc "mutual let defs"
   | Pexp_fun _ | Pexp_function _ ->
-    Debug.log "visiting Pexp_fun or Pexp_function";
     let l = label_attribute_inv e.pexp_attributes in
     let (xs,(*  local_instances, *) e1) =
         match pexp_fun_get_annotated_args_body e with

@@ -1,6 +1,3 @@
-external print_endline : string -> unit = ""
-external string_of_int : int -> string = ""
-
 type ('a, 'b) bucket =
     Nil
   | Cons of 'a * 'b * ('a, 'b) bucket

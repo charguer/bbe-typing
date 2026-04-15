@@ -426,7 +426,7 @@ and comp_switch ~loc ~typ (l : label option) (cases : (bbe * trm) list) : trm =
   match cases with
   | [] ->
       (* switch [] ==> raise_switch_failure *)
-      trm_var_varid ~loc "*"
+      trm_var_varid ~loc "__assert_false"
 
   | (b, t) :: rest ->
       (* switch ((case b then t) :: [c2; ...; cn]) ==> [[b]] ([[t]]) ([[switch [c2; ...; cn]]]) *)

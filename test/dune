@@ -1,24 +1,42 @@
 (rule
  (alias runtest)
- (target unit_tests_ppx_generated.ml)
- (mode promote)
+ (target runtest_unit_tests_bbe_typed.ml)
  (deps
-  ../tools/dump_ppx.exe
-  unit_tests_ppx.ml)
+  unit_tests_bbe.ml
+  ../src/typer.exe)
  (action
-  (run %{dep:../tools/dump_ppx.exe} --output %{target} %{dep:unit_tests_ppx.ml})))
-
-(executable
- (name unit_tests_ppx_generated)
- (modules unit_tests_ppx_generated)
- (flags (:standard -w -23-26-27-32-34-39)))
+  (run %{exe:../src/typer.exe} -o %{target} %{dep:unit_tests_bbe.ml})))
 
 (rule
  (alias runtest)
+ (target runtest_unit_tests_ppx_rewritten.ml)
  (deps
-  unit_tests_ppx.ml)
+  unit_tests_ppx.ml
+  ../src/bbe_rewriter.exe)
  (action
-  (run %{exe:unit_tests_ppx_generated.exe})))
+  (run %{exe:../src/bbe_rewriter.exe} -o %{target} %{dep:unit_tests_ppx.ml})))
+
+; (rule
+;  (alias ppx_runtime)
+;  (target unit_tests_ppx_generated.ml)
+;  (mode promote)
+;  (deps
+;   ../tools/dump_ppx.exe
+;   unit_tests_ppx.ml)
+;  (action
+;   (run %{dep:../tools/dump_ppx.exe} --output %{target} %{dep:unit_tests_ppx.ml})))
+
+; (executable
+;  (name unit_tests_ppx_generated)
+;  (modules unit_tests_ppx_generated)
+;  (flags (:standard -w -23-26-27-32-34-39)))
+
+; (rule
+;  (alias ppx_runtime)
+;  (deps
+;   unit_tests_ppx.ml)
+;  (action
+;   (run %{exe:unit_tests_ppx_generated.exe})))
 
 ; (rule
 ; 	(alias runtest)

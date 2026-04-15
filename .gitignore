@@ -16,3 +16,4 @@ src/flags.ml
 *_translated.ml
 *_generated.ml
 test/unit_tests_debug.ml
+_coverage/*

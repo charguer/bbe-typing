@@ -24,11 +24,18 @@ let spec =
     ("-print-raw-symbols", Arg.Set Flags.print_raw_symbols, "Print internal symbols encoding for records and constants.") ;
     ("-quiet", Arg.Set Flags.quiet, "Do not indicate when a file is being generated.") ;
     ("-relax-error-messages", Arg.Clear Flags.exact_error_messages, "Do not check wether [@type_error] annotations exactly produce the expected error message.") ;
-    (*("-trigger-max", Arg.Set_int Flags.max_cardinal_trigger, "Maximum cardinal of triggers associated to each varid.") ;
-    ("-trigger-passes", Arg.Set_int Flags.number_of_trigger_passes, "Number of triggered varids considered at each loop iteration.")*)
+    ("-weak-typer", Arg.Set Flags.weak_typer, "(default) Remove most of the typechecking steps") ;
+    ("-strong-typer", Arg.Clear Flags.weak_typer, "Performs the complete typechecking process") ;
   ])
 
 (*#########################################################################*)
+
+
+let _ =
+   Clflags.nopervasives := true;
+   Flags.weak_typer := true;
+   Flags.recompile := true;
+   Flags.expand := true
 
 let parse_command_line () : string =
    let files = ref [] in

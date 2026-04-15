@@ -64,6 +64,7 @@ let spec =
       Flags.style_resolution_base := r ;
       Flags.style_resolution_args := r), "Equivalent to calling all -res-full, -res-base, and -res-args with this argument.") ;
     ("-weak-typer", Arg.Set Flags.weak_typer, "Remove most of the typechecking steps") ;
+    ("-strong-typer", Arg.Clear Flags.weak_typer, "(default) Performs the complete typechecking process") ;
     (*("-trigger-max", Arg.Set_int Flags.max_cardinal_trigger, "Maximum cardinal of triggers associated to each varid.") ;
     ("-trigger-passes", Arg.Set_int Flags.number_of_trigger_passes, "Number of triggered varids considered at each loop iteration.")*)
   ])

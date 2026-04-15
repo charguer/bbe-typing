@@ -909,11 +909,15 @@ let env_builtin =
     env_add_var e (var "Some")
       (mk_sch [tv]
         (typ_arrow [t] (typ_option t))) in
-  (* Ne sait pas unifier "typ_arrow [typ_tuple tl] (typ_option (typ_tuple tl))" avec "typ_arrow [t] (typ_option t)" *)
   let e =
     let tv = tvar_rigid "'a" in
     let t = typ_rigid tv in
     env_add_var e (var "None") (mk_sch [tv] (typ_option t)) in
+  (* pattern related operator "__st", used inside patterns to isolate terms as predicates/inversor functions *)
+  let e =
+    let tv = tvar_rigid "'a" in
+    let t = typ_rigid tv in
+    env_add_var e (var "__st") (mk_sch [tv] (typ_arrow [t] (t))) in
 
   (* Hard coding "__pattern_" versions *)
   (* expected to return one binding *)

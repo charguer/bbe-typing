@@ -665,7 +665,6 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
     (* verify that there is indeed a branch of label in F. *)
     let t = aux t in
     let ty_ret = typ_of_some_or_nameless expected_typ in
-    Debug.log "Looking for label %s from an 'exit'" lbl;
     let li =
       match Env.read_option e.env_label lbl with
       | Some li -> li
@@ -680,7 +679,6 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
   | Trm_return (lbl, t) ->
     let t = aux t in
     let ty_ret = typ_of_some_or_nameless expected_typ in
-    Debug.log "Looking for label %s from a 'return'" lbl;
     let li =
       match Env.read_option e.env_label lbl with
       | Some li -> li
@@ -694,7 +692,6 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
 
   | Trm_break lbl ->
     let ty_ret = typ_of_some_or_nameless expected_typ in
-    Debug.log "Looking for label %s from a 'break'" lbl;
     let li =
       match Env.read_option e.env_label lbl with
       | Some li -> li
@@ -708,7 +705,6 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
 
   | Trm_continue lbl ->
     let ty_ret = typ_of_some_or_nameless expected_typ in
-    Debug.log "Looking for label %s from a 'continue'" lbl;
     let li =
       match Env.read_option e.env_label lbl with
       | Some li -> li
@@ -722,7 +718,6 @@ and typecheck_trm ?(expected_typ:typ option) (e : env) (t : trm) : trm =
 
   | Trm_next lbl ->
     let ty_ret = typ_of_some_or_nameless expected_typ in
-    Debug.log "Looking for label %s from a 'next'" lbl;
     let li =
       match Env.read_option e.env_label lbl with
       | Some li -> li
@@ -906,31 +901,27 @@ and typecheck_pat ?(expected_typ:typ option) (e : env) (p : pat) : pat =
     let typ_args = List.map (fun _ -> typ_nameless ()) ps in
 
     (* Typecheck the function, while checking whether it has prefix "__pattern_XXX" with [env_is_in_pattern] flag *)
-    let t0 = typecheck_trm {e with env_is_in_pattern = true} t0 in
+    let t0 = typecheck_trm ~expected_typ:(typ_arrow [typ] (typ_option ((typ_tuple_flex typ_args)))) {e with env_is_in_pattern = true} t0 in
 
-    if try_unify {e with env_is_in_pattern = true}
-    t0.trm_typ (typ_arrow [typ] (typ_option ((typ_tuple_flex typ_args))))
-    then
-      (* In this case t0 is an inversor (of the form 'a -> 'b option) *)
-      (* We recursively computes the bindings of the patterns for the remaining ones *)
-      let rec aux env ps typ_args : pat list =
-        match ps, typ_args with
-        | pi :: ps', typ_arg_i :: typ_args' ->
-          let pi' = typecheck_pat env ~expected_typ:typ_arg_i pi in
-          let env' = env_extend ~loc env (bindsof pi') in
-          pi' :: (aux env' ps' typ_args')
-        | [], [] -> []
-        | _ -> assert false
-      in
+    (* Recursively forwarding the bindings to the next patterns *)
+    let rec aux env ps typ_args : pat list =
+      match ps, typ_args with
+      | pi :: ps', typ_arg_i :: typ_args' ->
+        let pi' = typecheck_pat env ~expected_typ:typ_arg_i pi in
+        let env' = env_extend ~loc env (bindsof pi') in
+        pi' :: (aux env' ps' typ_args')
+      | [], [] -> []
+      | _ -> assert false
+    in
 
-      let ps = aux e ps typ_args in
-      return typ (Trm_apps (t0,ps)) (env_merge_binds ~loc (List.map bindsof ps))
-    else
+    let ps = aux e ps typ_args in
+    return typ (Trm_apps (t0,ps)) (env_merge_binds ~loc (List.map bindsof ps))
+    (* else
       (* In this case, we try to handle the whole expression as a predicate term
       Sidenote: with labels, we could directly link to the translation of terms, which is the final case of the pattern matching*)
       let typ_exp = typ_of_some_or_nameless expected_typ in
       let t' = aux_trm ~env:e ~expected_typ:(typ_arrow [typ_exp] the_typ_bool) p in
-      return typ_exp t'.trm_desc (env_empty)
+      return typ_exp t'.trm_desc (env_empty) *)
 
    (* Conjunction *)
   | Trm_and (p1, p2) ->
@@ -1363,7 +1354,7 @@ let typecheck_topdef ?exact_error_messages ~style (env : env) (td : topdef) : to
   let open Printf in
   let open Ast_print in
   check_error ?exact_error_messages ~style (td, env) td (fun td ->
-    Debug.log "\n=Typechecking the top-level declaration:\n%s" (topdef_to_string ~style td) ;
+    (if not (!Flags.weak_typer) then Debug.log "\n=Typechecking the top-level declaration:\n%s" (topdef_to_string ~style td));
     let loc = td.topdef_loc in
     match td.topdef_desc with
 
@@ -1408,8 +1399,8 @@ let typecheck_topdef ?exact_error_messages ~style (env : env) (td : topdef) : to
           then Counters.reset_stats_except_time_ml_constraints ();
         Counters.(compute_and_time time_symbol_resolution (fun () ->
           iterative_resolution varids)); *)
-        Debug.log "🟩 Conclude that this definition has the type scheme %s." (sch_to_string sch) ;
-(*         let sym =
+        (if not (!Flags.weak_typer) then Debug.log "🟩 Conclude that this definition has the type scheme %s." (sch_to_string sch));
+(*      let sym =
           match d.let_def_bind with
           | Bind_anon -> SymbolName (var "<anonymous>")
           | Bind_var (x, _) -> SymbolName x
@@ -1424,7 +1415,7 @@ let typecheck_topdef ?exact_error_messages ~style (env : env) (td : topdef) : to
         let synsch = synsch_internalize ~loc:td.topdef_loc env tde.external_def_syntyp in
         let tde = { tde with external_def_syntyp = synsch } in
         let env = env_add_var env tde.external_def_var synsch.synsch_sch in
-        Debug.log "🟩 Internalised as %s." (sch_to_string synsch.synsch_sch) ;
+        (if not (!Flags.weak_typer) then Debug.log "🟩 Internalized as %s." (sch_to_string synsch.synsch_sch));
         ({ td with topdef_desc = Topdef_external tde }, env)
 
     (* Process a type definition *)

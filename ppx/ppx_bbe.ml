@@ -3,7 +3,10 @@ open Ppxlib
 open Parsetree
 open Ast_fix
 
-(* Set flags here *)
+let _ =
+   Flags.weak_typer := true;
+   Flags.recompile := true;
+   Flags.expand := true
 
 let transform_impl (str : structure) : structure =
 

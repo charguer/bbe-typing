@@ -100,7 +100,6 @@ let rec expand_trm (t : trm) : expression =
       expand_let_def ~loc ld t2'
 
   | Trm_apps (t1, [t2]) when is_obj_magic t ->
-    Debug.log "Captured an Obj.magic";
     let t1' = pexp_ident ~loc (Located.mk ~loc (Ldot (Lident "Obj", "magic"))) in
     let t2' = aux t2 in
     pexp_apply ~loc t1' [Nolabel, t2']
