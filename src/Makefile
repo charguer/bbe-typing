@@ -16,6 +16,11 @@ bbe_rewriter:
 	@cd ..; ln -fs _build/default/src/bbe_rewriter.exe bbe_rewriter.exe
 	@echo "Updated bbe_rewriter.exe"
 
+# bbe_ppx_rewriter:
+# 	@dune build bbe_ppx_rewriter.exe
+# 	@cd ..; ln -fs _build/default/src/bbe_ppx_rewriter.exe bbe_ppx_rewriter.exe
+# 	@echo "Updated bbe_ppx_rewriter.exe"
+
 chk: typer
 	$(MAKE) -C ../test chk
 

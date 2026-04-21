@@ -44,3 +44,12 @@
 ; 	(targets unit_tests_typed.ml)
 ; 	(action (run %{dep:../src/typer.exe} %{mlfile}))
 ; )
+
+; (rule
+;  (alias runtest)
+;  (target runtest_unit_tests_ppx_direct_rewritten.ml)
+;  (deps
+;   unit_tests_ppx.ml
+;   ../src/bbe_ppx_rewriter.exe)
+;  (action
+;   (run %{exe:../src/bbe_ppx_rewriter.exe} -o %{target} %{dep:unit_tests_ppx.ml})))

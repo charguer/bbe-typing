@@ -13,6 +13,15 @@
   (modules bbe_rewriter)
 )
 
+; (executable
+;   (modes byte exe)
+;   (name bbe_ppx_rewriter)
+;   (libraries
+;     bbe_compile_only_lib
+;     ocaml-compiler-libs.common)
+;   (modules bbe_ppx_rewriter)
+; )
+
 (library
  (modes byte native)
  (name typer_lib)
@@ -26,7 +35,7 @@
    pprint
  )
 
- (modules (:standard \ typer web bbe_rewriter))
+ (modules (:standard \ typer web bbe_rewriter)) ; bbe_ppx_rewriter
  (modules_without_implementation ast)
 )
 
@@ -46,4 +55,3 @@
     (flags (:standard -g -warn-error -16 -w -9-27-32-33-34-37))
   )
 )
-

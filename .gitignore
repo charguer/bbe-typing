@@ -14,6 +14,14 @@ src/flags.ml
 *_typed.ml
 *_expanded.ml
 *_translated.ml
-*_generated.ml
+*_rewritten.ml
+*generated*
 test/unit_tests_debug.ml
 _coverage/*
+*prompt*
+src/flags.ml
+
+# temporary
+ppx_compile_only/*
+src/bbe_ppx_rewriter.ml
+test/unit_tests_ppx_rewritten.ml

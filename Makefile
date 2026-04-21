@@ -9,6 +9,9 @@ typer:
 bbe_rewriter:
 	$(MAKE) -C src bbe_rewriter
 
+# bbe_ppx_rewriter:
+# 	$(MAKE) -C src bbe_ppx_rewriter
+
 # ppx:
 # 	dune build ppx/ppx_bbe_runner.exe
 # 	rm -f ppx_bbe

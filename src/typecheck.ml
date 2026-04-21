@@ -893,6 +893,13 @@ and typecheck_pat ?(expected_typ:typ option) (e : env) (p : pat) : pat =
       unify_or_error ~loc e (typ_arrow [exp_typ] the_typ_bool) tyv (Unable_to_unify (exp_typ, tyv));
  *)
 
+  | Trm_apps ({trm_desc = Trm_var "__st"; trm_loc = l}, [t0]) ->
+    let typ = typ_nameless () in
+    let t0' = aux_trm ~env:e ~expected_typ:(typ_arrow [typ] the_typ_bool) t0 in
+    (* Gave a type to __st as a function that takes a predicate, but this is for debugging, as this type would never be used (verify claim...) *)
+    (* The actual type of the pattern is "typ", which is the input type infered from typechecking of the predicate t0 *)
+    return typ (Trm_apps (trm_var ?loc:(Some l) ?typ:(Some (typ_arrow [typ_arrow [typ] (the_typ_bool)] (the_typ_bool))) "__st", [t0'])) e
+
    (* Inversor pattern *)
   | Trm_apps (t0, ps) ->
     (* For the moment this is expected to work with "__pattern_XXX" written by hand.  *)
@@ -901,7 +908,7 @@ and typecheck_pat ?(expected_typ:typ option) (e : env) (p : pat) : pat =
     let typ_args = List.map (fun _ -> typ_nameless ()) ps in
 
     (* Typecheck the function, while checking whether it has prefix "__pattern_XXX" with [env_is_in_pattern] flag *)
-    let t0 = typecheck_trm ~expected_typ:(typ_arrow [typ] (typ_option ((typ_tuple_flex typ_args)))) {e with env_is_in_pattern = true} t0 in
+    let t0 = aux_trm ~env:{e with env_is_in_pattern = true} ~expected_typ:(typ_arrow [typ] (typ_option ((typ_tuple_flex typ_args)))) t0 in
 
     (* Recursively forwarding the bindings to the next patterns *)
     let rec aux env ps typ_args : pat list =
