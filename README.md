@@ -8,16 +8,13 @@ Implementation of the language defined in *source paper*
 
 ### Overview 
 
-...
+This project is a prototype implementation of a PPX extension for OCaml.
 
 ### Requirements
 
 - `opam`
 - OCaml `4.14.x`
 - `dune >= 3.0`
-
-At the moment, this project should be used with OCaml 4.14. The code currently
-does not build cleanly on OCaml 5.x.
 
 ### Installation
 
@@ -34,11 +31,7 @@ project uses `ppxlib`, `ocamlformat-lib`, `pprint`, and `ocaml-compiler-libs`.
 
 ### Compilation
 
-The commands below were tested locally from the repository root:
-
-```bash
-dune build src/typer.exe src/bbe_rewriter.exe demo/test_code.exe
-```
+The command `make` from the root build all of the executables of the tool.
 
 ### Usage
 
@@ -54,8 +47,10 @@ typing rules of *source paper*.
 Tested command:
 
 ```bash
-_build/default/src/typer.exe test/unit_tests_bbe.ml
+typer.exe test/unit_tests_bbe.ml
 ```
+
+For simplicity, both this one and the next executable file are symlinked to the root directory from `_build/default/src`.
 
 2. As a standalone rewriter, with `bbe_rewriter.exe`.
 
@@ -66,7 +61,7 @@ outputs its translation by the compilation scheme, with the suffix
 Tested command:
 
 ```bash
-_build/default/src/bbe_rewriter.exe test/unit_tests_ppx.ml
+bbe_rewriter.exe test/unit_tests_ppx.ml
 ```
 
 This generates `test/unit_tests_ppx_rewritten.ml`.
@@ -76,7 +71,7 @@ This generates `test/unit_tests_ppx_rewritten.ml`.
 The ppx `ppx_bbe` can be attached directly in a Dune stanza. In the target
 stanza, add:
 
-```lisp
+```ocaml
 (preprocess (pps ppx_bbe))
 ```
 

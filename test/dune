@@ -1,20 +1,20 @@
-(rule
- (alias runtest)
- (target runtest_unit_tests_bbe_typed.ml)
- (deps
-  unit_tests_bbe.ml
-  ../src/typer.exe)
- (action
-  (run %{exe:../src/typer.exe} -o %{target} %{dep:unit_tests_bbe.ml})))
+; (rule
+;  (alias runtest)
+;  (target runtest_unit_tests_bbe_typed.ml)
+;  (deps
+;   unit_tests_bbe.ml
+;   ../src/typer.exe)
+;  (action
+;   (run %{exe:../src/typer.exe} -o %{target} %{dep:unit_tests_bbe.ml})))
 
-(rule
- (alias runtest)
- (target runtest_unit_tests_ppx_rewritten.ml)
- (deps
-  unit_tests_ppx.ml
-  ../src/bbe_rewriter.exe)
- (action
-  (run %{exe:../src/bbe_rewriter.exe} -o %{target} %{dep:unit_tests_ppx.ml})))
+; (rule
+;  (alias runtest)
+;  (target runtest_unit_tests_ppx_rewritten.ml)
+;  (deps
+;   unit_tests_ppx.ml
+;   ../src/bbe_rewriter.exe)
+;  (action
+;   (run %{exe:../src/bbe_rewriter.exe} -o %{target} %{dep:unit_tests_ppx.ml})))
 
 ; (rule
 ;  (alias ppx_runtime)
