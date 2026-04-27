@@ -22,6 +22,5 @@ _coverage/*
 src/flags.ml
 
 # temporary
-ppx_compile_only/*
 src/bbe_ppx_rewriter.ml
 test/unit_tests_ppx_rewritten.ml
