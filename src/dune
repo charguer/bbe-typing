@@ -26,7 +26,6 @@
  (modes byte native)
  (name typer_lib)
  (preprocess (pps ppxlib.metaquot))
- (instrumentation (backend bisect_ppx))
  (libraries
    ppxlib
    ppxlib.metaquot_lifters
