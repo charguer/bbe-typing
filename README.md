@@ -10,33 +10,95 @@ Implementation of the language defined in *source paper*
 
 ...
 
+### Requirements
+
+- `opam`
+- OCaml `4.14.x`
+- `dune >= 3.0`
+
+At the moment, this project should be used with OCaml 4.14. The code currently
+does not build cleanly on OCaml 5.x.
+
+### Installation
+
+From the root of the repository:
+
+```bash
+opam switch create . 4.14.1
+eval $(opam env)
+opam install . --deps-only
+```
+
+The project dependencies are declared in `dune-project`. In particular, the
+project uses `ppxlib`, `ocamlformat-lib`, `pprint`, and `ocaml-compiler-libs`.
+
 ### Compilation
 
-Compile the whole project with `make all` in the root directory.
+The commands below were tested locally from the repository root:
+
+```bash
+dune build src/typer.exe src/bbe_rewriter.exe demo/test_code.exe
+```
 
 ### Usage
 
-For the three tools, the flag ... describes whether we do true typing according 
-"scope checking for pattern variables" 
-
 There are three ways of using this tool:
 
-<!-- Ajouter un pointeur vers le fichier / executer telle commande -->
+1. As a standalone typechecker, with `typer.exe`.
 
-1. As a standalone typechecker, with `typer.exe`. It is assumed that the two first options will be used with the flag `Flags.weak_typer` set to `true`. If the flag is instead set to false, `typer.exe` will verify the type of the input extended OCaml file according to the typing rules of *source paper*.
-Example usage: `./typer.exe test/unit_tests_bbe.ml`
+It is assumed that the two first options will be used with the flag
+`Flags.weak_typer` set to `true`. If the flag is instead set to `false`,
+`typer.exe` verifies the type of the input extended OCaml file according to the
+typing rules of *source paper*.
 
-2. The executable `bbe_rewriter.exe` takes as input an extended OCaml file, and outputs its translation by the compilation scheme, with the suffix `_rewriten.ml`.
-Example usage: `./bbe_rewriter.exe test/unit_tests_ppx.ml`
+Tested command:
 
-<!-- Tester bisect_ppx, on a testé toutes les lignes, on a blabla. -->
+```bash
+_build/default/src/typer.exe test/unit_tests_bbe.ml
+```
 
-3. The ppx `ppx_bbe` directly branches into dune, and preprocesses the extended OCaml input before the typecheck. 
-In the dune executable stanza, add `(preprocess (pps ppx_bbe))` to preprocess with the ppx (Check `demo/dune` for an example).
-Example usage: `dune exec demo/test_code.exe`
+2. As a standalone rewriter, with `bbe_rewriter.exe`.
+
+The executable `bbe_rewriter.exe` takes as input an extended OCaml file, and
+outputs its translation by the compilation scheme, with the suffix
+`_rewritten.ml`.
+
+Tested command:
+
+```bash
+_build/default/src/bbe_rewriter.exe test/unit_tests_ppx.ml
+```
+
+This generates `test/unit_tests_ppx_rewritten.ml`.
+
+3. As a Dune PPX rewriter.
+
+The ppx `ppx_bbe` can be attached directly in a Dune stanza. In the target
+stanza, add:
+
+```lisp
+(preprocess (pps ppx_bbe))
+```
+
+See `demo/dune` for a minimal example.
+
+Tested command:
+
+```bash
+dune exec demo/test_code.exe
+```
+
+This currently prints:
+
+```text
+1
+1
+1
+```
 
 Remark: 
-- The typechecker is deactivated by default for both `bbe_rewriter.exe` and `ppx_bbe`. It can be reactivated with the compilation flag <!-- Not sure for ppx_bbe? --> `-strong-typer`.
+- The typechecker is deactivated by default for both `bbe_rewriter.exe` and
+  `ppx_bbe`. It can be reactivated with the flag `-strong-typer`.
 
 <!-- 
 TODO:
