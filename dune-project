@@ -12,6 +12,5 @@
   ppxlib
   ocamlformat-lib
   pprint
-  ocaml-compiler-libs
-  (bisect_ppx :with-test))
+  ocaml-compiler-libs)
 )

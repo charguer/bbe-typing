@@ -20,7 +20,3 @@ test/unit_tests_debug.ml
 _coverage/*
 *prompt*
 src/flags.ml
-
-# temporary
-src/bbe_ppx_rewriter.ml
-test/unit_tests_ppx_rewritten.ml
