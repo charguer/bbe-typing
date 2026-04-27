@@ -33,7 +33,6 @@
    ocaml-compiler-libs.common
    pprint
  )
-
  (modules (:standard \ typer web bbe_rewriter)) ; bbe_ppx_rewriter
  (modules_without_implementation ast)
 )

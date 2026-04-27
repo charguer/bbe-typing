@@ -18,22 +18,22 @@
   )
 )
 
-(executable
-  (modes exe)
-  (name generate_artifacts)
-  (modules generate_artifacts)
-  (libraries
-    typer_lib
-    ocaml-compiler-libs.common
-  )
-)
+; (executable
+;   (modes exe)
+;   (name generate_artifacts)
+;   (modules generate_artifacts)
+;   (libraries
+;     typer_lib
+;     ocaml-compiler-libs.common
+;   )
+; )
 
-(executable
-  (modes exe)
-  (name dump_ppx)
-  (modules dump_ppx)
-  (libraries
-    typer_lib
-    ocaml-compiler-libs.common
-  )
-)
+; (executable
+;   (modes exe)
+;   (name dump_ppx)
+;   (modules dump_ppx)
+;   (libraries
+;     typer_lib
+;     ocaml-compiler-libs.common
+;   )
+; )
