@@ -12,7 +12,6 @@ let log fmt =
   if debug () then Printf.ksprintf print_endline fmt
   else Printf.ifprintf () fmt
 
-
 let print_low_level_typ =
   let open Printf in
   let rec aux t =
@@ -34,7 +33,14 @@ let print_low_level_syntyp sty =
 let print_low_level_trm =
   let open Printf in
   let rec pr_desc i =
-    let aux = aux (i + 2) in function
+    let aux = aux (i + 2) in
+
+    (* let print_except (ex : except) : string =
+      let (lbl, st) = ex in
+      Option.fold ~none:lbl ~some:(fun t -> Printf.sprintf "%s, %s" lbl (aux t)) st
+    in *)
+
+    function
     | Trm_var varid -> sprintf "Var %s" varid
     | Trm_cst c ->
       let c =
@@ -46,13 +52,14 @@ let print_low_level_trm =
         | Cst_string s -> sprintf {|"%s"|} (String.escaped s)
         | Cst_unit () -> "()" in
       sprintf "Cst %s" c
-    | Trm_funs (xs, t) ->
-      sprintf "Funs ([%s], %s)"
+    | Trm_funs (l, xs, t) ->
+      sprintf "Funs%s ([%s], %s)"
+        (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l)
         (String.concat " ; " (List.map (fun (x, sty) ->
           sprintf "(%s : %s)" (print_var x) (print_low_level_syntyp sty)) xs))
         (aux t)
-    | Trm_if (t1, t2, t3) ->
-        sprintf "IfThenElse (%s, %s, %s)" (aux t1) (aux t2) (aux t3)
+    | Trm_if (l, t1, t2, t3) ->
+        sprintf "IfThenElse%s (%s, %s, %s)" (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l) (aux t1) (aux t2) (aux t3)
 
     | Trm_let ({ let_def_body = t1 ; _ }, t2) -> sprintf "Let (%s, %s)" (aux t1) (aux t2)
     | Trm_apps (t, ts) ->
@@ -62,8 +69,9 @@ let print_low_level_trm =
     | Trm_annot (t, sty) ->
       sprintf "Annot (%s, %s)" (aux t) (print_low_level_syntyp sty)
     | Trm_forall (a, t) -> sprintf "Forall (%s, %s)" (print_tconstr a) (aux t)
-    | Trm_match (t, pts) ->
-      sprintf "Match (%s, [%s])"
+    | Trm_match (l, t, pts) ->
+      sprintf "Match%s (%s, [%s])"
+        (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l)
         (aux t)
         (String.concat " ; " (List.map (fun (_p, t) -> "_ -> " ^ aux t) pts))
     | Trm_tuple ts ->
@@ -72,12 +80,25 @@ let print_low_level_trm =
     | Trm_not t -> sprintf "Not %s" (aux t)
     | Trm_and (t1, t2) -> sprintf "And (%s, %s)" (aux t1) (aux t2)
     | Trm_or (t1, t2) -> sprintf "Or (%s, %s)" (aux t1) (aux t2)
-    | Trm_while (b, t) -> sprintf "While (%s, %s)" (aux b) (aux t)
-    | Trm_switch cases ->
-      sprintf "Switch [%s]"
+    | Trm_while (l, b, t) -> sprintf "While%s (%s, %s)" (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l) (aux b) (aux t)
+    | Trm_switch (l, cases) ->
+      sprintf "Switch%s [%s]"
+        (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l)
         (String.concat "\n"
           (List.map (fun (b, t) -> (sprintf "| case %s then %s" (aux b) (aux t)))
         cases))
+    | Trm_block (l, t) -> sprintf "Block (%s, %s)" l (aux t)
+
+    | Trm_exit (l, t) -> sprintf "Exit (%s, %s)" l (aux t)
+    | Trm_return (l, t) -> sprintf "Return (%s, %s)" l (aux t)
+    | Trm_break l -> sprintf "Break %s" l
+    | Trm_continue l -> sprintf "Continue %s" l
+    | Trm_next l -> sprintf "Next %s" l
+    | Trm_try_with (t1, p, t2) -> sprintf "Try_with (%s, %s, %s)" (aux t1) (aux p) (aux t2)
+
+    (* | Trm_raise ex -> sprintf "Raise (%s)" (print_except ex)
+    | Trm_try (t1, ex, t2) -> sprintf "Try_With (%s, %s, %s)" (aux t1) (print_except ex) (aux t2) *)
+
     | Trm_bbe_is (t, p) -> sprintf "Is (%s, %s)" (aux t) (aux p)
     | Trm_pat_var varid -> sprintf "PVar %s" varid
     | Trm_pat_wild -> sprintf "Wildcard"
@@ -90,6 +111,8 @@ let print_low_level_trm =
       space
       space (print_low_level_typ t.trm_typ) in
   aux 0
+
+
 
 let print_low_level_bind (b : bind) =
   let open Printf in

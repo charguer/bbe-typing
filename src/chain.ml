@@ -71,14 +71,10 @@ let full
   call_back_syntax
   untyped_input_ocamlast =
 
-  (* TODO YL:
-     typed / untyped
-     input / compiled
-     ocamlast / bbeast
-      *)
-
+  (* Translation to IR *)
   let untyped_input_bbeast : Ast_fix.program = Ocaml_to_ast.tr_structure untyped_input_ocamlast in
 
+  (* Typing *)
   let typed_input_bbeast =
     wrapper
       (chain
@@ -109,7 +105,6 @@ let full
     call_back_syntax res
   ) ;
 
-
   (* simplified ast (compilation) *)
   let typed_compiled_bbeast =
     if !Flags.recompile then
@@ -138,8 +133,8 @@ let full
     close_out out
   ) ; *)
 
-  (*  *)
-  let typed_compiled_bbeast =
+  (* Deprecated --- Typechecking pass on the generated code *)
+  (* let typed_compiled_bbeast =
     if !Flags.recompile && false then
     Some (wrapper
         (chain
@@ -151,7 +146,7 @@ let full
           ~printing_styles)
           typed_compiled_bbeast)
     else None
-  in
+  in *)
 
   let out_str_ocamlast =
     if !Flags.recompile && !Flags.expand then
@@ -167,9 +162,8 @@ let full
   let out_str_typed = Ast_print.to_string ~style:printing_styles typed_input_bbeast in
   (* The ast is either retyped, or not.  *)
   let out_str_compiled =
-    Option.fold ~none:"" ~some:(Ast_print.to_string ~style:printing_styles) typed_compiled_bbeast
+    Ast_print.to_string ~style:printing_styles typed_compiled_bbeast
   in
-
 
 (*
   let out_str_transformed = "" in

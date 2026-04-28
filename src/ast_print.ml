@@ -471,6 +471,10 @@ and trm_to_doc ~style t =
 
 and trm_to_doc_raw ~style (t : trm) : doc =
   let aux = trm_to_doc_raw ~style in
+    (* let ex_to_doc (ex : except) : doc =
+    let (lbl, st) = ex in
+    Option.fold ~none:(string lbl) ~some:(fun t -> string lbl ^^ blank 1 ^^ (aux t)) st
+  in *)
   let auxs = List.map aux in
 (*   let match_trm_apps =
     match t.trm_desc with
@@ -560,7 +564,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
 
   | Trm_var varid -> varid_to_doc ~style varid
 
-  | Trm_funs (xs_raw, t1) ->
+  | Trm_funs (l, xs_raw, t1) ->
     (* fun (x1 : ty1) ... : tyr -> t *)
     let xs = List.map fst xs_raw in
     let xs = List.map print_var_parens xs in
@@ -596,19 +600,19 @@ and trm_to_doc_raw ~style (t : trm) : doc =
         separate (blank 1) (List.map string xs)
       end in
     separate (blank 1) [
-      string "fun";
+      string (sprintf "fun%s" (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l));
       args;
       string "->";
       aux t1
     ]
 
-  | Trm_if (t0, t1, t2) ->
+  | Trm_if (l, t0, t1, t2) ->
       let s0 =
         if style.style_binds <> BindsNone then (* In this case, the style is either "BindsToplevel" or "BindsAll" *)
           with_bindings ~style t0
         else aux t0
       in
-         string "if"
+         string (sprintf "if%s" (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l))
       ^^ blank 1
       ^^ s0
       ^^ blank 1
@@ -620,10 +624,10 @@ and trm_to_doc_raw ~style (t : trm) : doc =
       ^^ blank 1
       ^^ aux t2
 
-  | Trm_let ({ let_def_bind = Bind_anon; let_def_body = { trm_desc = Trm_funs (xs, t1); _ }; _ }, t2) ->
+  | Trm_let ({ let_def_bind = Bind_anon; let_def_body = { trm_desc = Trm_funs (_l, xs, t1); _ }; _ }, t2) ->
       failwith "functions cannot appear as first argument of a trm_seq"
 
-  | Trm_let ({ let_def_bind = Bind_var f; let_def_body = { trm_desc = Trm_funs (xs, t1); _ }; let_def_rec }, t2) ->
+  | Trm_let ({ let_def_bind = Bind_var f; let_def_body = { trm_desc = Trm_funs (_l, xs, t1); _ }; let_def_rec }, t2) ->
       let isrec =
         match let_def_rec with
         | Recursive -> true
@@ -739,8 +743,8 @@ and trm_to_doc_raw ~style (t : trm) : doc =
         ^^ blank 1
         ^^ parens (aux t1)
 
-  | Trm_match (t0, pts) ->
-      string "begin match"
+  | Trm_match (l, t0, pts) ->
+      string (sprintf "begin match%s" (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l))
         ^^ blank 1
         ^^ aux t0
         ^^ blank 1
@@ -805,7 +809,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
     ^^ string "||"
     ^^ blank 1
     ^^ d2
-  | Trm_switch cases ->
+  | Trm_switch (l, cases) ->
     let case_to_doc (b1, t2) =
       let d1 =
         if style.style_binds = BindsAll then
@@ -821,15 +825,14 @@ and trm_to_doc_raw ~style (t : trm) : doc =
       ^^ blank 1
       ^^ d2
     in
-       string "switch"
+       string (sprintf "switch%s" (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l))
     ^^ blank 1
     ^^ enclose (lbracket ^^ hardline) (hardline ^^ rbracket) (
       separate (semi ^^ hardline)
       (List.map case_to_doc cases)
     )
 
-
-  | Trm_while (b1, t2) ->
+  | Trm_while (l, b1, t2) ->
     (* has the form: [while "e1" do "e2" done] *)
     let d1 =
       if style.style_binds <> BindsNone then
@@ -837,7 +840,7 @@ and trm_to_doc_raw ~style (t : trm) : doc =
       aux b1
     in
     let d2 = aux t2 in
-       string "while"
+       string (sprintf "while%s" (Option.fold ~none:"" ~some:(fun l -> "_" ^ l) l))
     ^^ blank 1
     ^^ parens d1
     ^^ blank 1
@@ -847,6 +850,81 @@ and trm_to_doc_raw ~style (t : trm) : doc =
     ^^ d2
     ^^ hardline
     ^^ string "done"
+
+  | Trm_exit (lbl, t) ->
+    let d = aux t in
+       string "__exit"
+    ^^ blank 1
+    ^^ string lbl
+    ^^ blank 1
+    ^^ d
+  | Trm_return (lbl, t) ->
+    let d = aux t in
+       string "__return"
+    ^^ blank 1
+    ^^ string lbl
+    ^^ blank 1
+    ^^ d
+  | Trm_break lbl ->
+       string "__break"
+    ^^ blank 1
+    ^^ string lbl
+  | Trm_continue lbl ->
+       string "__continue"
+    ^^ blank 1
+    ^^ string lbl
+  | Trm_next lbl ->
+       string "__next"
+    ^^ blank 1
+    ^^ string lbl
+  | Trm_block (lbl, t) ->
+    let d = aux t in
+       string "__block"
+    ^^ blank 1
+    ^^ string lbl
+    ^^ blank 1
+    ^^ d
+
+  | Trm_try_with (t1, p, t2) ->
+    (* has the form: [try "e1" with | p -> "e2"] *)
+    let d1 = aux t1 in
+    let dp = aux p in
+    let d2 = aux t2 in
+       string "try"
+    ^^ blank 1
+    ^^ parens d1
+    ^^ blank 1
+    ^^ string "with"
+    ^^ hardline
+    ^^ blank 2
+    ^^ bar
+    ^^ blank 1
+    ^^ dp
+    ^^ blank 1
+    ^^ string "->"
+    ^^ blank 1
+    ^^ d2
+
+  (* | Trm_raise ex ->
+    let dex = ex_to_doc ex in
+       string "raise"
+    ^^ blank 1
+    ^^ dex
+  | Trm_try (t1, ex, t2) ->
+    let d1 = aux t1 in
+    let dex = ex_to_doc ex in
+    let d2 = aux t2 in
+       string "try"
+    ^^ blank 1
+    ^^ d1
+    ^^ string "with"
+    ^^ blank 1
+    ^^ dex
+    ^^ blank 1
+    ^^ string "->"
+    ^^ blank 1
+    ^^ d2 *)
+
 
   | Trm_bbe_is (t1, p2) ->
       let d1 = aux t1 in
@@ -909,7 +987,6 @@ and trm_to_doc_raw ~style (t : trm) : doc =
       ^^ blank 1
       ^^ d2
     )
-
 
 and var_and_typ_to_doc (ty : typ) (x : string) =
   parens (

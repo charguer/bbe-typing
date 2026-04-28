@@ -6,6 +6,22 @@
   (modules typer)
 )
 
+(executable
+  (modes byte exe)
+  (name bbe_rewriter)
+  (libraries typer_lib)
+  (modules bbe_rewriter)
+)
+
+; (executable
+;   (modes byte exe)
+;   (name bbe_ppx_rewriter)
+;   (libraries
+;     bbe_compile_only_lib
+;     ocaml-compiler-libs.common)
+;   (modules bbe_ppx_rewriter)
+; )
+
 (library
  (modes byte native)
  (name typer_lib)
@@ -17,28 +33,23 @@
    ocaml-compiler-libs.common
    pprint
  )
-
- (modules (:standard \ typer web))
+ (modules (:standard \ typer web bbe_rewriter)) ; bbe_ppx_rewriter
  (modules_without_implementation ast)
 )
 
-(executable
- (modes js)
- (name web)
- (libraries
-  typer_lib
-  js_of_ocaml-lwt
- )
- (preprocess (pps lwt_ppx js_of_ocaml-ppx))
- (modules web)
-)
+; (executable
+;  (modes js)
+;  (name web)
+;  (libraries
+;   typer_lib
+;   js_of_ocaml-lwt
+;  )
+;  (preprocess (pps lwt_ppx js_of_ocaml-ppx))
+;  (modules web)
+; )
 
 (env
   (dev
     (flags (:standard -g -warn-error -16 -w -9-27-32-33-34-37))
   )
-  (release
-    (js_of_ocaml (flags :standard \ --pretty))
-  )
 )
-

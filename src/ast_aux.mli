@@ -65,20 +65,31 @@ val trm_desc_unit : unit -> trm_desc
 val trm_desc_var : var -> trm_desc
 (* val trm_desc_var_symbol : ?typ:typ0 -> ?resolution:varid_resolution -> symbol -> trm_desc
  *)
-val trm_desc_funs : varsyntyps -> trm -> trm_desc
+val trm_desc_funs : label option -> varsyntyps -> trm -> trm_desc
 val trm_desc_constr : ?loc:loc -> ?typ:typ -> constr -> trms -> trm_desc
-val trm_desc_if : trm -> trm -> trm -> trm_desc
+val trm_desc_if : label option -> trm -> trm -> trm -> trm_desc
 val trm_desc_let : rec_flag -> varsynschopt -> trm -> trm -> trm_desc
 val trm_desc_let_def : let_def -> trm -> trm_desc
 val trm_desc_seq : trm -> trm -> trm_desc
 val trm_desc_apps : trm -> trms -> trm_desc
-val trm_desc_match : trm -> (pat * trm) list -> trm_desc
+val trm_desc_match : label option -> trm -> (pat * trm) list -> trm_desc
 val trm_desc_tuple : trm list -> trm_desc
 val trm_desc_not : trm -> trm_desc
 val trm_desc_and : trm -> trm -> trm_desc
 val trm_desc_or : trm -> trm -> trm_desc
-val trm_desc_while : bbe -> trm -> trm_desc
-val trm_desc_switch : (bbe * trm) list -> trm_desc
+val trm_desc_while : label option -> bbe -> trm -> trm_desc
+val trm_desc_switch : label option -> (bbe * trm) list -> trm_desc
+val trm_desc_block : label -> trm -> trm_desc
+val trm_desc_exit : label -> trm -> trm_desc
+val trm_desc_return : label -> trm -> trm_desc
+val trm_desc_break : label -> trm_desc
+val trm_desc_continue : label -> trm_desc
+val trm_desc_next : label -> trm_desc
+val trm_desc_try_with : trm -> pat -> trm -> trm_desc
+
+
+(* val trm_desc_raise : except -> trm_desc
+val trm_desc_try : trm -> except -> trm -> trm_desc *)
 
 val trm_desc_bbe_is : trm -> pat -> trm_desc
 
@@ -105,9 +116,9 @@ val trm_var : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) var -> trm
 val trm_var_varid : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) varid -> trm
 val trm_tuple : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm list -> trm
 
-val trm_funs : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) varsyntyps -> trm -> trm (* Doesn't work if the list is empty: use [trm_funs_if_non_empty] in such cases. *)
+val trm_funs : ?loc:loc -> ?typ:typ -> label option -> (* ?annot:annot -> *) varsyntyps -> trm -> trm (* Doesn't work if the list is empty: use [trm_funs_if_non_empty] in such cases. *)
 val trm_constr : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) constr -> trms -> trm
-val trm_if : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm -> trm
+val trm_if : ?loc:loc -> ?typ:typ -> label option -> (* ?annot:annot -> *) trm -> trm -> trm -> trm
 val trm_let : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) rec_flag -> varsynschopt -> trm -> trm -> trm
 val trm_let_def : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) let_def -> trm -> trm
 val trm_seq : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
@@ -115,14 +126,23 @@ val trm_apps : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trms -> trm
 val trm_annot : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> syntyp -> trm
 val trm_forall : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) tvar_rigid -> trm -> trm
 val trm_foralls : ?loc:loc -> ?typ:typ -> tvar_rigid list -> trm -> trm (* Works even if the list is empty. *)
-val trm_match : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> (pat * trm) list -> trm
+val trm_match : ?loc:loc -> ?typ:typ -> label option -> (* ?annot:annot -> *) trm -> (pat * trm) list -> trm
 
 val trm_not : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm
 val trm_and : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
 val trm_or : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
-val trm_while : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) bbe -> trm -> trm
-val trm_switch : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) (bbe * trm) list -> trm
+val trm_while : ?loc:loc -> ?typ:typ -> label option -> (* ?annot:annot -> *) bbe -> trm -> trm
+val trm_switch : ?loc:loc -> ?typ:typ -> label option -> (* ?annot:annot -> *) (bbe * trm) list -> trm
+val trm_block : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) label -> trm -> trm
 
+val trm_exit : ?loc:loc -> ?typ:typ -> label -> trm -> trm
+val trm_return : ?loc:loc -> ?typ:typ -> label -> trm -> trm
+val trm_break : ?loc:loc -> ?typ:typ -> label -> trm
+val trm_continue : ?loc:loc -> ?typ:typ -> label -> trm
+val trm_next : ?loc:loc -> ?typ:typ -> label -> trm
+
+(* val trm_raise : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) except -> trm
+val trm_try : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> except -> trm -> trm *)
 
 
 (* val trm_or : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm -> trm -> trm
@@ -140,10 +160,18 @@ val trm_pat_var : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) var -> trm
 val trm_pat_var_varid : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) varid -> trm
 val trm_pat_wild : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) unit -> trm
 val trm_pat_when : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) pat -> bbe -> trm
+val trm_assert_false : ?loc:loc -> ?typ:typ -> unit -> trm
 
+val trm_magic : ?loc:loc -> ?typ:typ -> trm -> trm
+val trm_try_with : ?loc:loc -> ?typ:typ -> trm -> pat -> trm -> trm
+
+val trm_try_next : ?loc:loc -> ?typ:typ -> trm -> label -> trm -> trm
+val trm_try_exit : ?loc:loc -> ?typ:typ -> trm -> label -> (* trm -> trm -> *) trm
+val trm_raise_next : ?loc:loc -> ?typ:typ -> label -> trm
+val trm_raise_exit : ?loc:loc -> ?typ:typ -> label -> trm -> trm
 
 (* Like [trm_funs], but simply returns the body if no arguments are provided. *)
-val trm_funs_if_non_empty : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) varsyntyps -> trm -> trm
+val trm_funs_if_non_empty : ?loc:loc -> ?typ:typ -> label option -> (* ?annot:annot -> *) varsyntyps -> trm -> trm
 (* Like [trm_tuple], but accepts any list (return the one term if there is only one, and unit
    if there are none). *)
 val trm_tuple_flex : ?loc:loc -> ?typ:typ -> (* ?annot:annot -> *) trm list -> trm
@@ -209,6 +237,10 @@ val the_typ_top : typ
 val mk_sch : tvar_rigid list -> typ -> sch
 val sch_of_nonpolymorphic_typ : typ -> sch
 val synsch_of_nonpolymorphic_typ : syntyp -> synsch
+
+(* Used for the weak typer *)
+val the_sch_top : sch
+val env_add_weak_var : env -> var -> env
 
 (* Like [typ_arrow], but if its first argument is empty, returns the second. *)
 val typ_arrow_flexible : typ list -> typ -> typ

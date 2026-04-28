@@ -1,3 +1,42 @@
+; (rule
+;  (alias runtest)
+;  (target runtest_unit_tests_bbe_typed.ml)
+;  (deps
+;   unit_tests_bbe.ml
+;   ../src/typer.exe)
+;  (action
+;   (run %{exe:../src/typer.exe} -o %{target} %{dep:unit_tests_bbe.ml})))
+
+; (rule
+;  (alias runtest)
+;  (target runtest_unit_tests_ppx_rewritten.ml)
+;  (deps
+;   unit_tests_ppx.ml
+;   ../src/bbe_rewriter.exe)
+;  (action
+;   (run %{exe:../src/bbe_rewriter.exe} -o %{target} %{dep:unit_tests_ppx.ml})))
+
+; (rule
+;  (alias ppx_runtime)
+;  (target unit_tests_ppx_generated.ml)
+;  (mode promote)
+;  (deps
+;   ../tools/dump_ppx.exe
+;   unit_tests_ppx.ml)
+;  (action
+;   (run %{dep:../tools/dump_ppx.exe} --output %{target} %{dep:unit_tests_ppx.ml})))
+
+; (executable
+;  (name unit_tests_ppx_generated)
+;  (modules unit_tests_ppx_generated)
+;  (flags (:standard -w -23-26-27-32-34-39)))
+
+; (rule
+;  (alias ppx_runtime)
+;  (deps
+;   unit_tests_ppx.ml)
+;  (action
+;   (run %{exe:unit_tests_ppx_generated.exe})))
 
 ; (rule
 ; 	(alias runtest)
@@ -6,121 +45,11 @@
 ; 	(action (run %{dep:../src/typer.exe} %{mlfile}))
 ; )
 
-; (executable
-;   (name unit_tests_typed)
-;   (modules unit_tests_typed)
-;   (flags (:standard -w -23-26-27-32-34-39)))
-
 ; (rule
-; 	(alias runtest)
-; 	(deps (:mlfile paper.ml))
-; 	(targets paper_typed.ml)
-; 	(action (run %{dep:../src/typer.exe} %{mlfile}))
-; )
-
-; (executable
-;   (name paper_typed)
-;   (modules paper_typed)
-;   (flags (:standard -w -23-26-27-32-34-39)))
-
-; (rule
-; 	(alias runtest)
-; 	(deps (:mlfile advanced.ml))
-; 	(targets advanced_typed.ml)
-; 	(action (run %{dep:../src/typer.exe} %{mlfile}))
-; )
-
-; (executable
-;   (name advanced_typed)
-;   (modules advanced_typed)
-;   (flags (:standard -w -23-26-27-32-34-39)))
-
-; (rule
-; 	(alias runtest)
-; 	(deps (:mlfile debug.ml))
-; 	(targets debug_typed.ml)
-; 	(action (run %{dep:../src/typer.exe} -relax-error-messages %{mlfile}))
-; )
-
-; (executable
-;   (name debug_typed)
-;   (modules debug_typed)
-;   (flags (:standard -w -23-26-27-32-34-39)))
-
-; (rule
-; 	(alias runtest)
-; 	(deps ../src/typer.exe (:mlfiles (glob_files ../web/examples/*.ml)))
-; 	(action (run %{dep:./test_examples.sh}))
-; )
-
-; (rule
-; 	(alias runtest)
-; 	(targets quadratic_generated_10.ml quadratic_generated_10_typed.ml)
-; 	(action (progn
-;     (run %{dep:./quadratic_generator.exe} 10)
-;     (run %{dep:../src/typer.exe} quadratic_generated_10.ml)))
-; )
-
-; (executable
-;   (name quadratic_generated_10_typed)
-;   (modules quadratic_generated_10_typed)
-;   (flags (:standard -w -23-26-27-32-34-39)))
-
-; (rule
-; 	(alias runtest)
-; 	(targets quadratic_generated_200.ml quadratic_generated_200_typed.ml)
-; 	(action (progn
-;     (run %{dep:./quadratic_generator.exe} 200)
-;     (run %{dep:../src/typer.exe} quadratic_generated_200.ml)))
-; )
-
-; (executable
-;   (name quadratic_generated_200_typed)
-;   (modules quadratic_generated_200_typed)
-;   (flags (:standard -w -23-26-27-32-34-39)))
-
-; (rule
-; 	(alias runtest)
-; 	(targets worstcase_gen_10_5_5_5.ml worstcase_gen_10_5_5_5_typed.ml)
-; 	(action (progn
-;     (run %{dep:./worstcase_gen.exe} 10 5 5 5)
-;     (run %{dep:../src/typer.exe} worstcase_gen_10_5_5_5.ml)))
-; )
-
-; (executable
-;   (name worstcase_gen_10_5_5_5_typed)
-;   (modules worstcase_gen_10_5_5_5_typed)
-;   (flags (:standard -w -23-26-27-32-34-39)))
-
-; (rule
-; 	(alias runtest)
-; 	(targets worstcase_gen_100_20_20_20.ml worstcase_gen_100_20_20_20_typed.ml)
-; 	(action (progn
-;     (run %{dep:./worstcase_gen.exe} 100 20 20 20)
-;     (run %{dep:../src/typer.exe} worstcase_gen_100_20_20_20.ml)))
-; )
-
-; (executable
-;   (name worstcase_gen_100_20_20_20_typed)
-;   (modules worstcase_gen_100_20_20_20_typed)
-;   (flags (:standard -w -23-26-27-32-34-39)))
-
-; (executable
-;  (name quadratic_generator)
-;  (modules quadratic_generator))
-
-; (executable
-;  (name worstcase_gen)
-;  (modules worstcase_gen))
-
-; (rule
-; 	(alias runtest)
-; 	(deps (:mlfile aberth.ml))
-; 	(targets aberth_typed.ml)
-; 	(action (run %{dep:../src/typer.exe} %{mlfile}))
-; )
-
-; (test
-;   (name aberth_typed)
-;   (flags (:standard -w -23-26-27-32-34-39)))
-
+;  (alias runtest)
+;  (target runtest_unit_tests_ppx_direct_rewritten.ml)
+;  (deps
+;   unit_tests_ppx.ml
+;   ../src/bbe_ppx_rewriter.exe)
+;  (action
+;   (run %{exe:../src/bbe_ppx_rewriter.exe} -o %{target} %{dep:unit_tests_ppx.ml})))

@@ -810,7 +810,7 @@ let sch_of_let_body (e : env) (t : trm) : sch =
     match t.trm_desc with
     | Trm_annot (t, aty) -> (* case of polymorphic let_value *)
         get_annot_sch_rec ~loc:t.trm_loc e aty
-    | Trm_funs (vs2, {trm_desc = Trm_annot (t, aty); _}) -> (* case of polymorphic function *)
+    | Trm_funs (_, vs2, {trm_desc = Trm_annot (t, aty); _}) -> (* case of polymorphic function *)
         let ty = aty.syntyp_typ in
         let tys = List.map get_typ_for_arg vs2 in
         let ty_arrow = typ_arrow tys ty in

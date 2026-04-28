@@ -1,149 +1,122 @@
 
-Extended typing with Binding Boolean Expressions
+ppx_bbe
 ================
 
+PPX extension for *binding-boolean-expressions*.
 
-# Installation
+Implementation of the language defined in *source paper*
 
-## Using Esy
+### Overview 
 
+This project is a prototype implementation of a PPX extension for OCaml.
 
-Install esy:
-```bash
-	npm install -g esy
-```
+### Requirements
 
-Or update esy (currently using 0.9.2):
-```
-  npm install --update esy  -g
-```
+- `opam`
+- OCaml `4.14.x`
+- `dune >= 3.0`
 
-Then, to install the dependencies, compile the project, and test it:
-```bash
-	esy
-```
+### Installation
 
-To run the produced typer on a single file:
-```bash
-	esy _build/default/src/typer.exe file.ml
-```
-
-For example, to print the raw printed term of the unit tests:
-```bash
-	esy _build/default/src/typer.exe -print-parsed test/unit_tests.ml
-	cat test/unit_tests_parsed.ml
-```
-
-Or to print the typed unit tests:
-```bash
-	esy _build/default/src/typer.exe test/unit_tests.ml -o test/unit_tests_typed.ml
-	cat test/unit_tests_typed.ml
-```
-
-
-## Using Opam
-
-Install opam:
-```bash
-	bash -c "sh <(curl -fsSL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)"
- ```
-
-Don't forget to include in .bashrc if needed:
-```bash
-	eval `opam config env`
-```
-
-Then
-```bash
-	opam switch create 4.14
-	opam install ocaml-compiler-libs ocamlfind ocamlbuild pprint ocamlformat ppxlib dune js_of_ocaml-lwt lwt_ppx
-```
-
-### Compilation using Makefile
+From the root of the repository:
 
 ```bash
-	make
+opam switch create . 4.14.1
+eval $(opam env)
+opam install . --deps-only
 ```
 
-This command executes `makes typer`, which produces `typer.exe`,
-then executes `makes test`, which runs `make` in the `test` folder.
+The project dependencies are declared in `dune-project`. In particular, the
+project uses `ppxlib`, `ocamlformat-lib`, `pprint`, and `ocaml-compiler-libs`.
 
-Use `make clean` to remove the generated files.
+### Compilation
 
-Note that, internally, the Makefile from `src` invokes dune for
-compiling the binary.
+The command `make` from the root build all of the executables of the tool.
 
+### Usage
 
-### Compilation from the test folder
+There are three ways of using this tool:
 
-The `test` folder includes a script for compiling a given file,
-or a default file whose name can be edited in that script.
+1. As a standalone typechecker, with `typer.exe`.
+
+It is assumed that the two first options will be used with the flag
+`Flags.weak_typer` set to `true`. If the flag is instead set to `false`,
+`typer.exe` verifies the type of the input extended OCaml file according to the
+typing rules of *source paper*.
+
+Tested command:
 
 ```bash
-	cd test
-	./go.sh debug.ml
+typer.exe test/unit_tests_bbe.ml
 ```
 
-Besides, the command `make chk` runs the unit tests against the
-expected output, which is commited. Use `make unit_tests.exp`
-to manually approve changes, and update the "expected output".
+For simplicity, both this one and the next executable file are symlinked to the root directory from `_build/default/src`.
 
+2. As a standalone rewriter, with `bbe_rewriter.exe`.
 
-### Debugging the typechecker
+The executable `bbe_rewriter.exe` takes as input an extended OCaml file, and
+outputs its translation by the compilation scheme, with the suffix
+`_rewritten.ml`.
+
+Tested command:
 
 ```bash
-	cd src
-	make debug
-	make chk
+bbe_rewriter.exe test/unit_tests_ppx.ml
 ```
 
-With `make debug`, the file `test/debug.ml` is used for debugging.
-The filename can be temporarily customized in `src/Makefile`.
+This generates `test/unit_tests_ppx_rewritten.ml`.
 
-With `make chk`, the file `test/unit_tests.ml` is processed and
-checked against the expected output stored in `test/unit_tests_exp.ml`.
+3. As a Dune PPX rewriter.
 
+The ppx `ppx_bbe` can be attached directly in a Dune stanza. In the target
+stanza, add:
 
-### Manual compilation using dune
+```ocaml
+(preprocess (pps ppx_bbe))
+```
+
+See `demo/dune` for a minimal example.
+
+Tested command:
 
 ```bash
-	dune build
-	cat _build/default/test/unit_tests_typed.ml
+dune exec demo/test_code.exe
 ```
 
-This builds the typechecker as a binary program using the code from `src`,
-then executes the unit tests listed in the file `test/dune`.
-All output is produced in the `_build` folder.
+This currently prints:
 
-Use `dun runtest` to rerun the tests after a change.
-Use `dune clean` to remove that folder.
-
-Compilation using dune does not coexist well with compilation using
-Makefile: after using the Makefile, use `make clean` before using dune.
-
-## Benchmarking
-
-You need `pbench`:
-
-```
-  git clone https://github.com/deepsea-inria/pbench ~/shared
+```text
+1
+1
+1
 ```
 
-and useful in your ~/.bashrc  (adapting the path)
-```
-  alias prun='$HOME/shared/pbench/prun'
-  alias pplot='$HOME/shared/pbench/pplot'
-```
+Remark: 
+- The typechecker is deactivated by default for both `bbe_rewriter.exe` and
+  `ppx_bbe`. It can be reactivated with the flag `-strong-typer`.
 
+<!-- 
+TODO:
+1. Chaque outil doit être prêt out of the box, c'est à dire avec les bons flags, et les bons arguments. Ajouter dans les lignes de commande des flags de la forme --xxx qui modifient ce que tu veux
+2. Dans le readme, donner l'exemple de ce qu'il faut.
+3. Rajouter les dépendances à installer, par exemple arthur avait pas "ocamlformat-lib"
+4. Voir comment ajouter -ppx avec ce que je veux. ce serait vachement cool pour usage
+5. Changer les unittests avec 1 ou deux examples puis génération sur l'IA pour avoir du higher order programming
 
+-->
 
-# Disclaimer
-
-One currently cannot write comments starting with `(**`,
-except for annotating definitions that are expected to fail.
-Otherwise, one gets an error of the form
-```
-	Unsupported, <file>: <position>: attribute
-```
-TODO: handle them properly.
-
+<!--
+- 1 sentence overview of the project 
+- Small example of the kind of code, 1 small translation example with a non trivial example (that does not translate to a let basically) "if x @_is (Some(__), ??y) then y+1 else 0" translates to ... 
+- Installation and usage : 
+  -> For installation you have to git clone this project for the moment
+  -> For usage, (not yet implemented), but there should be 2 ways:
+    => Either an executable that from an extended OCaml gives a rewritten OCaml
+    => A ppx add-on that simply branches to your compilation scheme as a preprocess before compilation.
+- Syntax
+  -> Give a few examples of non trivial usage, and refer to syntax.md & the paper for the full language syntax and the theoretical results
+-->
+ 
+<!-- Check notes :
+https://chatgpt.com/share/69de3c01-9b58-8396-9e24-a294df1ab6c4 
+-->

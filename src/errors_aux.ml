@@ -51,6 +51,8 @@ let string_of_error ~style (e : error) : string =
   | Mismatch_type_switch (ty1, ty2) ->
     sprintf "This expression has type %s, even though a previous branch has type %s"
       (typ_to_string ty1) (typ_to_string ty2)
+  | Mismatch_label_type lbl ->
+    sprintf "Label %s is wrongly typed in environment" lbl
   | Branches_mismatch_match (x, ty1, ty2) ->
     sprintf "Two branches of the pattern-matching disagree on %s: in one case it is typed as %s, in the other as %s."
       x (typ_to_string ty1) (typ_to_string ty2)
@@ -145,6 +147,8 @@ let string_of_error_short (e : error) : string =
   | Mismatch_type_is (ty1, ty2) -> "type mismatch in is"
   | Mismatch_type_switch (ty1, ty2) ->
     sprintf "type mismatch in switch"
+  | Mismatch_label_type lbl ->
+    sprintf "label type mismatch"
   | Sequence _ty -> "non-unit in sequence"
   | Application_mistyped (_ty1, _ty2) -> "mistyped application"
   | Unable_to_unify (_ty1, _ty2) -> "unable to unify"

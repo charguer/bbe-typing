@@ -6,10 +6,20 @@ DEBUGPROG:=../test/debug
 all:
 	@dune build @all
 
-typer: 
+typer:
 	@dune build typer.exe
 	@cd ..; ln -fs _build/default/src/typer.exe typer.exe
 	@echo "Updated typed.exe"
+
+bbe_rewriter:
+	@dune build bbe_rewriter.exe
+	@cd ..; ln -fs _build/default/src/bbe_rewriter.exe bbe_rewriter.exe
+	@echo "Updated bbe_rewriter.exe"
+
+# bbe_ppx_rewriter:
+# 	@dune build bbe_ppx_rewriter.exe
+# 	@cd ..; ln -fs _build/default/src/bbe_ppx_rewriter.exe bbe_ppx_rewriter.exe
+# 	@echo "Updated bbe_ppx_rewriter.exe"
 
 chk: typer
 	$(MAKE) -C ../test chk
@@ -23,7 +33,7 @@ tests: typer
 clean:
 	@ dune clean
 
-clean_all:	
+clean_all:
 	@rm -Rf *.native _build *.cmo *.cmx *.o *.cmi
 	$(MAKE) -C ../test clean
 
@@ -31,7 +41,7 @@ debug: typer
 	@../typer.exe $(DEBUGPROG).ml && \
 	echo "-----------------------------------"  && \
 	sed -i '1,/let __print : _ = 1/d' $(DEBUGPROG)_typed.ml  && \
-	cat $(DEBUGPROG)_typed.ml 
+	cat $(DEBUGPROG)_typed.ml
 
 
 ############################
@@ -51,5 +61,5 @@ build_using_ocamlbuild:
 #	ln -s ../_build/default/src/typer.exe ../typer.exe
 
 #    @ocamlformat --inplace --enable-outside-detected-project ../test/test_typed.ml \
-# ocamlformat --enable-outside-detected-project 
+# ocamlformat --enable-outside-detected-project
 

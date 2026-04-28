@@ -1,9 +1,10 @@
+(** Translates an OCaml Parsetree with extended syntax into the IR language *)
+
 open Asttypes
 open Parsetree
 open Var
 open Ast_fix
 open Ast_aux
-
 
 (* Documentation of parsetree in:
   https://v2.ocaml.org/releases/4.11/htmlman/compilerlibref/Parsetree.html *)
@@ -13,6 +14,7 @@ type ocaml_ast = Parsetree.structure
 (*#########################################################################*)
 (* ** Errors *)
 
+(* TODO: add some handling of the error "unsupported?" *)
 let unsupported ?(loc=loc_none) (m : string) : 'a =
   prerr_endline (Printf.sprintf "🟪 Unsupported, %s: %s" (Ast_print.print_loc loc) m) ;
   exit 1
@@ -55,6 +57,13 @@ let fresh_var () =
   incr fresh_counter;
   "__arg" ^ string_of_int !fresh_counter
 
+
+let fresh_match_counter = ref 0
+
+let fresh_match_var () =
+  incr fresh_match_counter;
+  "__v" ^ string_of_int !fresh_match_counter
+
 (*#########################################################################*)
 (* ** Translate expressions *)
 
@@ -76,13 +85,13 @@ let coretype_to_synsch ty =
     }
   }
 
-let check_uniq ?loc fs : unit =
+(* let check_uniq ?loc fs : unit =
   let rec aux = function
   | [] | [_] -> ()
   | f1 :: f2 :: _ when f1 = f2 ->
     unsupported ?loc (Printf.sprintf "Field %s defined several times." f1)
   | _ :: fs -> aux fs in
-  aux (List.sort compare fs)
+  aux (List.sort compare fs) *)
 
 
 let tr_longident (lid : Longident.t) : string =
@@ -98,7 +107,7 @@ let tr_constant ?loc (c : constant) : cst =
 let varsyntyp_of_var ?loc (x : var) : varsyntyp =
    (x, mk_syntyp_none ?loc ())
 
-(* Translate a pattern in a place in which we only accept variables, or return [None]. *)
+(* Translate a pattern in a place in where we only accept variables, or return [None]*)
 let tr_pat_to_var (p : pattern) : varsyntyp option =
   let loc = p.ppat_loc in
   match p.ppat_desc with
@@ -174,90 +183,6 @@ That is:  local_instance : (var * syntyp) * symbol(why?) * loc(why?) *)
           })
       } body) body (List.rev local_instances) *)
 
-(* let payload_to_symbol loc = function
-  | PStr [{ pstr_desc =
-      Pstr_eval ({ pexp_desc = Pexp_ident { txt = Lident x ; _ } ; _ }, _) ; _ }] ->
-    SymbolName (var x)
-  | PPat ({ ppat_desc = Ppat_tuple ps }, None)
-      when List.for_all (fun p -> p.ppat_desc = Ppat_any) ps ->
-    let i = List.length ps in
-    if i = 1 then unsupported ~loc "Expected number different than 1 here." ;
-    SymbolTuple i
-  | PTyp [%type: int] -> SymbolNumericInt
-  | PTyp [%type: float] -> SymbolNumericFloat
-  | PTyp [%type: string] -> SymbolString
-  | PTyp [%type: unit] -> SymbolTuple 0
-  | PTyp [%type: bool] -> SymbolBool
-  | PPat ([%pat? Get [%p? { ppat_desc = Ppat_record ([(id, _)], Closed) }]], None) ->
-    SymbolGetField (field (tr_longident id.txt))
-  | PPat ([%pat? Set [%p? { ppat_desc = Ppat_record ([(id, _)], Closed) }]], None) ->
-    SymbolSetField (field (tr_longident id.txt))
-  | PPat ([%pat? Make [%p? { ppat_desc = Ppat_record (ps, Closed) }]], None) ->
-    let fs = List.map (fun (id, _) -> field (tr_longident id.txt)) ps in
-    let fs = List.sort compare fs in
-    SymbolMakeRecord fs
-  | PPat ([%pat? With [%p? { ppat_desc = Ppat_record ([(id, _)], Closed) }]], None) ->
-    SymbolRecordWith (field (tr_longident id.txt))
-  | _ -> unsupported ~loc "Invalid payload for an instance." *)
-
-(* Given a list of attributes, extract the [@instance (symbol)] ones and return the
-  list of corresponding symbols. *)
-(* let filter_attributes_binding =
-  List.filter_map (fun attr ->
-    match attr.attr_name.txt with
-    | "instance" | "register" ->
-      (* In practise, the [@register (symbol)] attribute behaves very similarly
-        to a [@instance (symbol)]—its only difference being that it can't introduce
-        names, and that it's not meant to be available to the user. *)
-      Some (payload_to_symbol attr.attr_loc attr.attr_payload)
-    | str ->
-      prerr_endline (Printf.sprintf "Warning: ignored attribute %s." str) ;
-      None) *)
-
-(* type argument_attribute =
-  | Arg_Implicit of symbol
-  | Arg_Instance of symbol *)
-
-let rec pat_attributes p =
-  p.ppat_attributes
-  @ match p.ppat_desc with
-    | Ppat_constraint (p, _) -> pat_attributes p
-    | _ -> []
-
-(* Process the argument attributes. *)
-(* let filter_attributes_argument =
-  List.concat_map (fun attr ->
-    let loc = attr.attr_loc in
-    match attr.attr_name.txt with
-    | "implicit" -> [(Arg_Implicit (payload_to_symbol loc attr.attr_payload), loc)]
-    | "instance" -> [(Arg_Instance (payload_to_symbol loc attr.attr_payload), loc)]
-    | "implicit_instance" ->
-      let symbol = payload_to_symbol loc attr.attr_payload in
-      [(Arg_Implicit symbol, loc) ; (Arg_Instance symbol, loc)]
-    | str ->
-      prerr_endline (Printf.sprintf "Warning: ignored attribute %s." str) ;
-      []) *)
-
-(* Given a list of processed argument attribute, return either [None] if no [Arg_Implicit]
-  is provided, or [Some] with the associated symbol if any. *)
-(* let get_implicit_symbol attrs =
-  List.fold_left (fun ret (attr, loc) ->
-    match attr with
-    | Arg_Implicit symbol ->
-      begin match ret with
-      | None -> Some symbol
-      | Some _ -> unsupported ~loc "implicit argument associated to two separate symbols."
-      end
-    | Arg_Instance _ -> ret) None attrs
- *)
-(* Given a list of processed argument attribute, return the list of local instances it associates
-  with. *)
-(* let get_all_local_instances attrs =
-  List.filter_map (fun (attr, loc) ->
-    match attr with
-    | Arg_Implicit _ -> None
-    | Arg_Instance sym -> Some (sym, loc)) attrs *)
-
 let build_match_on_var ~loc (x : var) (cs : case list) : expression = {
     pexp_desc = Pexp_match ({
         pexp_desc = Pexp_ident { txt = Lident (print_var x) ; loc } ;
@@ -313,11 +238,6 @@ let rec pexp_fun_get_annotated_args_body (e : expression)
   | Pexp_fun (Nolabel, None, p, e1) ->
     begin match tr_pat_to_var p with
     | Some x ->
-      (* Here x and xs are annotated variables. *)
-      (* let attributes = pat_attributes p in *)
-      (* let attrs = filter_attributes_argument attributes in
-      if get_implicit_symbol attrs <> None then
-        unsupported ~loc "implicit argument can only be defined in an explicit instance declaration." ; *)
       begin match pexp_fun_get_annotated_args_body e1 with
       | None -> Some ([x], e1)
       | Some (xs, ei) -> Some (x :: xs, ei)
@@ -338,23 +258,6 @@ let rec pexp_fun_get_annotated_args_body (e : expression)
     Some ([x], e)
   | _ -> None
 
-
-(* FIXME: Do we still need them? *)
-(* let ocaml_to_mode (e : expression) =
-  match e.pexp_desc with
-  | Pexp_construct ({txt = Lident b; _ }, _) ->
-      if b = "true" then Mode_in
-      else if b = "false" then Mode_out
-      else invalid_arg "modes must be booleans litterals."
-  | _ -> invalid_arg "modes must be booleans."
- *)
-(* let rec ocaml_list_to_modes (e : expression) : mode list =
-  match e.pexp_desc with
-  | Pexp_construct ({ txt = Lident "[]"; _ }, _) -> []
-  | Pexp_construct ({ txt = Lident "::"; _ }, Some {pexp_desc = Pexp_tuple [e1; e2]; _ }) ->
-      ocaml_to_mode e1 :: ocaml_list_to_modes e2
-  | _ -> invalid_arg "the input must be a boolean list."
- *)
 (* Given a term of the form [fun (type a b) -> t], return the list [a; b] and t. *)
 let rec extract_leading_type_parameters t =
   match t.pexp_desc with
@@ -438,16 +341,48 @@ let accumulate_arguments_list (cases : expression) : expression list =
     | None -> List.rev acc
   in aux [] cases
 
+(*  -> "__case", applied to 1 arg.
+ -> "@", applied to 2 args.
+ -> "b1", and "_then t1".
+ *)
 let case_inv_opt ~loc (e : expression) : expression option =
   begin match e.pexp_desc with
   | Pexp_apply ({pexp_desc=Pexp_ident{txt=Longident.Lident "__case"; _}; _}, [(Nolabel, e)]) ->
     Some e
   | _ -> None
   end
-(*  -> "__case", applied to 1 arg.
- -> "@", applied to 2 args.
- -> "b1", and "_then t1".
- *)
+
+let recognize_switch_case ~loc (e : expression) : expression * expression =
+  begin match case_inv_opt ~loc e with
+  | Some {pexp_desc=Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "@"; _}; _}, aes); _} ->
+      begin match infix_op_inv ~loc aes with
+      | Some (e1,{pexp_desc=(Pexp_ident {txt=Lident "_then"; _}); _}, e3) ->
+        (* let t1 = tr_exp e1 in
+        let t3 = tr_exp e3 in *)
+        (e1, e3)
+      | _ -> unsupported ~loc "argument in case not in '@_then' format"
+      end
+  | _ -> unsupported ~loc "argument in switch not in 'case' format"
+  end
+
+
+(**
+  [label_attribute_inv attrs] checks whether an attribute list contains label related attributes.
+  Returns [None] if it does not, or [Some L] if it does, L being the corresponding label*)
+let label_attribute_inv (attrs : attributes) : label option =
+  match attrs with
+  | [{attr_name={txt = "label"}; attr_payload}] ->
+    begin match attr_payload with
+    | PStr [{pstr_desc=Pstr_eval ({pexp_desc= Pexp_constant (Pconst_string (l, _, _))}, [])}] -> Some l
+    | _ -> None
+    end
+  | _ -> None
+
+let label_argument_inv (e : expression) : label option =
+  match e.pexp_desc with
+    | Pexp_constant (Pconst_string (l, _, _)) -> Some l
+    | _ -> None
+
 (** End of custom functions  *)
 
 let rec tr_exp (e : expression) : trm =
@@ -475,30 +410,33 @@ let rec tr_exp (e : expression) : trm =
           assert false (* In OCaml, boolean and units are dealt as constructors and not constants. See Pexp_construct below. *) in *)
       return (trm_desc_cst cst)
   | Pexp_let (rf, [vb], e2) ->
-      let lets = tr_let rf e.pexp_attributes vb in
-      let t2 = tr_exp e2 in
-      List.fold_left (fun t l ->
-        trm_let_def ~loc l t) t2 (List.rev lets)
+    (* TODO: bugged, needing a way to get the attribute as element. *)
+    let lets = tr_let rf e.pexp_attributes vb in
+    let t2 = tr_exp e2 in
+    List.fold_left (fun t l ->
+      trm_let_def ~loc l t) t2 (List.rev lets)
   | Pexp_let (rf, vbs, e) -> unsupported ~loc "mutual let defs"
   | Pexp_fun _ | Pexp_function _ ->
-
-      let (xs,(*  local_instances, *) e1) =
-         match pexp_fun_get_annotated_args_body e with
-         | None -> assert false
-         | Some res -> res in
-      let t1 = tr_exp e1 in
-      (* let t2 = add_local_instances local_instances t1 in  *)
-      return (trm_desc_funs xs t1) (* YL: Note : if something broke it is probably here... *)
+    let l = label_attribute_inv e.pexp_attributes in
+    let (xs,(*  local_instances, *) e1) =
+        match pexp_fun_get_annotated_args_body e with
+        | None -> assert false
+        | Some res -> res in
+    let t1 = tr_exp e1 in
+    (* let t2 = add_local_instances local_instances t1 in  *)
+    return (trm_desc_funs l xs t1)
   | Pexp_ifthenelse (e1, e2, Some e3) ->
-      let t1 = tr_exp e1 in
-      let t2 = tr_exp e2 in
-      let t3 = tr_exp e3 in
-      return (Trm_if (t1, t2, t3))
+    let l = label_attribute_inv e.pexp_attributes in
+    let t1 = tr_exp e1 in
+    let t2 = tr_exp e2 in
+    let t3 = tr_exp e3 in
+    return (Trm_if (l, t1, t2, t3))
   | Pexp_ifthenelse (e1, e2, None) ->
-      let t1 = tr_exp e1 in
-      let t2 = tr_exp e2 in
-      return (Trm_if (t1, t2, trm_unit ()))
-      (* LATER: trm_desc_fixs *)
+    let l = label_attribute_inv e.pexp_attributes in
+    let t1 = tr_exp e1 in
+    let t2 = tr_exp e2 in
+    return (Trm_if (l, t1, t2, trm_unit ()))
+    (* LATER: trm_desc_fixs *)
 
   (* YL : low effort/low priority TODO. Function to see BBEs as terms with a wrapper that deletes its bindings. *)
   (* Recognize sugar 'boolof b' *)
@@ -520,6 +458,7 @@ let rec tr_exp (e : expression) : trm =
     end
 
   (* Partial function definition *)
+  (* We decide that partial functions do no expect labels *)
   | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "?!"; _}; _},
     [(_,{pexp_desc = Pexp_apply (e0, aes)})]) ->
 
@@ -545,7 +484,7 @@ let rec tr_exp (e : expression) : trm =
 
     let t0 = tr_exp e0 in
 
-    return (trm_desc_funs fresh_vars (return (trm_desc_apps t0 new_args)))
+    return (trm_desc_funs None fresh_vars (return (trm_desc_apps t0 new_args)))
 
     (* Pattern variables *)
   | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "??"; _}; _}, aes) ->
@@ -581,53 +520,171 @@ let rec tr_exp (e : expression) : trm =
     end
 
   | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__switch"; _}; _}, [cases]) ->
-    (* Folding on cases with an accumulator *)
-    (* I want to match recursively the cases. with an accumulator *)
     let (_, cases) = cases in
     let cases = accumulate_arguments_list cases in
-    let t_cases = List.map
-      (fun e ->
-        begin match case_inv_opt ~loc e with
-        | Some {pexp_desc=Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "@"; _}; _}, aes); _} ->
-            begin match infix_op_inv ~loc aes with
-            | Some (e1,{pexp_desc=(Pexp_ident {txt=Lident "_then"; _}); _}, e3) ->
-              let t1 = tr_exp e1 in
-              let t3 = tr_exp e3 in
-              (t1, t3)
-            | _ -> unsupported ~loc "argument in case not in '@_then' format"
-            end
-        | _ -> unsupported ~loc "argument in switch not in 'case' format"
-        end
-      ) cases in
+    let e_cases = List.map (recognize_switch_case ~loc) cases in
+    let t_cases = List.map (fun (e1, e2) -> let t1 = tr_exp e1 in let t2 = tr_exp e2 in (t1, t2)) e_cases in
+    return (trm_desc_switch None t_cases)
 
-    return (trm_desc_switch t_cases)
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__switch"; _}; _}, [label; cases]) ->
+    let (_, label) = label in
+    let lbl =
+      begin match label_argument_inv label with
+      | Some lbl -> lbl
+      | None -> unsupported ~loc "Expected to have a valid label in string format"
+      end
+    in
+
+    let (_, cases) = cases in
+    let cases = accumulate_arguments_list cases in
+    let e_cases = List.map (recognize_switch_case ~loc) cases in
+    let t_cases = List.map (fun (e1, e2) -> let t1 = tr_exp e1 in let t2 = tr_exp e2 in (t1, t2)) e_cases in
+    return (trm_desc_switch (Some lbl) t_cases)
+
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__switch"; _}; _}, _) -> unsupported ~loc "__switch expects either 1 or 2 arguments"
 
   | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__match"; _}; _}, [e0; cases]) ->
-    (* Folding on cases with an accumulator *)
-    (* I want to match recursively the cases. with an accumulator *)
-    (* Add a : let __v = t1 in ...  *)
+    let v_name = fresh_match_var () in
+    let v = trm_var_varid v_name in
 
     let (_, e0) = e0 in
     let t0 = tr_exp e0 in
     let (_, cases) = cases in
     let cases = accumulate_arguments_list cases in
-    let t_cases = List.map
-    (* fonction, qui prend une liste d'expressions, vérifie si ca a la forme case e1 then e2, si oui, traduits e1 et e2 et renvoie le couple (t1, t2) traduit *)
-      (fun e ->
-        begin match case_inv_opt ~loc e with
-        | Some {pexp_desc=Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "@"; _}; _}, aes); _} ->
-            begin match infix_op_inv ~loc aes with
-            | Some (e1,{pexp_desc=(Pexp_ident {txt=Lident "_then"; _}); _}, e3) ->
-              let t1 = tr_exp e1 in
-              let t3 = tr_exp e3 in
-              (trm_bbe_is t0 t1, t3)
-            | _ -> unsupported ~loc "argument in case not in '@_then' format"
-            end
-        | _ -> unsupported ~loc "argument in switch not in 'case' format"
-        end
-      ) cases in
+    let e_cases = List.map (recognize_switch_case ~loc) cases in
+    let t_cases = List.map (fun (e1, e2) -> let t1 = tr_exp e1 in let t2 = tr_exp e2 in (trm_bbe_is v t1, t2)) e_cases in
 
-    return (trm_desc_let Nonrecursive ("__v", None) t0 (trm_switch t_cases))
+    return (trm_desc_let Nonrecursive (v_name, None) t0 (trm_switch None t_cases))
+
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__match"; _}; _}, [label; e0; cases]) ->
+    let (_, label) = label in
+    let lbl =
+      begin match label_argument_inv label with
+      | Some lbl -> lbl
+      | None -> unsupported ~loc "Expected to have a valid label in string format"
+      end
+    in
+
+    let v_name = fresh_match_var () in
+    let v = trm_var_varid v_name in
+
+    let (_, e0) = e0 in
+    let t0 = tr_exp e0 in
+    let (_, cases) = cases in
+    let cases = accumulate_arguments_list cases in
+    let e_cases = List.map (recognize_switch_case ~loc) cases in
+    let t_cases = List.map (fun (e1, e2) -> let t1 = tr_exp e1 in let t2 = tr_exp e2 in (trm_bbe_is v t1, t2)) e_cases in
+
+    return (trm_desc_let Nonrecursive (v_name, None) t0 (trm_switch (Some lbl) t_cases))
+
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__match"; _}; _}, _) -> unsupported ~loc "__switch expects either 2 or 3 arguments"
+
+  (* TODO: consider other possibility, begin-end with attribute. Represented as a "pstr_eval" with attribute, not very clear but would probably work *)
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__block"; _}; _}, aes) ->
+    let (label, e0) =
+      begin match aes with
+      | [label; e0] -> (label, e0)
+      | _ -> unsupported ~loc "__block expects 2 arguments"
+    end
+    in
+
+    let (_, label) = label in
+    let lbl =
+      begin match label_argument_inv label with
+      | Some lbl -> lbl
+      | None -> unsupported ~loc "Expected to have a valid label in string format"
+      end
+    in
+
+    let (_, e0) = e0 in
+    let t0 = tr_exp e0 in
+    return (trm_desc_block lbl t0)
+
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__exit"; _}; _}, aes) ->
+    let (label, e0) =
+      begin match aes with
+      | [label; e0] -> (label, e0)
+      | _ -> unsupported ~loc "__exit expects 2 arguments"
+      end
+    in
+    let (_, label) = label in
+    let lbl =
+      begin match label_argument_inv label with
+      | Some lbl -> lbl
+      | None -> unsupported ~loc "Expected to have a valid label in string format"
+      end
+    in
+
+    let (_, e0) = e0 in
+    let t0 = tr_exp e0 in
+    return (trm_desc_exit lbl t0)
+
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__return"; _}; _}, aes) ->
+    let (label, e0) =
+      begin match aes with
+      | [label; e0] -> (label, e0)
+      | _ -> unsupported ~loc "__return expects 2 arguments"
+      end
+    in
+    let (_, label) = label in
+    let lbl =
+      begin match label_argument_inv label with
+      | Some lbl -> lbl
+      | None -> unsupported ~loc "Expected to have a valid label in string format"
+      end
+    in
+
+    let (_, e0) = e0 in
+    let t0 = tr_exp e0 in
+    return (trm_desc_return lbl t0)
+
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__break"; _}; _}, aes) ->
+    let label =
+      begin match aes with
+      | [label] -> label
+      | _ -> unsupported ~loc "__break expects 2 arguments"
+      end
+    in
+    let (_, label) = label in
+    let lbl =
+      begin match label_argument_inv label with
+      | Some lbl -> lbl
+      | None -> unsupported ~loc "Expected to have a valid label in string format"
+      end
+    in
+    return (trm_desc_break lbl)
+
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__continue"; _}; _}, aes) ->
+    let label =
+      begin match aes with
+      | [label] -> label
+      | _ -> unsupported ~loc "__break expects 2 arguments"
+      end
+    in
+    let (_, label) = label in
+    let lbl =
+      begin match label_argument_inv label with
+      | Some lbl -> lbl
+      | None -> unsupported ~loc "Expected to have a valid label in string format"
+      end
+    in
+    return (trm_desc_continue lbl)
+
+  | Pexp_apply ({pexp_desc = Pexp_ident {txt = Longident.Lident "__next"; _}; _}, aes) ->
+    let label =
+      begin match aes with
+      | [label] -> label
+      | _ -> unsupported ~loc "__break expects 2 arguments"
+      end
+    in
+    let (_, label) = label in
+    let lbl =
+      begin match label_argument_inv label with
+      | Some lbl -> lbl
+      | None -> unsupported ~loc "Expected to have a valid label in string format"
+      end
+    in
+    return (trm_desc_next lbl)
 
   | Pexp_apply (e0, aes) ->
     let is_labeled lbl =
@@ -716,12 +773,14 @@ let rec tr_exp (e : expression) : trm =
 
  *)
   | Pexp_match (e, cs) ->
-    return (trm_desc_match (tr_exp e) (List.map tr_case cs))
+    let l = label_attribute_inv e.pexp_attributes in
+    return (trm_desc_match l (tr_exp e) (List.map tr_case cs))
 
   | Pexp_while (e1, e2) ->
+    let l = label_attribute_inv e.pexp_attributes in
     let t1 = tr_exp e1 in
     let t2 = tr_exp e2 in
-    return (trm_desc_while t1 t2)
+    return (trm_desc_while l t1 t2)
 
   | Pexp_assert {pexp_desc=Pexp_construct ({txt=Longident.Lident "false"},_)} ->
     return (trm_desc_assert_false ())
@@ -796,9 +855,11 @@ and tr_let (rf : rec_flag) (attrs : attributes) (vb : value_binding) : let_def l
     List.concat_map (fun (x, attrs) ->
       List.map (fun (sym, loc) -> (x, sym, loc)) (get_all_local_instances attrs)) args in *)
   let body = tr_exp body in
+  (* Debug.log "Visiting body inside letdef: %s" (Ast_print.trm_to_string ~style:Ast_print.style_debug body); *)
 (*   let body = add_local_instances local_instances body in *)
   (* The variable [full_body] includes all parameters (including the implicit ones). *)
-  let fun_body = trm_funs_if_non_empty ~loc args body in
+  let l = label_attribute_inv attrs in
+  let fun_body = trm_funs_if_non_empty ~loc l args body in
 (*   let full_body =
     trm_funs_if_non_empty ~loc (List.map (fun (x, _sym, ty) -> (x, ty)) implicits) fun_body in *)
   (* The variable [full_def] also includes the for-alls quantifiers. *)

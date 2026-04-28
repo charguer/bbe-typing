@@ -1,6 +1,3 @@
-external print_endline : string -> unit = ""
-external string_of_int : int -> string = ""
-
 type ('a, 'b) bucket =
     Nil
   | Cons of 'a * 'b * ('a, 'b) bucket
@@ -38,6 +35,9 @@ let () =
   print_endline (string_of_int (double_table_apply_v3 table1 table2 3 (fun x -> x)));
 
   ()
+
+
+
 
 (* Command for PPX: dune build; dune exec ./test_code.exe *)
 

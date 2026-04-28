@@ -20,6 +20,7 @@ type error =
   | Branches_mismatch_match of string * typ * typ
   | Mismatch_type_is of typ * typ
   | Mismatch_type_switch of typ * typ
+  | Mismatch_label_type of label
   | Sequence of typ
   | Application_mistyped of typ * typ
   | Unable_to_unify of typ * typ

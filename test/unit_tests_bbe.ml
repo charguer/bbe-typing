@@ -273,6 +273,10 @@ let option_pat = if difficult_option @_is (Some (Some ??x, Some ??y)) then y els
 
 let pat_deep_when z : int = if z @_is (Some ??a @_when (a @_is (Some ??n @_when (n = 2)))) then n else -1
 
+let nested_lists_tuple =
+  __switch [
+    __case (([(1, 2)] @_is [(??x, ?!(__ = x))]) @_then true);
+    __case (false @_then false)]
 
 (**************************************************************)
 (* Motivating examples from slides *)
@@ -404,14 +408,7 @@ let testing_inv_and (type a) (t : int option) (f : int -> a) =
   if (t @_is (Some ??k)) && (k @_is (even_opt ??v)) then f v else f 0
 
 
-(* Partial operation *)
-
-(* #(f _ x) == (fun y -> f y x) *)
-
-(* __partial (....) instead of '#', or '?!' *)
-(* if r is Some (?!(list_get_opt tbl _) ??v) then *)
-
-(* ?! ok, mais le _ pas ok. c'est un pat. *)
+(* Partial function application : ?!(f x1 __ x3) == (fun y -> f x1 y x3) *)
 
 let example_fun2 x y = x
 let partl_proj x = ?!(example_fun2 x __)
@@ -421,98 +418,11 @@ let partr_proj y = ?!(example_fun2 __ y)
 let example_funbig a b c d e f g = e
 let projbig b e g = ?!(example_funbig __ b __ __ e __ g)
 
-(* TODO URGENT: test pattern inversion of custom constructors. *)
+(* Label constructs *)
 
-  (*
-  if (o is Some ??n) && (even n) then f() else g()
+let simple_raise_exit = raise (Exn_Exit ("L", 3))
+let simple_raise_next = raise (Exn_Next "L")
 
-  let r = (o is Some ??n) && (even n) in
-  if r then f() else g()
+let simple_if_next_2 = if[@label "L"] (2 @_is ??x) then __next "L" else 3
 
-  if (o is Some ??n) && (even n) then f' n else g ()
-
-   let r = (o is Some ??n) && (even n) in
-   if r then (* n not in scope *) else g()
-
-   let r () = if (o is Some ??n) && (even n) then Some ?n else None in
-   if () is r(??n) then f' n else g()
-
-   same with syntactic sugar:
-
-   let r () = Pattern.make ((o is Some ??n) && (even n)) in
-   if r(??n) then f' n else g()
-
-     Pattern.make would take the ??XX in the order of AST-traversal, and put them in "then Some"
-
-     si on met "p" en position de bbe, ça veut dire
-     () is p
-
-
-   let r o = Pattern.make ((o is Some ??n) && (even n)) in
-   if o @_is r(??n) then f' n else g()
-
-
-
-
-  *)
-
-
-  (* sucre pour "if b then true else false" *)
-
-
-
-(*
-
-let bbe_and : int = if x1 @_is Some ??a && x2 @_is Some ??b then a + b else -1
-
-
-
-let bbe_not : int = if not (x1 @_is Some ??d) then -1 else d
-(*Expected to fail*)
-let bbe_is_bind_fail : int = if not (x1 @_is Some ??d) then d else -1
-
-let z1 = Some (Some 2)
-
-
-let some_even (x : int option) : int option = if x @_is (Some ??a @_when (a @_is even)) then Some a else None
-let div_4_inv (x : int option) : int option = if x @_is (Some ??a @_when (a @_is div_4)) then Some a else None
-
-let rest_div_4 (x : int option) : int option = if x @_is Some ??a then a mod 4 else None
-
-let pat_pred : bool = if 2 @_is even then true else false
-let x3 : int option = Some 14
-let pat_view : int = if x3 @_is div_4_inv ??a then a else -1
-
-let pat_and : bool = if 4 @_is (even &&& div_4) then true else false
-let pat_and_bind : (int * int) option = if x3 @_is (some_even ??a &&& rest_div_4 ??b) then Some (a, b) else None
-let pat_or : bool = if 2 @_is (even or div_4) then true else false
-let pat_or_bind : int option = if x3 @_is (some_even ??a ||| rest_div_4 ??a) then Some a else None
-
-(*Expected to fail*)
-let pat_or_bind_fail : int option = if x3 @_is (some_even ??a ||| rest_div_4 ??b) then Some a else None
-
-let pat_not : int option = if x3 @_is not (Some ??x) then None else x
-(*Expected to fail*)
-let pat_not : int option = if x3 @_is not (Some ??x) then x else x
-
-let pat_as : int = if z1 @_is Some ((Some ??x) @_as ??y) && y @_is some_even ??z then z else -1
-
-
-let empty_switch (type a) : a = switch []
-let nonempty_switch : unit = switch [
-  case y1 @_is None @_then ();
-  case y2 @_is None @_then ()
-]
-
-let nonempty_switch_bind : int = switch [
-  case y1 @_is Some ??x @_then x;
-  case y2 @_is None @_then -1
-]
-
-let nonempty_switch_bind : int = switch [
-  case y1 @_is Some ??x @_then begin
-      x;
-    end
-  case y2 @_is None @_then -1
-]
- *)
+(*  *)

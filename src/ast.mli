@@ -170,11 +170,14 @@ type let_def = {
   let_def_body : trm0;
 }
 
+type label = string
+type except = var * (trm0 option)
 (* List of functions to modify/list of dependencies when changing trm_desc:
   - src/debug.ml: [print_low_level_trm] function
   - src/ast_aux.ml: [trm_iter] and [trm_map] functions
   - src/typecheck.ml: [typecheck_trm], [typecheck_bbe] and [typecheck_pat] functions
   - src/ast_print.ml: [trm_to_doc_raw] function
+  - src/ast_comp.ml: [free_vars] function
 
   There is also a need to add smart constructors and inversors in ast_aux.ml
 *)
@@ -197,20 +200,35 @@ type let_def = {
 type trm_desc =
   | Trm_var of varid
   | Trm_cst of cst
-  | Trm_funs of varsyntyps * trm          (* fun (x1 : tyn) ... (xn : tyn) -> trm_body *)
-  | Trm_if of trm * trm * trm             (* if t1 then t2 else t3 *)
+  | Trm_funs of (label option) * varsyntyps * trm          (* fun (x1 : tyn) ... (xn : tyn) -> trm_body *)
+  | Trm_if of (label option) * trm * trm * trm             (* if t1 then t2 else t3 *)
   (* Check lower for comments on the "trm_let" representation.  *)
   | Trm_let of let_def * trm              (* [t1 ; t2], [let rec x = t1 in t2], [let[@register (+) _ = t1 in t2]] *)
   | Trm_apps of trm * trms                (* Application. Partial application is not allowed. *)
   | Trm_annot of trm * syntyp             (* (t : ty) *)
   | Trm_forall of tvar_rigid * trm        (* fun (type a) -> t *)
-  | Trm_match of trm * (pat * trm) list   (* match t with p1 -> t1 | ... | pn -> tn *)
+  | Trm_match of (label option) * trm * (pat * trm) list   (* match t with p1 -> t1 | ... | pn -> tn *)
   | Trm_tuple of trm list
   | Trm_not of trm (* TODO: not, and, or could be fun *)
   | Trm_and of trm * trm
   | Trm_or of trm * trm
-  | Trm_switch of (bbe * trm) list
-  | Trm_while of bbe * trm
+  | Trm_switch of (label option) * (bbe * trm) list
+  | Trm_while of (label option) * bbe * trm
+  | Trm_block of label * trm
+  (*Exception handling constructions*)
+  | Trm_exit of label * trm
+  | Trm_return of label * trm
+  | Trm_break of label
+  | Trm_continue of label
+  | Trm_next of label
+  | Trm_try_with of trm * pat * trm
+  (* raise juste une fonction; appel de fonction, appel de constructeurs. *)
+  (* | Trm_raise of except *)
+  (* Note that the trm in the exception (in the case of Exit), will BE a pattern (as trivially simple as possible but still) *)
+  (* En caml, uniformisé avec le match. *)
+  (*  *)
+  (* | Trm_try of trm * except * trm *)
+
   (*BBE constructions*)
   | Trm_bbe_is of trm * pat
   (*Pattern constructions*)
@@ -220,6 +238,14 @@ type trm_desc =
   (*
   LATER: Trm_for of dir * var * trm * trm * trm
   *)
+(* the try is in fact a match. With an exception...
+There is no typing rule for the match for the moment tho (i think...) *)
+(* match à la place de try with.
+| Exception (...) -> *)
+(* Ni besoin de raise, ni de try. *)
+
+(* smart constructor trm_raise à la main si envie *)
+(* pareil avec try_with_exit (t1, l, t2, continuation), et try_with_next (t, l, continuation). *)
 
 and trm = {
   trm_desc : trm_desc;
@@ -380,10 +406,24 @@ and program = topdefs
   | Env_item_overload of candidates_and_modes (* overloaded *)
  *)
 (** An [env_var] is a typing environment for resolving program variables
-  typically defined by a let-binding): it associates an [env_item] to every
-  variable name. Technically, the keys are symbols, due to our encodings
-  (see definition of type [symbol]). *)
+  typically defined by a let-binding): it associates a type scheme to every variable *)
+
 type env_var = (var, sch) Env.t (* LATER: rename to env_symbol? *)
+
+(* type kind =
+  | LblBlock
+  | LblFun
+  | LblLoop
+  | LblBranch *)
+
+type label_item =
+  | LblBlock of typ
+  | LblFun of typ
+  | LblLoop
+  | LblBranch
+
+(* type env_label = ((kind * label), typ option) Env.t *)
+type env_label = (label, label_item) Env.t
 
 (** An [env_tconstr] is a typing environment for type constructors (e.g. [list]):
    it associates a type constructor descriptor ([tconstr_desc])
@@ -395,6 +435,7 @@ type env_tconstr = (tconstr, tconstr_desc) Env.t
     constructors of arity zero), and type constructors. *)
 type env = {
   env_var : env_var;
+  env_label : env_label;
   env_tconstr : env_tconstr;
   env_is_in_pattern : bool; (* Useful to recognize when to look for a "__pattern_" version. *)
   (* For all constr name (capitalized functions), give its arity. *)
