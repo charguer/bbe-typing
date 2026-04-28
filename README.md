@@ -2,13 +2,16 @@
 ppx_bbe
 ================
 
-PPX extension for *binding-boolean-expressions*.
+Prototype implementation of the ideas described in the research paper:
+*Functional Pearl: Binding Boolean Expressions and Extended Pattern Matching*,
+by Arthur Charguéraud and Yanni Lefki, April 2026.
 
-Implementation of the language defined in *source paper*
+The prototype implements:
+
+  - a standalone typechecker (independent of the OCaml typechecker)
+  - a PPX extension that compiles the extended language features into standard OCaml code.
 
 ### Overview 
-
-This project is a prototype implementation of a PPX extension for OCaml.
 
 ### Requirements
 

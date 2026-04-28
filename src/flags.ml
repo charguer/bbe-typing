@@ -26,13 +26,7 @@ let measure_time = ref false
    of gathering ml constraints, and when testing for candidate instances. *)
 let check_cycles_at_every_unification = ref false
 
-(* To fasten the typechecking, we can skip the check for cyclic types when
-   filtering the list of candidates. This means for example that if there
-   are two instances [f: a -> a -> bool] and [f: a -> (a -> a) -> bool], and we
-   have at hand a call of the form [f x x] where [x] has an unconstrained type,
-   then we won't be able to rule out the second instance and pick the first one.
-   Currently, this flag is only meant for experimenting with execution time.
-   (Appears to only gain 5.57s down to 5.43s in one experiment.) *)
+(* Deprecated *)
 let disable_check_cycle_on_resolution_attempts = ref false
 
 (* If disabled, do not write any output. *)
