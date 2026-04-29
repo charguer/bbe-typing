@@ -3,8 +3,8 @@ ppx_bbe
 ================
 
 Prototype implementation of the ideas described in the research paper:
-*Functional Pearl: Binding Boolean Expressions and Extended Pattern Matching*,
-by Arthur Charguéraud and Yanni Lefki, April 2026.
+[*Functional Pearl: Binding Boolean Expressions and Extended Pattern Matching*](https://www.chargueraud.org/research/2026/bbe/bbe-and-extended-matching.pdf),
+by Arthur Charguéraud and Yanni Lefki, April 2026, 
 
 The prototype implements:
 
@@ -45,7 +45,7 @@ There are three ways of using this tool:
 It is assumed that the two first options will be used with the flag
 `Flags.weak_typer` set to `true`. If the flag is instead set to `false`,
 `typer.exe` verifies the type of the input extended OCaml file according to the
-typing rules of *source paper*.
+typing rules of the [source paper](https://www.chargueraud.org/research/2026/bbe/bbe-and-extended-matching.pdf).
 
 Tested command:
 
@@ -53,7 +53,7 @@ Tested command:
 typer.exe test/unit_tests_bbe.ml
 ```
 
-For simplicity, both this one and the next executable file are symlinked to the root directory from `_build/default/src`.
+For simplicity, both `typer.exe` and `bbe_rewriter.exe` are symlinked to the root directory from `_build/default/src`.
 
 2. As a standalone rewriter, with `bbe_rewriter.exe`.
 
@@ -94,32 +94,7 @@ This currently prints:
 1
 ```
 
-Remark: 
+Remarks: 
 - The typechecker is deactivated by default for both `bbe_rewriter.exe` and
   `ppx_bbe`. It can be reactivated with the flag `-strong-typer`.
-
-<!-- 
-TODO:
-1. Chaque outil doit être prêt out of the box, c'est à dire avec les bons flags, et les bons arguments. Ajouter dans les lignes de commande des flags de la forme --xxx qui modifient ce que tu veux
-2. Dans le readme, donner l'exemple de ce qu'il faut.
-3. Rajouter les dépendances à installer, par exemple arthur avait pas "ocamlformat-lib"
-4. Voir comment ajouter -ppx avec ce que je veux. ce serait vachement cool pour usage
-5. Changer les unittests avec 1 ou deux examples puis génération sur l'IA pour avoir du higher order programming
-
--->
-
-<!--
-- 1 sentence overview of the project 
-- Small example of the kind of code, 1 small translation example with a non trivial example (that does not translate to a let basically) "if x @_is (Some(__), ??y) then y+1 else 0" translates to ... 
-- Installation and usage : 
-  -> For installation you have to git clone this project for the moment
-  -> For usage, (not yet implemented), but there should be 2 ways:
-    => Either an executable that from an extended OCaml gives a rewritten OCaml
-    => A ppx add-on that simply branches to your compilation scheme as a preprocess before compilation.
-- Syntax
-  -> Give a few examples of non trivial usage, and refer to syntax.md & the paper for the full language syntax and the theoretical results
--->
- 
-<!-- Check notes :
-https://chatgpt.com/share/69de3c01-9b58-8396-9e24-a294df1ab6c4 
--->
+- The source code contains currently unused functions, originally used for handling overloading.  
