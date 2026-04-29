@@ -11,19 +11,19 @@ let spec =
     ("-continue-on-error", Arg.Set Flags.continue_on_error, "Skip a top-level item if it does not typecheck.") ;
     (*("-clear-triggered", Arg.Set Flags.clear_triggered_after_loop, "After each resolution loop, clear the varid triggered during the iteration.") ; *)
     ("-debug", Arg.Set Flags.debug, "Print debugging information.") ;
-    ("-print-counters", Arg.Set Flags.print_counters, "Print counters, for debugging.") ;
+    (* ("-print-counters", Arg.Set Flags.print_counters, "Print counters, for debugging.") ;
     ("-counters-only-for-resolutions-in-last-topdef", Arg.Set Flags.counters_only_for_resolutions_in_last_topdef, " Hack for gathering more specific statistics, for debugging.") ;
     ("-force-complete-resolution", Arg.Clear Flags.force_complete_resolution, "Stop when the resolution can't be completed.") ;
     ("-keep-failing", Arg.Clear Flags.remove_failing, "Keep definitions that are marked with a [@type_error].") ;
-    ("-measure-time", Arg.Set Flags.measure_time, "Measure the type of the typing phase (ignoring parser and printer).") ;
-    ("-no-output", Arg.Clear Flags.output, "Disable all output except for debugging and error.") ;
-    ("-not-readable", Arg.Clear Flags.readable, "Do not try to produce code that is as readable as possible.") ;
+    ("-measure-time", Arg.Set Flags.measure_time, "Measure the type of the typing phase (ignoring parser and printer).") ; *)
+    (* ("-no-output", Arg.Clear Flags.output, "Disable all output except for debugging and error.") ; *)
+    (* ("-not-readable", Arg.Clear Flags.readable, "Do not try to produce code that is as readable as possible.") ; *)
     ("-o", Arg.String (fun s -> output_filename := Some s), "Set the output file name.") ;
     (* ("-only-type", Arg.Clear Flags.instantiate, "Disable replacing instance by their implementation.") ; *)
     ("-print-parsed", Arg.Set Flags.print_parsed, "Print raw parsing information in special *_parsed.ml and *_translated.ml files.") ;
-    ("-print-raw-symbols", Arg.Set Flags.print_raw_symbols, "Print internal symbols encoding for records and constants.") ;
+    (* ("-print-raw-symbols", Arg.Set Flags.print_raw_symbols, "Print internal symbols encoding for records and constants.") ; *)
     ("-quiet", Arg.Set Flags.quiet, "Do not indicate when a file is being generated.") ;
-    ("-relax-error-messages", Arg.Clear Flags.exact_error_messages, "Do not check wether [@type_error] annotations exactly produce the expected error message.") ;
+    (* ("-relax-error-messages", Arg.Clear Flags.exact_error_messages, "Do not check wether [@type_error] annotations exactly produce the expected error message.") ; *)
     ("-weak-typer", Arg.Set Flags.weak_typer, "(default) Remove most of the typechecking steps") ;
     ("-strong-typer", Arg.Clear Flags.weak_typer, "Performs the complete typechecking process") ;
   ])

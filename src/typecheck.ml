@@ -1337,8 +1337,8 @@ let check_error ?(exact_error_messages = true) ~style fallback_result td f =
           Printf.printf "error raised : %s\n" (Errors_aux.string_of_error_short error);
           raise (Typecheck_error serror_full)
       | Some "" ->
-        Printf.printf "Error obtained: %s\n" serror ;
-        Printf.printf "🟨 Skipping unspecified error in def of: %s.\n" name ;
+        Debug.log "Error obtained: %s\n" serror ;
+        Debug.log "🟨 Skipping unspecified error in def of: %s.\n" name ;
         fallback_result
       | Some msg ->
         if exact_error_messages && msg <> serror then begin
@@ -1348,8 +1348,8 @@ let check_error ?(exact_error_messages = true) ~style fallback_result td f =
           eprintf "Full error message: %s\n%!" serror_full ;
           Debug.log "🟧 Unexpected error message."
         end else (
-          Printf.printf "Error obtained: %s\n" serror ;
-          Printf.printf "🟨 Skipping expected error in def of: %s.\n" name ;
+          Debug.log "Error obtained: %s\n" serror ;
+          Debug.log "🟨 Skipping expected error in def of: %s.\n" name ;
         ) ;
         fallback_result
     end
@@ -1406,7 +1406,7 @@ let typecheck_topdef ?exact_error_messages ~style (env : env) (td : topdef) : to
           then Counters.reset_stats_except_time_ml_constraints ();
         Counters.(compute_and_time time_symbol_resolution (fun () ->
           iterative_resolution varids)); *)
-        (if not (!Flags.weak_typer) then Debug.log "🟩 Conclude that this definition has the type scheme %s." (sch_to_string sch));
+        (if not (!Flags.weak_typer) then Debug.log "🟩 Conclude that this definition has the type scheme: %s." (sch_to_string sch));
 (*      let sym =
           match d.let_def_bind with
           | Bind_anon -> SymbolName (var "<anonymous>")
