@@ -20,3 +20,4 @@ test/unit_tests_debug.ml
 _coverage/*
 *prompt*
 src/flags.ml
+internal/*
